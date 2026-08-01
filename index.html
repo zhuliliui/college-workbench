@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#a7c4ab" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="万能工作台" />
+  <title>大学生AI万能工作台</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="assets/icon.svg" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="app">
+    <!-- 左侧/底部 固定导航 -->
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-logo">🌿</div>
+        <div class="brand-text">
+          <h1>万能工作台</h1>
+          <span>AI Study Hub</span>
+        </div>
+      </div>
+      <nav class="nav" id="nav"><!-- 由 JS 渲染 --></nav>
+      <div class="sidebar-foot">
+        <div class="piggy-mini" id="sidebarPiggy">
+          <span class="e">🐷</span>
+          <span class="t">虚拟存钱罐</span>
+          <span class="v" id="sidebarPiggyValue">¥0.00</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- 主内容区 -->
+    <main class="main">
+      <header class="topbar">
+        <button class="menu-toggle" id="menuToggle" aria-label="菜单">☰</button>
+        <div class="topbar-title" id="pageTitle">万能工作台</div>
+        <div class="topbar-actions">
+          <button class="btn btn-soft" id="calBtn" title="提醒设置（微信推送 + 日历订阅）">🔔 提醒</button>
+          <button class="btn btn-soft" id="exportBtn" title="云端同步 / 本地备份">☁️ 备份</button>
+        </div>
+      </header>
+      <div class="backup-hint" id="backupHint">⚠️ 浏览器清理缓存会丢失本地数据，请定期备份（导出 JSON）</div>
+      <section class="content" id="content"><!-- 各页面在此渲染 --></section>
+    </main>
+  </div>
+
+  <div id="modalRoot"></div>
+  <div id="toastRoot"></div>
+
+  <script src="js/store.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/pages/dashboard.js"></script>
+  <script src="js/pages/study.js"></script>
+  <script src="js/pages/ddl.js"></script>
+  <script src="js/pages/finance.js"></script>
+  <script src="js/pages/discipline.js"></script>
+  <script src="js/pages/travel.js"></script>
+  <script src="js/pages/review.js"></script>
+  <script src="js/pages/en-dict.js"></script>
+  <script src="js/pages/kaoyan-seed.js"></script>
+  <script src="js/pages/english.js"></script>
+  <script src="js/pages/skill.js"></script>
+  <script src="js/cloud.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
