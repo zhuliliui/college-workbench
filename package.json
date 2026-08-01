@@ -1,0 +1,13 @@
+{
+  "name": "college-workbench",
+  "version": "1.0.0",
+  "description": "大学生AI万能工作台 · PWA 前端 + 轻量 Node 后端",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": ["pwa", "student", "study", "planner"],
+  "author": "",
+  "license": "MIT"
+}
