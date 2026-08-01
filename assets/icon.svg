@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#eef5f0"/>
+      <stop offset="1" stop-color="#d9ebe0"/>
+    </linearGradient>
+    <linearGradient id="pig" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#a7c4ab"/>
+      <stop offset="1" stop-color="#5e8268"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <!-- 小猪存钱罐 -->
+  <ellipse cx="256" cy="290" rx="150" ry="120" fill="url(#pig)"/>
+  <circle cx="150" cy="220" r="40" fill="url(#pig)"/>
+  <circle cx="138" cy="212" r="7" fill="#3f5a47"/>
+  <ellipse cx="256" cy="170" rx="26" ry="14" fill="#6f9b7c"/>
+  <circle cx="392" cy="300" r="26" fill="#bcd6c4"/>
+  <circle cx="402" cy="312" r="4" fill="#4a6b54"/>
+  <!-- 投币口 -->
+  <rect x="226" y="150" width="60" height="12" rx="6" fill="#4a6b54"/>
+  <!-- 硬币 -->
+  <circle cx="350" cy="160" r="26" fill="#f7d774" stroke="#e3b84e" stroke-width="4"/>
+  <text x="350" y="170" font-size="30" text-anchor="middle" fill="#b9892b" font-family="Arial">¥</text>
+  <!-- 星光 -->
+  <g fill="#fff7d6">
+    <path d="M120 120 l8 16 16 8 -16 8 -8 16 -8-16 -16-8 16-8z"/>
+    <path d="M400 110 l5 10 10 5 -10 5 -5 10 -5-10 -10-5 10-5z"/>
+  </g>
+</svg>
