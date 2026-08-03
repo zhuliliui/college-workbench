@@ -30,6 +30,14 @@ repositories {
     }
 }
 
+// 钉住 work-runtime，避免某个 Capacitor 插件拉到 2.10.5（要求 compileSdk 35）
+// 而本工程 AGP 8.2.1 最大支持 compileSdk 34，导致 checkDebugAarMetadata 失败。
+configurations.all {
+    resolutionStrategy {
+        force 'androidx.work:work-runtime:2.9.1'
+    }
+}
+
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
