@@ -40,6 +40,8 @@
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { height: 100%; }
+/* 防止任何图片因缺省尺寸撑爆布局 */
+img { max-width: 100%; height: auto; object-fit: contain; }
 body {
   margin: 0;
   font-family: var(--font);
@@ -133,7 +135,8 @@ input, textarea, select { font-family: inherit; font-size: 15px; color: var(--te
 }
 .card-head .title { font-size: 15.5px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 8px; }
 .card-head .title .ic { font-size: 18px; }
-.card-head .title .ic img, img.ic { width: 20px; height: 20px; object-fit: contain; vertical-align: middle; }
+.card-head .title .ic img { width: 20px; height: 20px; object-fit: contain; vertical-align: middle; }
+img.ic { width: 20px; height: 20px; object-fit: contain; vertical-align: middle; }
 .card-head .title .piggy-ic { width: 20px; height: 20px; flex: 0 0 20px; }
 .card-head .sub { font-size: 12.5px; color: var(--text-faint); }
 .card-head .spacer { flex: 1; }
@@ -546,16 +549,20 @@ input, textarea, select { font-family: inherit; font-size: 15px; color: var(--te
     display: flex; position: fixed; bottom: 0; left: 0; right: 0; z-index: 45;
     background: rgba(245,248,245,.96); backdrop-filter: blur(10px);
     border-top: 1px solid var(--line); padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
-    justify-content: space-around;
+    justify-content: space-around; overflow-x: auto; -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; /* Firefox */
   }
+  .bottom-nav::-webkit-scrollbar { display: none; }
   .bn-item {
-    flex: 1; border: none; background: transparent; color: var(--text-faint);
+    flex: 1 0 auto; min-width: 56px; max-width: 92px; border: none; background: transparent; color: var(--text-faint);
     display: flex; flex-direction: column; align-items: center; gap: 2px;
     font-size: 10.5px; font-weight: 600; padding: 4px 2px; border-radius: 10px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
-.bn-item .e { font-size: 19px; }
-.bn-item img.e { width: 19px; height: 19px; object-fit: contain; }
-.bn-item.active { color: var(--primary-deep); background: var(--sidebar-active); }
+  .bn-item .e { font-size: 19px; width: 19px; height: 19px; display: grid; place-items: center; }
+  .bn-item img.e { width: 19px; height: 19px; object-fit: contain; }
+  .bn-item span:last-child { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+  .bn-item.active { color: var(--primary-deep); background: var(--sidebar-active); }
   .ring-wrap { gap: 16px; }
 }
 @media (max-width: 560px) {

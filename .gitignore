@@ -6,3 +6,11 @@ android/captures/
 dist/
 .DS_Store
 nul
+
+# 本地打包/临时产物（不入库）
+app-debug.apk
+app-debug-apk.zip
+_arts.json
+check_run.py
+update/
+update-last-version.txt
