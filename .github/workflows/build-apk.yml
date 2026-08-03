@@ -25,9 +25,11 @@ jobs:
       - name: Install npm dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Sync Capacitor Android (add if missing)
+      # 关键：先构建 dist（网页资源），再 cap sync 把网页拷进 android 原生工程。
+      # 若先 cap sync 再 build，cap sync 会因找不到 webDir 而失败。
+      - name: Build web assets & sync Capacitor Android
         run: |
-          if [ ! -d "android" ]; then npx @capacitor/cli add android; fi
+          npm run build
           npx @capacitor/cli sync android
 
       - name: Setup Java JDK

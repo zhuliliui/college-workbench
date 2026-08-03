@@ -1,6 +1,6 @@
 /* ============================================================
    大学生AI万能工作台 · 全局样式
-   清新柔和浅色系 · 淡紫色主调 · 轻量化扁平
+   清新柔和浅色系 · 莫兰迪豆绿主调 · 轻量化扁平
    ============================================================ */
 :root {
   --bg: #f6f9f5;
@@ -71,7 +71,7 @@ input, textarea, select { font-family: inherit; font-size: 15px; color: var(--te
   position: sticky; top: 0; height: 100vh; height: 100dvh;
   padding: 18px 14px;
   z-index: 40;
-  box-shadow: 2px 0 18px rgba(150,130,200,.05);
+  box-shadow: 2px 0 18px rgba(110,145,125,.06);
 }
 .brand { display: flex; align-items: center; gap: 11px; padding: 6px 8px 16px; }
 .brand-logo {
@@ -125,7 +125,7 @@ input, textarea, select { font-family: inherit; font-size: 15px; color: var(--te
   box-shadow: var(--shadow-sm);
   padding: 18px;
   margin-bottom: 16px;
-  border: 1px solid rgba(233,226,246,.6);
+  border: 1px solid rgba(180,205,185,.5);
 }
 .card-head {
   display: flex; align-items: center; gap: 10px;
@@ -201,7 +201,7 @@ input, textarea, select { font-family: inherit; font-size: 15px; color: var(--te
 .tag.danger { background: var(--danger-soft); color: var(--danger); }
 .tag.success { background: var(--success-soft); color: #3f8a4c; }
 .tag.reward { background: #f6e7bf; color: #8a6a23; border: 1px solid #e7cf94; }
-.tag.muted { background: #efeef2; color: var(--text-soft); }
+.tag.muted { background: #eef3ee; color: var(--text-soft); }
 
 /* ============ 进度条 ============ */
 .progress { height: 10px; border-radius: 999px; background: var(--surface-soft); overflow: hidden; }
@@ -606,7 +606,7 @@ table.tbl tr:hover td { background: var(--surface-2); }
   border-radius: var(--radius);
   padding: 18px;
   box-shadow: var(--shadow-sm);
-  border: 1px solid rgba(233,226,246,.6);
+  border: 1px solid rgba(180,205,185,.5);
   display: flex;
   flex-direction: column;
   gap: 6px;
