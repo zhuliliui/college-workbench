@@ -8,7 +8,7 @@ name: Build Debug APK
 on:
   workflow_dispatch:
   push:
-    branches: [main, master]
+    branches: [main, master, android-build]
 
 jobs:
   build:
