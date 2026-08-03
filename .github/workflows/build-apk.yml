@@ -1,0 +1,57 @@
+name: Build Debug APK
+
+# 在线打包：无需本机装 Android Studio / JDK / Gradle
+# 触发方式：
+#   1) 在仓库 Actions 页面手动点 "Run workflow"
+#   2) 或 push 到 main / master 分支自动触发
+# 产物：在 Actions 运行结果的 Artifacts 里下载 app-debug.apk，直接装手机即可
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install npm dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Sync Capacitor Android (add if missing)
+        run: |
+          if [ ! -d "android" ]; then npx @capacitor/cli add android; fi
+          npx @capacitor/cli sync android
+
+      - name: Setup Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: |
+          yes | sdkmanager --licenses || true
+          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Build Debug APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: college-workbench-debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk

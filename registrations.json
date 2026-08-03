@@ -1,0 +1,31 @@
+{
+  "cw_mscm7sbf940asa": {
+    "ddls": [
+      {
+        "id": "msby7rwgo2s0ry",
+        "name": "live2d",
+        "due": "2026-08-10T23:21",
+        "done": false,
+        "remindBefore": 720
+      },
+      {
+        "id": "msakffgpubdmvx",
+        "name": "qt大项目",
+        "due": "2026-08-15T00:00",
+        "done": false
+      }
+    ],
+    "reminders": [
+      1440,
+      720,
+      60
+    ],
+    "push": {
+      "service": "serverchan",
+      "token": "SCT388613Tp137ilTzrQbGFYK8T5tEpT6s",
+      "uid": ""
+    },
+    "pushedLog": {},
+    "updatedAt": 1785725048130
+  }
+}

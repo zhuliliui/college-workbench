@@ -1,0 +1,8 @@
+node_modules/
+android/.gradle/
+android/app/build/
+android/captures/
+*.keystore
+dist/
+.DS_Store
+nul

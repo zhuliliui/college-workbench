@@ -1,0 +1,13 @@
+{
+  "appId": "com.college.workbench",
+  "appName": "小朱工作台",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "CapacitorUpdater": {
+      "autoUpdate": false
+    }
+  }
+}

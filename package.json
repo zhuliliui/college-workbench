@@ -1,0 +1,22 @@
+{
+  "name": "college-workbench",
+  "version": "1.0.0",
+  "private": true,
+  "description": "大学生AI万能工作台 · 前端 + Capacitor 原生 App 工程",
+  "scripts": {
+    "build": "node build.js",
+    "cap:add:android": "npx @capacitor/cli add android",
+    "cap:sync": "npm run build && npx @capacitor/cli sync android",
+    "cap:open": "npx @capacitor/cli open android",
+    "deploy:update": "node deploy-update.js"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.1.2",
+    "@capacitor/core": "^6.1.2",
+    "@capacitor/android": "^6.1.2",
+    "@capacitor/preferences": "^6.0.2",
+    "@capacitor/filesystem": "^6.0.2",
+    "@capgo/capacitor-updater": "^6.50.2",
+    "@capacitor-community/http": "^1.4.1"
+  }
+}
