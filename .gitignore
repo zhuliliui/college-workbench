@@ -14,3 +14,4 @@ _arts.json
 check_run.py
 update/
 update-last-version.txt
+.workbuddy/
