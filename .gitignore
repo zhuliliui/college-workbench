@@ -16,3 +16,9 @@ update/
 update-last-version.txt
 .update-push-tmp/
 .workbuddy/
+_apk_check.zip
+_apk_extract/
+_icon_gen/
+assets/icons/original/
+remove_icon_bg.py
+process_special_icons.py
