@@ -1,5 +1,5 @@
 /* 大学生AI万能工作台 - Service Worker（PWA 离线缓存） */
-const CACHE = 'cw-v72';
+const CACHE = 'cw-v73';
 const ICONS = Array.from({ length: 42 }, (_, i) => 'assets/icons/hk-' + String(i + 1).padStart(2, '0') + '.png');
 const ASSETS = [
   '.',
@@ -27,7 +27,8 @@ const ASSETS = [
   'js/pages/skill.js',
   'js/cloud.js',
   'js/app.js',
-  ...ICONS
+  ...ICONS,
+  'assets/icons/hk-bili.png'
 ];
 
 self.addEventListener('install', (e) => {

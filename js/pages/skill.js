@@ -90,6 +90,7 @@ Pages.skill = function () {
   <div class="sk-ops">
   <div class="row2">
   ${x.url ? `<button class="btn btn-soft btn-icon" data-act="link" data-id="${x.id}" title="打开外链"><img class="ic" src="assets/icons/hk-29.png" alt=""/></button>` : ''}
+  <button class="btn btn-soft btn-icon sk-bili" data-act="bili" data-id="${x.id}" title="在 B 站搜相关教程"><img class="ic" src="assets/icons/hk-bili.png" alt=""/></button>
   <button class="btn btn-soft btn-icon" data-act="edit-course" data-id="${x.id}" title="编辑"><img class="ic" src="assets/icons/hk-32.png" alt=""/></button>
   <button class="btn btn-soft btn-icon" data-act="del-course" data-id="${x.id}" title="删除"><img class="ic" src="assets/icons/hk-18.png" alt=""/></button>
   </div>
@@ -198,6 +199,7 @@ Pages.skill = function () {
   }
   return;
   }
+  if (act === 'bili') return openBiliModal(id);
   if (act === 'link') {
   const t = findTopic(window.__skillViewId);
   const cr = t && t.courses.find((c2) => c2.id === id);
@@ -322,6 +324,48 @@ Pages.skill = function () {
   } }],
   });
   setTimeout(() => UI.$('#coTitle') && UI.$('#coTitle').focus(), 50);
+  }
+
+  // ---------- B 站搜集：搜索视频并把选好的链接加入课程 🔗 ----------
+  function openBiliModal(courseId) {
+  const t = findTopic(window.__skillViewId);
+  const cr = t && t.courses.find((c2) => c2.id === courseId);
+  if (!cr) return;
+  const kw = (cr.title || '').trim();
+  UI.openModal({
+  title: 'B 站搜集教程', icon: '<img class="ic" src="assets/icons/hk-bili.png" alt=""/>',
+  body: `
+  <div class="muted-text" style="margin-bottom:10px">课程：<b>${UI.esc(kw)}</b><br/>以课程标题为关键词去 B 站搜索，找到后把视频链接粘贴到下面即可加入本课 🔗。</div>
+  <div class="field"><label>搜索关键词</label><input class="input" id="biliKw" value="${UI.esc(kw)}" placeholder="如：Pandas 数据清洗"/></div>
+  <button class="btn" id="biliGo" style="width:100%;background:#fb7299;border-color:#fb7299;color:#fff;margin-top:4px">🔍 去 B 站搜索</button>
+  <hr style="margin:14px 0;border:none;border-top:1px dashed var(--line)"/>
+  <div class="field"><label>收藏到本课 🔗</label><input class="input" id="biliUrl" value="${UI.esc(cr.url || '')}" placeholder="https://www.bilibili.com/video/BV..."/></div>
+  ${cr.url ? `<div class="muted-text" style="margin-top:6px">当前链接：<a href="${UI.esc(cr.url)}" target="_blank" rel="noopener">${UI.esc(cr.url)}</a></div>` : ''}`,
+  actions: [
+  { label: '取消', cls: 'btn-soft', onClick: UI.closeModal },
+  { label: cr.url ? '更新链接' : '保存链接', onClick: () => {
+  const url = UI.val('#biliUrl').trim();
+  Store.update((st) => {
+  const tp = st.skill.topics.find((x) => x.id === window.__skillViewId);
+  if (tp) {
+  const c = tp.courses.find((c2) => c2.id === courseId);
+  if (c) c.url = url;
+  }
+  });
+  UI.closeModal(); Pages.skill();
+  } }
+  ],
+  });
+  setTimeout(() => {
+  const go = UI.$('#biliGo');
+  if (go) go.onclick = () => {
+  const k = (UI.val('#biliKw') || '').trim();
+  if (!k) return UI.toast('请输入搜索关键词', 'warn');
+  const u = 'https://search.bilibili.com/all?keyword=' + encodeURIComponent(k);
+  const w = window.open(u, '_blank', 'noopener');
+  if (!w) { UI.toast('正在打开 B 站…（如被拦截请允许弹出窗口）', 'ok'); location.href = u; }
+  };
+  }, 50);
   }
 
   render();
