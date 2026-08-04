@@ -847,3 +847,40 @@ table.tbl tr:hover td { background: var(--surface-2); }
   .ddl-item .prog-range { width: 80px; }
 }
 }
+
+/* ---------- 艾宾浩斯复习计划（闪卡页）---------- */
+.ebbinghaus-card .card-body { padding-top: 12px; }
+.eb-desc { font-size: 13px; color: var(--text-soft); line-height: 1.7; margin-bottom: 12px; }
+.eb-desc b { color: var(--primary-deep); }
+.eb-ladder { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; -webkit-overflow-scrolling: touch; }
+.eb-stage { flex: 1 0 72px; min-width: 72px; background: var(--surface-2); border: 1px solid var(--surface-soft); border-radius: 12px; padding: 10px 6px; text-align: center; transition: .2s; }
+.eb-stage .eb-stage-iv { font-size: 13.5px; font-weight: 700; color: var(--text-soft); }
+.eb-stage .eb-stage-cnt { font-size: 12px; color: var(--text-faint); margin-top: 3px; }
+.eb-stage.active { background: var(--primary-soft); border-color: var(--primary); }
+.eb-stage.active .eb-stage-iv { color: var(--primary-deep); }
+.eb-stage.active .eb-stage-cnt { color: var(--primary-deep); }
+.eb-future { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 12px; }
+.eb-future-label { font-size: 13px; font-weight: 700; color: var(--text); margin-right: 2px; }
+.eb-future-chip { font-size: 12px; color: var(--primary-deep); background: var(--primary-soft); border-radius: 999px; padding: 3px 10px; }
+.eb-due { margin-top: 12px; }
+.eb-due-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.eb-due-item { font-size: 12.5px; color: var(--text-soft); background: var(--surface-2); border: 1px solid var(--surface-soft); border-radius: 8px; padding: 3px 9px; }
+
+/* ---------- 自律模块（工作台底部）---------- */
+.focus-section-label { font-size: 13px; font-weight: 700; color: var(--text-soft); margin: 4px 0 8px; }
+.focus-timer .card-body { padding-top: 16px; }
+.timer-display { font-size: 46px; font-weight: 700; color: var(--primary-deep); letter-spacing: 2px; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.focus-records { display: flex; flex-direction: column; gap: 2px; }
+.focus-rec-row { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--surface-2); border-radius: 10px; font-size: 13px; }
+.focus-rec-row .fr-theme { font-weight: 600; color: var(--text); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.focus-rec-row .fr-time { color: var(--text-soft); }
+.focus-rec-row .fr-dur { color: var(--primary-deep); font-weight: 600; }
+.focus-rec-row.aborted { opacity: .6; }
+.focus-rec-row.aborted .fr-dur { color: var(--text-faint); }
+.focus-stat { background: var(--surface-2); border: 1px solid var(--surface-soft); border-radius: 14px; padding: 14px 8px; text-align: center; }
+.focus-stat .fs-val { font-size: 19px; font-weight: 700; color: var(--primary-deep); line-height: 1.2; }
+.focus-stat .fs-label { font-size: 12px; color: var(--text-soft); margin-top: 4px; }
+.seg { display: inline-flex; background: var(--surface-2); border-radius: 999px; padding: 3px; gap: 2px; }
+.seg-btn { border: none; background: transparent; color: var(--text-soft); font-size: 13px; font-weight: 600; padding: 5px 14px; border-radius: 999px; cursor: pointer; transition: .15s; }
+.seg-btn.on { background: var(--primary); color: #fff; }
+.seg-btn:hover:not(.on) { background: var(--primary-soft); color: var(--primary-deep); }

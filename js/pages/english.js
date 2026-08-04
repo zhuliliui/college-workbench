@@ -457,10 +457,81 @@ window.Pages = window.Pages || {};
   fresh.forEach((x) => { if (!queue.includes(x)) queue.push(x); });
   return { queue, idx: 0, flipped: false };
   }
+
+  // ---------- 艾宾浩斯复习计划（记忆曲线可视化）----------
+  const IV_LABEL = ['10分钟', '1天', '2天', '4天', '7天', '15天'];
+  function ebStageCounts(bank) {
+    const cnt = [0, 0, 0, 0, 0, 0];
+    bank.forEach((x) => { const b = Math.max(0, Math.min(5, x.box || 0)); cnt[b]++; });
+    return cnt;
+  }
+  function ebFutureBuckets(bank, now) {
+    const eod = new Date(); eod.setHours(23, 59, 59, 999);
+    const endToday = eod.getTime();
+    const day = 86400e3;
+    const b = { today: 0, tomorrow: 0, d2_3: 0, d4_7: 0, weekplus: 0 };
+    bank.forEach((x) => {
+      const nx = x.next || 0;
+      if (nx <= now) return; // 已到期不计入未来排期
+      const diff = nx - now;
+      if (nx <= endToday) b.today++;
+      else if (diff <= day) b.tomorrow++;
+      else if (diff <= 3 * day) b.d2_3++;
+      else if (diff <= 7 * day) b.d4_7++;
+      else b.weekplus++;
+    });
+    return b;
+  }
+  function ebbinghausPlanHtml(bank, due, fresh) {
+    const cnt = ebStageCounts(bank);
+    const now = Date.now();
+    const fb = ebFutureBuckets(bank, now);
+    let top = 0; for (let i = 5; i >= 0; i--) { if (cnt[i] > 0) { top = i; break; } }
+    const ladder = IV_LABEL.map((lab, i) => `
+      <div class="eb-stage ${i === top ? 'active' : ''}">
+        <div class="eb-stage-iv">${lab}</div>
+        <div class="eb-stage-cnt">${cnt[i]} 词</div>
+      </div>`).join('');
+    const hasFuture = fb.today + fb.tomorrow + fb.d2_3 + fb.d4_7 + fb.weekplus > 0;
+    const futureHtml = hasFuture ? `
+      <div class="eb-future">
+        <span class="eb-future-label">未来排期</span>
+        <span class="eb-future-chip">今天 ${fb.today}</span>
+        <span class="eb-future-chip">明天 ${fb.tomorrow}</span>
+        <span class="eb-future-chip">2-3天 ${fb.d2_3}</span>
+        <span class="eb-future-chip">4-7天 ${fb.d4_7}</span>
+        <span class="eb-future-chip">一周+ ${fb.weekplus}</span>
+      </div>` : '';
+    const dueList = due.slice(0, 18).map((x) => `<span class="eb-due-item">${UI.esc(x.word)}</span>`).join('');
+    const dueHtml = due.length ? `
+      <div class="eb-due">
+        <div class="eb-future-label">今日到期复习（${due.length}${due.length > 18 ? ' · 显示前18' : ''}）</div>
+        <div class="eb-due-list">${dueList}</div>
+      </div>` : '';
+    return `
+    <div class="card ebbinghaus-card">
+      <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-06.png" alt=""/>艾宾浩斯复习计划</div>
+        <div class="spacer"></div>
+        <span class="tag">待复习 ${due.length}</span>
+        <span class="tag" style="background:var(--primary-soft);color:var(--primary-deep)">待学新词 ${fresh.length}</span>
+      </div>
+      <div class="card-body">
+        <div class="eb-desc">按遗忘曲线安排间隔复习：学完后在 <b>10分钟 / 1天 / 2天 / 4天 / 7天 / 15天</b> 回看，记得越牢，间隔越长。</div>
+        <div class="eb-ladder">${ladder}</div>
+        ${futureHtml}
+        ${dueHtml}
+      </div>
+    </div>`;
+  }
+
   function renderFlash(body, bank) {
   if (!bank.length) { wrap(body, `<div class="empty"><img class="emoji" src="assets/icons/hk-27.png" alt=""/><div class="t">词库还是空的</div><div class="s">先去「导入」上传双语 PDF，或手动添加单词</div></div>`); return; }
+  const now = Date.now();
+  const due = bank.filter((x) => (x.next || 0) <= now);
+  const fresh = bank.filter((x) => x.box === 0 && (x.last || 0) === 0);
+  const planHtml = ebbinghausPlanHtml(bank, due, fresh);
   if (!session || session.idx >= session.queue.length) session = buildSession(bank);
-  if (!session.queue.length) { wrap(body, `<div class="empty"><img class="emoji" src="assets/icons/hk-06.png" alt=""/><div class="t">今天没有待复习的单词</div><div class="s">新词已全部学过，明天再回来巩固～</div></div>`); return; }
+  if (!session.queue.length) { wrap(body, planHtml + `<div class="empty"><img class="emoji" src="assets/icons/hk-06.png" alt=""/><div class="t">今天没有待复习的单词</div><div class="s">新词已全部学过，明天再回来巩固～</div></div>`); return; }
   const w0 = session.queue[session.idx];
   const dList = todayWords();
   const learned = todayLearned();
@@ -472,7 +543,7 @@ window.Pages = window.Pages || {};
   ${w0.mnemonic ? '<div><b>记忆：</b>' + UI.esc(w0.mnemonic) + '</div>' : ''}
   </div>`
   : `<div class="flash-extra muted-text">（暂无近义词/词组，可在「词库」为该词补充）</div>`;
-  const html = `
+  const html = planHtml + `
   <div class="card">
   <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-27.png" alt=""/>闪卡背诵</div>
   <div class="spacer"></div>

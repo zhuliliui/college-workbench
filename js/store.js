@@ -36,6 +36,11 @@
       discipline: {
         items: [],                // {id,name,icon,records:{date:true}}
         scores: {},               // {date:{score,reason,pros,cons}}
+        tempTasks: [],            // 今日执行计划·临时任务 [{id,name,done,doneAt}]
+      },
+      // 专注计时（自律模块·工作台底部）
+      focus: {
+        sessions: [],             // [{id,theme,start,end,dur(ms),abandoned}]
       },
       // 假期旅行
       travel: {
