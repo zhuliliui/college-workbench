@@ -546,7 +546,7 @@ window.Pages = window.Pages || {};
   });
   }
 
-  // ---------- 默写当日已背单词（逐词朗读，每词间隔 20s）----------
+  // ---------- 默写当日已背单词（逐词朗读，每词间隔 12s）----------
   // 卡片 HTML：列出今日「记住了」的单词，提供「开始默写 / 停止」与点击单读
   function dictateCardHtml(list) {
   const head = `<div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-09.png" alt=""/>默写当日已背单词</div>
@@ -562,7 +562,7 @@ window.Pages = window.Pages || {};
   </div>`).join('');
   return `<div class="card mt16" id="dictateCard">${head}
   <div class="card-body">
-  <div class="muted-text">点击「开始默写」将逐词朗读，每词间隔 20 秒，可边听边默写；也可点任意单词单独听。</div>
+  <div class="muted-text">点击「开始默写」将逐词朗读，每词间隔 12 秒，可边听边默写；也可点任意单词单独听。</div>
   <div class="flex-wrap gap8 mt12" style="justify-content:center">
   <button class="btn btn-sm" data-act="dictate-start">▶ 开始默写</button>
   <button class="btn btn-soft btn-sm" data-act="dictate-stop" style="display:${dictate.playing ? 'inline-block' : 'none'}">■ 停止</button>
@@ -599,7 +599,7 @@ window.Pages = window.Pages || {};
   const status = UI.$('#dictateStatus');
   if (status) status.textContent = '正在朗读：' + wd + '（' + (dictate.idx + 1) + ' / ' + dictate.list.length + '）· 下个词 20 秒后';
   dictate.idx++;
-  dictate.timer = setTimeout(playDictateWord, 20000);
+  dictate.timer = setTimeout(playDictateWord, 12000);
   }
   function stopDictate() {
   dictate.playing = false;
