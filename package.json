@@ -1,6 +1,6 @@
 {
   "name": "college-workbench",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "private": true,
   "description": "大学生AI万能工作台 · 前端 + Capacitor 原生 App 工程",
   "scripts": {

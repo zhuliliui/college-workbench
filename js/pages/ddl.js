@@ -105,14 +105,14 @@ Pages.ddl = function () {
   const nativeOn = !!(window.NativeCalendar && window.NativeCalendar.available());
   const localCalHtml = `
   <div class="card" style="margin-top:16px">
-  <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-37.png" alt=""/>本地日历（离线自动同步）</div>
+  <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-37.png" alt=""/>本地日历（一键写入系统日历）</div>
   <div class="spacer"></div><button class="collapse-btn" title="折叠">▾</button></div>
   <div class="card-body">
-  <div class="muted-text" style="margin-bottom:12px">把 DDL 与学习复习计划<b>同步到设备的系统日历</b>：点「同步到系统日历」会生成含<b>提前提醒</b>的日历文件并调起系统日历一键导入（由系统授权，<b>无需后端、离线可用</b>）。重复同步前，请先在系统日历里删掉旧日程（当前为导入式同步）。</div>
+  <div class="muted-text" style="margin-bottom:12px">把 DDL 与学习复习计划<b>直接写入设备的系统日历</b>：点「同步到系统日历」会弹出系统授权，授权后<b>离线自动写入</b>，到期前按上方「提前提醒时间」弹通知，无需后端。<b>每次同步先清除本应用旧日程再重建</b>，与当前清单保持一致。若系统日历看不到，请到日历设置中勾选显示「小朱工作台」日历。</div>
   ${nativeOn
   ? `<div class="flex-wrap gap8">
   <button class="btn btn-sm" data-act="cal-local-sync">${localAuthorized ? '重新同步到系统日历' : '同步到系统日历'}</button>
-  ${localAuthorized ? '<button class="btn btn-soft btn-sm" data-act="cal-local-revoke">清除同步记录</button>' : ''}
+  ${localAuthorized ? '<button class="btn btn-soft btn-sm" data-act="cal-local-revoke">清除系统日历日程</button>' : ''}
   </div>
   <div class="muted-text mt12">${localStatusText}</div>`
   : `<div class="muted-text" style="color:var(--text-faint)">浏览器/PWA 可直接点上方「下载 .ics」导入系统日历；安装「小朱工作台」App（APK）可获得一键调起系统日历的体验。</div>`}
@@ -275,7 +275,7 @@ Pages.ddl = function () {
   }
   if (act === 'cal-local-revoke') {
   if (window.NativeCalendar) window.NativeCalendar.clearRecord();
-  UI.toast('已清除同步记录', 'ok'); Pages.ddl();
+  UI.toast('已清除系统日历日程', 'ok'); Pages.ddl();
   return;
   }
   // ---- 微信推送（Server酱）----
@@ -397,7 +397,12 @@ window.syncCalendar = syncCalendar;
 
 // DDL 变化后若已授权本地日历，则静默重新同步（不刷新界面，不打扰）
 function maybeSyncLocal() {
-  // 导入式同步需用户主动点「同步到系统日历」触发（避免每次编辑 DDL 都弹分享框），故此处不自动同步
+  try {
+    const local = Store.get().cal && Store.get().cal.local;
+    if (window.NativeCalendar && window.NativeCalendar.available() && local && local.authorized) {
+      window.NativeCalendar.sync().catch(() => {});
+    }
+  } catch (e) {}
 }
 
 // 前端本地生成 .ics 并触发下载（无需后端）
