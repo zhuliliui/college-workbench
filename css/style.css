@@ -771,3 +771,13 @@ table.tbl tr:hover td { background: var(--surface-2); }
   .sk-course { flex-wrap: wrap; }
   .sk-course .sk-ops { width: 100%; flex-direction: row; align-items: center; justify-content: space-between; }
 }
+
+/* ============ 默写当日已背单词 ============ */
+.dictate-list { display: flex; flex-direction: column; gap: 8px; }
+.dictate-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 12px; background: var(--surface-2); cursor: pointer; transition: background .2s, box-shadow .2s; }
+.dictate-row:hover { background: #eef5f0; }
+.dictate-row.active { background: var(--primary-soft); box-shadow: 0 0 0 2px var(--primary) inset; }
+.dictate-row .d-idx { flex: 0 0 22px; width: 22px; height: 22px; line-height: 22px; text-align: center; border-radius: 50%; background: var(--primary); color: #fff; font-size: 12px; font-weight: 700; }
+.dictate-row .d-word { flex: 1; font-size: 16px; font-weight: 600; color: var(--text); }
+.dictate-row .d-spk { flex: 0 0 auto; opacity: .65; }
+.dictate-row .d-spk .ic { width: 20px; height: 20px; object-fit: contain; }
