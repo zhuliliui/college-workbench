@@ -10,6 +10,7 @@ Pages.ddl = function () {
   if (reminderInterval) { clearInterval(reminderInterval); reminderInterval = null; }
   reminderTimers.forEach((t) => clearTimeout(t)); reminderTimers = [];
   const ddls = s.ddls.slice().sort((a, b) => (a.done - b.done) || (a.due || '').localeCompare(b.due || ''));
+  const exams = ddls.filter((d) => (d.type || 'ddl') === 'exam' && !d.done);
   const total = ddls.length;
   const doneCount = ddls.filter((d) => d.done).length;
   const soon = ddls.filter((d) => !d.done && D.hoursLeft(d.due) <= 48).length;
@@ -56,8 +57,47 @@ Pages.ddl = function () {
   </div>`;
   }
 
+  // 考试倒计时：每行一项（名称 / 日期 / 剩余天数 / 删除）
+  function examRow(d) {
+    const hl = D.hoursLeft(d.due);
+    const danger = hl <= 72;
+    const left = D.daysLeftText(d.due);
+    return `<div class="item exam-item ${danger ? 'danger' : ''}">
+      <div class="body">
+        <div class="name">${UI.esc(d.name)}</div>
+        <div class="meta"><span>${d.due ? D.fmtDateTime(D.parseLDT(d.due)) : '未设置'}</span></div>
+      </div>
+      <div class="exam-days"><b>${left}</b></div>
+      <div class="ops"><button class="btn btn-soft btn-icon" data-act="del" data-id="${d.id}" title="删除"><img class="ic" src="assets/icons/hk-18.png" alt=""/></button></div>
+    </div>`;
+  }
+  // 学业 DDL 清单：每行一项（名称 / 剩余 / 进度 / 完成·编辑·删除）
+  function listRow(d) {
+    const hl = D.hoursLeft(d.due);
+    let level = 'normal';
+    if (d.done) level = 'done';
+    else if (hl <= 12) level = 'danger';
+    else if (hl <= 24) level = 'warn';
+    const pct = Math.max(0, Math.min(100, d.progress || 0));
+    const left = D.daysLeftText(d.due);
+    const style = d.done ? 'opacity:.6' : (level === 'danger' ? 'border-color:#f3c7c2' : level === 'warn' ? 'border-color:#fbeec2' : '');
+    return `<div class="item ddl-item" style="${style}">
+      <button class="check" data-act="done" data-id="${d.id}" aria-label="完成">${d.done ? '<img class="ic" src="assets/icons/hk-38.png" alt=""/>' : ''}</button>
+      <div class="body">
+        <div class="name">${UI.esc(d.name)} ${d.done ? '<span class="tag success">已完成</span>' : level === 'danger' ? '<span class="tag danger">紧急</span>' : level === 'warn' ? '<span class="tag warn">预警</span>' : ''}</div>
+        <div class="meta"><span>截止 ${d.due ? D.fmtDateTime(D.parseLDT(d.due)) : '未设置'}</span><span>剩余 ${left}</span></div>
+        <div class="progress mt8"><span data-bar="${d.id}" style="width:${pct}%"></span></div>
+      </div>
+      <div class="ops">
+        <input type="range" min="0" max="100" value="${pct}" data-prog="${d.id}" class="prog-range" ${d.done ? 'disabled' : ''}/>
+        <button class="btn btn-soft btn-icon" data-act="edit" data-id="${d.id}" title="编辑"><img class="ic" src="assets/icons/hk-32.png" alt=""/></button>
+        <button class="btn btn-soft btn-icon" data-act="del" data-id="${d.id}" title="删除"><img class="ic" src="assets/icons/hk-18.png" alt=""/></button>
+      </div>
+    </div>`;
+  }
+
   const listHtml = ddls.length
-  ? '<div class="grid grid-2">' + ddls.map(card).join('') + '</div>'
+  ? '<div class="list ddl-list">' + ddls.map(listRow).join('') + '</div>'
   : `<div class="empty"><img class="emoji" src="assets/icons/hk-41.png" alt=""/><div class="t">还没有 DDL</div><div class="s">添加课程作业、考试、提交节点，到期前自动提醒</div></div>`;
 
   // 手机日历订阅
@@ -165,8 +205,16 @@ Pages.ddl = function () {
   </div>`).join('') + '</div>'
   : `<div class="empty"><img class="emoji" src="assets/icons/hk-39.png" alt=""/><div class="t">暂无遗留问题</div><div class="s">记录没搞懂的难题，逐个攻克</div></div>`;
 
+  const examHtml = exams.length ? '<div class="list">' + exams.map(examRow).join('') + '</div>'
+  : `<div class="empty"><img class="emoji" src="assets/icons/hk-41.png" alt=""/><div class="t">暂无考试安排</div><div class="s">新增 DDL 时类型选「考试」，这里会显示倒计时</div></div>`;
   c.innerHTML = `
   ${stats}
+  <div class="card" style="margin-top:16px">
+  <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-41.png" alt=""/>考试倒计时</div>
+  <div class="spacer"></div><button class="btn btn-sm" data-act="add-exam">＋ 新增考试</button>
+  <button class="collapse-btn" title="折叠">▾</button></div>
+  <div class="card-body">${examHtml}</div>
+  </div>
   <div class="card" style="margin-top:16px">
   <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-41.png" alt=""/>学业 DDL 清单</div>
   <div class="spacer"></div><button class="btn btn-sm" data-act="add">＋ 新增 DDL</button>
@@ -214,6 +262,7 @@ Pages.ddl = function () {
   const b = e.target.closest('[data-act]'); if (!b) return;
   const act = b.dataset.act, id = b.dataset.id;
   if (act === 'add') return openModal();
+  if (act === 'add-exam') return openModal(null, 'exam');
   if (act === 'edit') return openModal(id);
   if (act === 'del') return UI.confirm('删除这条 DDL？', () => {
   Store.update((st) => { st.ddls = st.ddls.filter((x) => x.id !== id); }); maybeSyncLocal(); Pages.ddl();
@@ -318,14 +367,18 @@ Pages.ddl = function () {
   }
   };
 
-  function openModal(editId) {
+  function openModal(editId, forceType) {
   const d = editId ? s.ddls.find((x) => x.id === editId) : null;
+  const typeDef = forceType || (d ? (d.type || 'ddl') : 'ddl');
   const progDef = d ? (d.progress || 0) : 0;
   const remindDef = d ? (d.remindBefore != null ? d.remindBefore : 120) : 120;
   UI.openModal({
   title: d ? '编辑 DDL' : '新增 DDL', icon: '<img class="ic" src="assets/icons/hk-41.png" alt=""/>',
   body: `
-  <div class="field"><label>任务名称</label><input class="input" id="dName" value="${UI.esc(d ? d.name : '')}" placeholder="如：数据库大作业提交"/></div>
+  <div class="row">
+  <div class="field" style="flex:2"><label>任务名称</label><input class="input" id="dName" value="${UI.esc(d ? d.name : '')}" placeholder="如：数据库大作业提交"/></div>
+  <div class="field" style="flex:1"><label>类型</label><select class="input" id="dType"><option value="ddl" ${typeDef==='ddl'?'selected':''}>普通 DDL</option><option value="exam" ${typeDef==='exam'?'selected':''}>考试</option></select></div>
+  </div>
   <div class="row">
   <div class="field"><label>截止日期时间</label><input class="input" id="dDue" type="datetime-local" value="${d ? (d.due || '') : ''}"/></div>
   <div class="field"><label>提前提醒（到点推送微信 / 站内提醒）</label>

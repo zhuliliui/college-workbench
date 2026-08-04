@@ -834,3 +834,16 @@ table.tbl tr:hover td { background: var(--surface-2); }
   .ai-ops .btn-icon { width: 32px; height: 32px; }
   .ai-ops .ic { width: 18px; height: 18px; }
 }
+/* 学业 DDL · 考试倒计时 + 每行清单 */
+.exam-days { flex: 0 0 auto; font-size: 22px; font-weight: 800; color: var(--danger); white-space: nowrap; }
+.exam-item.danger .exam-days { color: var(--danger); }
+.exam-item .meta { color: var(--text-faint); }
+.ddl-item .ops { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+.ddl-item .prog-range { width: 96px; }
+.prog-range { accent-color: var(--primary); }
+@media (max-width: 560px) {
+  .exam-days { font-size: 18px; }
+  .ddl-item .ops { flex-wrap: wrap; }
+  .ddl-item .prog-range { width: 80px; }
+}
+}
