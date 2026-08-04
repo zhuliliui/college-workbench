@@ -64,7 +64,7 @@
         words: [],                // 唯一个人背诵词库
         articles: [],             // 外刊收藏
         reader: null,             // 当日外刊缓存 {date,title,source,text,link}
-        readerBackend: '',        // 联网获取外刊的后端地址（选填，用于绕过被墙代理）
+        readerBackend: 'https://cw-backup-production.up.railway.app', // 联网后端（Railway 部署的 server.js：实时外刊 + 每日AI选题）
         readerToday: null,         // 当日后端摘取的外刊缓存 {date, list:[...]}，每日刷新
         lastGroupDoneAt: null,
         daily: { date: '', learned: 0 }, // 每日已学单词数（满 20 词奖励 +1 元）
