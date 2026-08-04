@@ -26,9 +26,48 @@ Pages.skill = function () {
     { title: 'LLMs from Scratch：从零构建大语言模型', tags: ['LLM','Transformer','从零构建'], url: 'https://github.com/rasbt/LLMs-from-scratch' },
     { title: 'Designing Machine Learning Systems：ML系统设计权威指南', tags: ['ML系统','MLOps','系统设计'], url: 'https://github.com/chiphuyen/dmls-book' },
     { title: 'Made With ML：生产级机器学习系统工程', tags: ['MLOps','Ray','生产部署'], url: 'https://github.com/GokuMohandas/Made-With-ML' },
+    // ---- 2026 当下真实热门：Vibe Coding / Agent / MCP / Context Engineering ----
+    { title: 'Vibe Coding 完全指南：用自然语言让 AI 自动写程序（2025 热门范式）', tags: ['VibeCoding','AI编程','Cursor','新手'], url: 'https://jamespolik.pixnet.net/blog/posts/17347600974' },
+    { title: 'Vibe Coding 时代如何入局？AI 原生编辑器与实战路径', tags: ['VibeCoding','Cursor','Bolt','Lovable'], url: 'https://developer.volcengine.com/articles/7589192969271164954' },
+    { title: 'Vibe Coding 101 with Replit：用 AI 编程智能体从零做出可部署应用', tags: ['VibeCoding','Replit','AI智能体','部署'], url: 'https://www.deeplearning.ai/short-courses/vibe-coding-101-with-replit/' },
+    { title: '10 个开源项目帮你掌握 Vibe Coding：从 AI 协作到自动化工作流', tags: ['VibeCoding','开源','GitHub','工作流'], url: 'https://www.shengwang.cn/blog/blogdetail/vibe-coding-github/' },
+    { title: 'Awesome Vibe Coding：AI 辅助开发生态工具与资源大全', tags: ['VibeCoding','工具集','Agent','MCP'], url: 'https://github.com/filipecalegario/awesome-vibe-coding' },
+    { title: 'Context Engineering 入门：用 CLAUDE.md / PRP 给 AI 编程助手完整上下文', tags: ['ContextEngineering','CLAUDE.md','提示词','工程化'], url: 'https://github.com/coleam00/context-engineering-intro' },
+    { title: 'Vibe Coding 工作流模板：5 阶段从想法到 MVP 的结构化提示', tags: ['VibeCoding','Prompt','模板','MVP'], url: 'https://github.com/KhazP/vibe-coding-prompt-template' },
+    { title: 'Model Context Protocol (MCP) 官方文档：让 AI 连接外部工具与数据', tags: ['MCP','协议','工具调用','Agent'], url: 'https://modelcontextprotocol.io' },
+    { title: 'Vibe Check MCP：给 AI 智能体加“导师反馈”防止跑偏的监督服务', tags: ['MCP','Agent','反思','可靠性'], url: 'https://github.com/PV-Bhat/vibe-check-mcp-server' },
+    { title: 'Claude Code 设置与命令集：把规格驱动开发带入 Vibe Coding 流程', tags: ['ClaudeCode','规格驱动','Agent','配置'], url: 'https://github.com/feiskyer/claude-code-settings' },
+    { title: 'Vibe Kanban：用看板管理多 AI 编程智能体的任务流', tags: ['看板','多智能体','Agent','协作'], url: 'https://github.com/BloopAI/vibe-kanban' },
+    { title: 'CrewAI 多智能体协作框架实战：组建会分工的 AI 团队', tags: ['CrewAI','多智能体','协作','Agent'], url: 'https://github.com/crewAIInc/crewAI' },
+    { title: 'LangGraph：用图状态机构建可控、可循环的 Agent 工作流', tags: ['LangGraph','Agent','工作流','状态机'], url: 'https://github.com/langchain-ai/langgraph' },
+    { title: 'RAG 检索增强生成实战：向量库 +  embeddings 搭建知识问答', tags: ['RAG','向量库','Embedding','LLM应用'], url: 'https://github.com/langchain-ai/langchain' },
   ];
 
+  // 远程种子（可持续更新，不必重打包）：优先拉取，失败/超时静默回落内置种子
+  let TOPIC_SEED = AI_TOPIC_SEED.slice();
+  let _seedSynced = false;
+  async function syncTopicSeed() {
+    if (_seedSynced) return; _seedSynced = true;
+    const sources = [
+      'https://gitee.com/monichang/college-workbench/raw/updates/ai-topics.json',
+      'https://raw.githubusercontent.com/zhuliliui/college-workbench/master/assets/ai-topics.json',
+      './assets/ai-topics.json'
+    ];
+    for (const src of sources) {
+      try {
+        const ctrl = new AbortController();
+        const to = setTimeout(() => ctrl.abort(), 6000);
+        const r = await fetch(src + (src.indexOf('?') >= 0 ? '&' : '?') + 't=' + Date.now(), { signal: ctrl.signal });
+        clearTimeout(to);
+        if (!r.ok) continue;
+        const arr = await r.json();
+        if (Array.isArray(arr) && arr.length) { TOPIC_SEED = arr; return; }
+      } catch (e) { /* 试下一个源 */ }
+    }
+  }
+
   function render() {
+  syncTopicSeed();
   const vid = window.__skillViewId;
   const t = vid ? findTopic(vid) : null;
   if (t) renderDetail(t); else renderList();
@@ -270,7 +309,7 @@ Pages.skill = function () {
   }
   if (act === 'ai-refresh') return UI.confirm('刷新将用一批新的 AI 热门选题覆盖当前列表，继续？', () => {
   Store.update((st) => {
-    const seed = AI_TOPIC_SEED.slice();
+    const seed = TOPIC_SEED.slice();
     const idx = st.skill.topicSeedIndex || 0;
     const batch = 4;
     const next = [];
