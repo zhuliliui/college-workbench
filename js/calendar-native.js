@@ -101,10 +101,11 @@ window.NativeCalendar = (function () {
           const r = await plugin.requestPermissions();
           if (!(r && r.granted)) { if (window.UI) UI.toast('日历授权被拒绝', 'warn'); return { ok: false, reason: 'denied' }; }
         }
-        await plugin.sync({ events: events, reminders: reminders });
-        if (window.Store) Store.update((st) => { st.cal = st.cal || {}; st.cal.local = { authorized: true, syncedCount: events.length, lastAt: Date.now() }; });
-        if (window.UI) UI.toast('已写入系统日历 ' + events.length + ' 个日程', 'ok');
-        return { ok: true, count: events.length };
+        const res = await plugin.sync({ events: events, reminders: reminders });
+        const cnt = (res && typeof res.count === 'number') ? res.count : events.length;
+        if (window.Store) Store.update((st) => { st.cal = st.cal || {}; st.cal.local = { authorized: true, syncedCount: cnt, lastAt: Date.now() }; });
+        if (window.UI) UI.toast('已写入系统日历 ' + cnt + ' 个日程', cnt > 0 ? 'ok' : 'warn');
+        return { ok: cnt > 0, count: cnt };
       } catch (e) {
         console.warn('[cal] 原生写入失败，降级 .ics', e);
         if (window.UI) UI.toast('系统日历写入失败，已改用 .ics', 'warn');

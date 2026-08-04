@@ -107,6 +107,49 @@ public class CalendarLocalPlugin extends Plugin {
         return -1;
     }
 
+    private boolean isVisible(long id) {
+        String[] proj = { CalendarContract.Calendars.VISIBLE };
+        try (Cursor c = getContext().getContentResolver().query(
+                CalendarContract.Calendars.CONTENT_URI, proj,
+                CalendarContract.Calendars._ID + " = ?", new String[] { String.valueOf(id) }, null)) {
+            if (c != null && c.moveToFirst()) return c.getInt(0) == 1;
+        } catch (Exception ignore) {
+        }
+        return false;
+    }
+
+    // 优先选系统里“本来就显示”的本地日历；华为/国产 ROM 不渲染我们自建的 LOCAL 账户日历
+    private long findWritableVisibleCalendar() {
+        String[] proj = { CalendarContract.Calendars._ID, CalendarContract.Calendars.ACCOUNT_TYPE,
+                CalendarContract.Calendars.VISIBLE, CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL };
+        long localVisible = -1, anyVisible = -1;
+        try (Cursor c = getContext().getContentResolver().query(
+                CalendarContract.Calendars.CONTENT_URI, proj, null, null, null)) {
+            if (c == null) return -1;
+            while (c.moveToNext()) {
+                long id = c.getLong(0);
+                String type = c.getString(1);
+                int vis = c.getInt(2);
+                int lvl = c.getInt(3);
+                if (lvl < CalendarContract.Calendars.CAL_ACCESS_CONTRIBUTOR) continue;
+                if (vis == 1) {
+                    if (CalendarContract.ACCOUNT_TYPE_LOCAL.equals(type) && localVisible < 0) localVisible = id;
+                    if (anyVisible < 0) anyVisible = id;
+                }
+            }
+        } catch (Exception ignore) {
+        }
+        return localVisible > 0 ? localVisible : anyVisible;
+    }
+
+    private long pickCalendar() {
+        long id = findCalendar();
+        if (id > 0 && isVisible(id)) return id;
+        long sys = findWritableVisibleCalendar();
+        if (sys > 0) return sys;
+        return ensureCalendar();
+    }
+
     @PluginMethod()
     public void sync(PluginCall call) {
         if (!hasPerm()) {
@@ -125,16 +168,15 @@ public class CalendarLocalPlugin extends Plugin {
             rems = call.getArray("reminders");
         } catch (Exception ignore) {
         }
-        long calId = ensureCalendar();
+        long calId = pickCalendar();
         if (calId < 0) {
             call.reject("calendar-create-failed");
             return;
         }
-        // 先清除本插件写入的旧事件，保证与当前清单一致
         try {
             getContext().getContentResolver().delete(CalendarContract.Events.CONTENT_URI,
-                    CalendarContract.Events.CALENDAR_ID + " = ? AND " + CalendarContract.Events.DESCRIPTION + " LIKE ?",
-                    new String[] { String.valueOf(calId), "%" + MARK + "%" });
+                    CalendarContract.Events.DESCRIPTION + " LIKE ?",
+                    new String[] { "%" + MARK + "%" });
         } catch (Exception ignore) {
         }
         int count = 0;
@@ -184,14 +226,11 @@ public class CalendarLocalPlugin extends Plugin {
 
     @PluginMethod()
     public void clear(PluginCall call) {
-        long calId = findCalendar();
-        if (calId > 0) {
-            try {
-                getContext().getContentResolver().delete(CalendarContract.Events.CONTENT_URI,
-                        CalendarContract.Events.CALENDAR_ID + " = ? AND " + CalendarContract.Events.DESCRIPTION + " LIKE ?",
-                        new String[] { String.valueOf(calId), "%" + MARK + "%" });
-            } catch (Exception ignore) {
-            }
+        try {
+            getContext().getContentResolver().delete(CalendarContract.Events.CONTENT_URI,
+                    CalendarContract.Events.DESCRIPTION + " LIKE ?",
+                    new String[] { "%" + MARK + "%" });
+        } catch (Exception ignore) {
         }
         call.resolve();
     }
