@@ -50,9 +50,8 @@ public class CalendarLocalPlugin extends Plugin {
         ActivityCompat.requestPermissions(getActivity(), new String[] { PERM_READ, PERM_WRITE }, REQ_CODE);
     }
 
-    @Override
-    protected void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+    // 由 MainActivity.onRequestPermissionsResult 转发过来（Capacitor 6 的 Plugin 基类无此方法，故在这里用普通方法接收）
+    public void onPermResult(int requestCode, String[] permissions, int[] grantResults) {
         if (requestCode == REQ_CODE && savedCall != null) {
             boolean ok = grantResults.length >= 2
                 && grantResults[0] == PackageManager.PERMISSION_GRANTED
