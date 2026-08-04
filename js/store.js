@@ -66,6 +66,8 @@
       // 技能学习（独立模块，不接入虚拟存钱罐）
       skill: {
         topics: [],               // [{id,name,icon,intro,courses:[{id,icon,title,tags:[],desc,duration,url,done}]}]
+        dailyTopics: [],          // 每日AI学习选题 [{id,title,tags[],url}]
+        topicSeedIndex: 0,        // 内置热门话题种子读取位置
       },
       // 云端同步配置（默认码云 Gitee 私有仓库备份，国内直连免代理；亦可切 GitHub）
       cloud: {
@@ -236,11 +238,17 @@
 
   // 技能学习数据结构兜底（topic/course 字段完整性）
   function normSkill(st) {
-    if (!st.skill || !Array.isArray(st.skill.topics)) { st.skill = { topics: [] }; return; }
+    if (!st.skill || !Array.isArray(st.skill.topics)) { st.skill = { topics: [], dailyTopics: [], topicSeedIndex: 0 }; return; }
+    if (!Array.isArray(st.skill.dailyTopics)) st.skill.dailyTopics = [];
+    if (typeof st.skill.topicSeedIndex !== 'number') st.skill.topicSeedIndex = 0;
     st.skill.topics.forEach((t) => {
       if (!t.id) t.id = uid();
       if (!Array.isArray(t.courses)) t.courses = [];
       t.courses.forEach((c) => { if (typeof c.done !== 'boolean') c.done = false; });
+    });
+    st.skill.dailyTopics.forEach((t) => {
+      if (!t.id) t.id = uid();
+      if (!Array.isArray(t.tags)) t.tags = [];
     });
   }
 

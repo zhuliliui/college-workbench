@@ -10,6 +10,23 @@ Pages.skill = function () {
 
   const getTopics = () => (Store.get().skill && Store.get().skill.topics) || [];
   const findTopic = (id) => getTopics().find((t) => t.id === id);
+  const getDailyTopics = () => (Store.get().skill && Store.get().skill.dailyTopics) || [];
+
+  // 内置 AI 热门学习选题种子（来源：真实搜索整理，刷新时循环抽取）
+  const AI_TOPIC_SEED = [
+    { title: '2025年AI智能体开发完全指南：10个GitHub顶级教程资源', tags: ['AI智能体','GitHub','入门到精通'], url: 'https://cloud.tencent.com.cn/developer/article/2557199' },
+    { title: '微软官方 AI Agents for Beginners 入门课程', tags: ['微软','AIAgent','入门课程'], url: 'https://github.com/microsoft/ai-agents-for-beginners' },
+    { title: 'Agent Engineering 实践指南：从零基础到生产级AI Agent', tags: ['Agent工程','Prompt','LangChain'], url: 'https://juejin.cn/post/7507283160617385993' },
+    { title: '智能体开发实战：提示词设计、开发框架与工作流详解', tags: ['提示词工程','LangChain','AutoGen','工作流'], url: 'https://developer.cloud.tencent.com.cn/article/2605239' },
+    { title: '2025 最新 Coze AI Agent 全流程教程', tags: ['Coze','AIAgent','Prompt','插件开发'], url: 'https://cemcoe.com/blog/2025-coze-ai-agent-full-tutorial-prompt-flow-plugin.html' },
+    { title: 'Hello-Agents 系统学习教程：从LLM到Agent框架', tags: ['HelloAgents','Agent框架','MCP'], url: 'http://youthcamp.bytedance.com/post/7581666412021399561' },
+    { title: 'Hands-On Large Language Models 大型语言模型实战指南', tags: ['LLM','实战','Python'], url: 'https://github.com/HandsOnLLM/Hands-On-Large-Language-Models' },
+    { title: 'Agents Engineering Mastery：企业级AI智能体工程实践', tags: ['CrewAI','LangGraph','MCP','AutoGen'], url: 'https://github.com/ed-donner/agents' },
+    { title: 'Awesome AI Applications：100+ AI应用开发实例', tags: ['AI应用','RAG','CrewAI'], url: 'https://github.com/Arindam200/awesome-ai-apps' },
+    { title: 'LLMs from Scratch：从零构建大语言模型', tags: ['LLM','Transformer','从零构建'], url: 'https://github.com/rasbt/LLMs-from-scratch' },
+    { title: 'Designing Machine Learning Systems：ML系统设计权威指南', tags: ['ML系统','MLOps','系统设计'], url: 'https://github.com/chiphuyen/dmls-book' },
+    { title: 'Made With ML：生产级机器学习系统工程', tags: ['MLOps','Ray','生产部署'], url: 'https://github.com/GokuMohandas/Made-With-ML' },
+  ];
 
   function render() {
   const vid = window.__skillViewId;
@@ -59,7 +76,46 @@ Pages.skill = function () {
   </div>
   <div class="card-body">${listHtml}</div>
   </div>
-  <div class="muted-text mt8"> 课程可关联到「学习复习计划」统一打卡。</div>`;
+  <div class="muted-text mt8"> 课程可关联到「学习复习计划」统一打卡。</div>
+  ${renderDailyTopics()}`;
+  }
+
+  // ---------- 每日AI学习选题 ----------
+  function renderDailyTopics() {
+  const topics = getDailyTopics();
+  let html;
+  if (!topics.length) {
+    html = `<div class="empty"><img class="emoji" src="assets/icons/hk-01.png" alt=""/>
+    <div class="t">还没有选题</div>
+    <div class="s">点击右下角「＋」新增，或点上方「刷新一批选题」获取热门 AI 话题。</div></div>`;
+  } else {
+    html = topics.map((x, i) => {
+    const tags = (x.tags || []).map((tg) => '#' + UI.esc(tg)).join(' ');
+    const hasUrl = !!x.url;
+    return `<div class="ai-topic-row" data-tid="${x.id}">
+    <div class="ai-num">${i + 1}</div>
+    <div class="ai-main">
+      <div class="ai-title" contenteditable="true" data-field="title" data-tid="${x.id}">${UI.esc(x.title || '')}</div>
+      <div class="ai-tags" contenteditable="true" data-field="tags" data-tid="${x.id}">${tags}</div>
+    </div>
+    <div class="ai-ops">
+      <button class="btn btn-soft btn-icon ai-link ${hasUrl ? '' : 'disabled'}" data-act="ai-link" data-tid="${x.id}" title="${hasUrl ? '打开链接' : '未设置链接'}"><img class="ic" src="assets/icons/hk-29.png" alt=""/></button>
+      <button class="btn btn-soft btn-icon" data-act="ai-del" data-tid="${x.id}" title="删除"><img class="ic" src="assets/icons/hk-18.png" alt=""/></button>
+    </div>
+    </div>`;
+    }).join('');
+  }
+  return `
+  <div class="card mt12 sk-daily-card">
+  <div class="card-head">
+    <div class="title"><img class="ic" src="assets/icons/hk-01.png" alt=""/>每日AI学习选题</div>
+    <div class="spacer"></div>
+    <button class="btn btn-sm btn-refresh" data-act="ai-refresh">⟳ 刷新一批选题</button>
+    <button class="collapse-btn" title="折叠">▾</button>
+  </div>
+  <div class="card-body">${html}</div>
+  <button class="ai-add-btn" data-act="ai-add" title="新增选题">＋</button>
+  </div>`;
   }
 
   // ---------- 第二级：专题详情 ----------
@@ -123,10 +179,12 @@ Pages.skill = function () {
 
   // ---------- 事件委托 ----------
   function wire() {
+  c.addEventListener('blur', onDailyBlur, true);
+  c.addEventListener('paste', onDailyPaste, true);
   window.PageHandler = (e) => {
   const b = e.target.closest('[data-act]');
   if (!b) return;
-  const act = b.dataset.act, id = b.dataset.id;
+  const act = b.dataset.act, id = b.dataset.id, tid = b.dataset.tid;
 
   if (act === 'open') { window.__skillViewId = id; return render(); }
   if (act === 'back') { window.__skillViewId = null; return render(); }
@@ -200,6 +258,32 @@ Pages.skill = function () {
   return;
   }
   if (act === 'bili') return openBiliModal(id);
+  if (act === 'ai-link') return openTopicLinkModal(tid);
+  if (act === 'ai-del') return UI.confirm('删除这条选题？', () => {
+  Store.update((st) => { st.skill.dailyTopics = st.skill.dailyTopics.filter((x) => x.id !== tid); });
+  Pages.skill();
+  });
+  if (act === 'ai-add') {
+  Store.update((st) => { st.skill.dailyTopics.push({ id: Store.uid(), title: '', tags: [], url: '' }); });
+  Pages.skill();
+  return;
+  }
+  if (act === 'ai-refresh') return UI.confirm('刷新将用一批新的 AI 热门选题覆盖当前列表，继续？', () => {
+  Store.update((st) => {
+    const seed = AI_TOPIC_SEED.slice();
+    const idx = st.skill.topicSeedIndex || 0;
+    const batch = 4;
+    const next = [];
+    for (let i = 0; i < batch; i++) {
+    const s = seed[(idx + i) % seed.length];
+    next.push({ id: Store.uid(), title: s.title, tags: s.tags.slice(), url: s.url });
+    }
+    st.skill.dailyTopics = next;
+    st.skill.topicSeedIndex = (idx + batch) % seed.length;
+  });
+  UI.toast('已刷新 AI 学习选题', 'ok');
+  Pages.skill();
+  });
   if (act === 'link') {
   const t = findTopic(window.__skillViewId);
   const cr = t && t.courses.find((c2) => c2.id === id);
@@ -324,6 +408,64 @@ Pages.skill = function () {
   } }],
   });
   setTimeout(() => UI.$('#coTitle') && UI.$('#coTitle').focus(), 50);
+  }
+
+  // ---------- 每日AI学习选题：编辑保存 / 链接弹窗 ----------
+  function onDailyBlur(e) {
+  const el = e.target.closest('[data-field]');
+  if (!el) return;
+  const field = el.dataset.field;
+  const row = el.closest('[data-tid]');
+  const tid = row && row.dataset.tid;
+  if (!tid) return;
+  saveDailyField(tid, field, el.innerText);
+  }
+  function onDailyPaste(e) {
+  const el = e.target.closest('[data-field]');
+  if (!el) return;
+  e.preventDefault();
+  const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+  document.execCommand('insertText', false, text);
+  }
+  function saveDailyField(tid, field, raw) {
+  Store.update((st) => {
+    const t = (st.skill.dailyTopics || []).find((x) => x.id === tid);
+    if (!t) return;
+    const txt = String(raw).replace(/\s+/g, ' ').trim();
+    if (field === 'title') t.title = txt;
+    else if (field === 'tags') {
+    t.tags = txt.split(/[#\s]+/).map((s) => s.trim()).filter(Boolean);
+    }
+  });
+  }
+  function openTopicLinkModal(tid) {
+  const t = getDailyTopics().find((x) => x.id === tid);
+  if (!t) return;
+  const hasUrl = !!t.url;
+  const actions = [
+    { label: '取消', cls: 'btn-soft', onClick: UI.closeModal },
+    { label: '保存', onClick: () => {
+      const url = UI.val('#aiTopicUrl').trim();
+      Store.update((st) => {
+      const tp = (st.skill.dailyTopics || []).find((x) => x.id === tid);
+      if (tp) tp.url = url;
+      });
+      UI.closeModal(); Pages.skill();
+    } }
+  ];
+  if (hasUrl) {
+    actions.unshift({ label: '打开链接', cls: 'btn-soft', onClick: () => {
+      const url = UI.val('#aiTopicUrl').trim();
+      if (!url) return UI.toast('链接为空', 'warn');
+      const w = window.open(url, '_blank', 'noopener');
+      if (!w) { UI.toast('正在打开链接…', 'ok'); location.href = url; }
+    } });
+  }
+  UI.openModal({
+    title: '学习选题链接', icon: '<img class="ic" src="assets/icons/hk-29.png" alt=""/>',
+    body: `<div class="field"><label>外部学习网页 URL</label><input class="input" id="aiTopicUrl" value="${UI.esc(t.url || '')}" placeholder="https://..."/></div>`,
+    actions
+  });
   }
 
   // ---------- B 站搜集：搜索视频并把选好的链接加入课程 🔗 ----------

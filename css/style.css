@@ -781,3 +781,56 @@ table.tbl tr:hover td { background: var(--surface-2); }
 .dictate-row .d-word { flex: 1; font-size: 16px; font-weight: 600; color: var(--text); }
 .dictate-row .d-spk { flex: 0 0 auto; opacity: .65; }
 .dictate-row .d-spk .ic { width: 20px; height: 20px; object-fit: contain; }
+
+/* ============ 每日AI学习选题 ============ */
+.sk-daily-card { position: relative; }
+.sk-daily-card .card-body { padding-bottom: 56px; }
+.ai-topic-row {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 12px 14px; border-radius: 16px;
+  background: var(--surface-2); margin-bottom: 10px;
+}
+.ai-topic-row:last-child { margin-bottom: 0; }
+.ai-num {
+  flex: 0 0 34px; width: 34px; height: 34px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: linear-gradient(135deg, var(--primary), var(--primary-strong));
+  color: #fff; font-weight: 700; font-size: 14px;
+  box-shadow: 0 2px 6px rgba(94,130,104,.18);
+}
+.ai-main { flex: 1; min-width: 0; }
+.ai-title {
+  font-size: 15px; font-weight: 600; color: var(--text);
+  padding: 4px 6px; border-radius: 8px; border: 1px dashed transparent;
+  line-height: 1.5; min-height: 28px;
+}
+.ai-title:hover { border-color: var(--primary); background: #fff; }
+.ai-title:empty::before { content: '点击输入选题'; color: var(--text-faint); font-weight: 400; }
+.ai-tags {
+  font-size: 12.5px; color: var(--primary-deep); margin-top: 5px;
+  padding: 4px 6px; border-radius: 8px; border: 1px dashed transparent;
+  line-height: 1.5;
+}
+.ai-tags:hover { border-color: var(--primary); background: #fff; }
+.ai-tags:empty::before { content: '#标签'; color: var(--text-faint); }
+.ai-ops { display: flex; gap: 6px; flex: 0 0 auto; }
+.ai-link.disabled { opacity: .4; pointer-events: none; }
+.btn-refresh { background: var(--primary-tint); color: var(--primary-deep); border-color: var(--primary); }
+.ai-add-btn {
+  position: absolute; right: 16px; bottom: 16px;
+  width: 48px; height: 48px; border-radius: 50%; border: none;
+  background: #f5a623; color: #fff; font-size: 28px; line-height: 1;
+  display: grid; place-items: center;
+  box-shadow: 0 4px 14px rgba(245,166,35,.35); cursor: pointer;
+  transition: transform .15s, box-shadow .15s;
+}
+.ai-add-btn:active { transform: scale(.95); }
+
+@media (max-width: 560px) {
+  .ai-topic-row { gap: 10px; padding: 10px 12px; }
+  .ai-num { flex: 0 0 30px; width: 30px; height: 30px; font-size: 13px; }
+  .ai-title { font-size: 14px; }
+  .ai-tags { font-size: 12px; }
+  .ai-ops .btn-icon { width: 32px; height: 32px; }
+  .ai-ops .ic { width: 18px; height: 18px; }
+}
