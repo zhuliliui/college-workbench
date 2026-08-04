@@ -77,6 +77,12 @@ window.NativeCalendar = (function () {
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
 
+  function fallbackICS() {
+    const { ics, count } = buildICS();
+    downloadFallback(ics);
+    return { ok: true, count: count, fallback: true };
+  }
+
   function errorText(e) {
     const msg = (e && (e.message || e.code || String(e))) || '';
     if (msg.indexOf('no-writable-calendar') >= 0) return '没有可写入的日历账户';
@@ -101,15 +107,17 @@ window.NativeCalendar = (function () {
         const cnt = (res && typeof res.count === 'number') ? res.count : 0;
         if (window.Store) Store.update((st) => { st.cal = st.cal || {}; st.cal.local = { authorized: true, syncedCount: cnt, lastAt: Date.now() }; });
         if (cnt > 0) {
-          if (window.UI) UI.toast('已写入系统日历 ' + cnt + ' 个日程', 'ok');
+          const where = (res && res.method === 'local') ? '（小朱工作台日历）' : '';
+          if (window.UI) UI.toast('已写入系统日历 ' + cnt + ' 个日程' + where, 'ok');
           return { ok: true, count: cnt };
         }
         const err = (res && res.lastError) ? res.lastError : 'unknown';
-        if (window.UI) UI.toast('写入 0 个日程：' + err, 'warn');
-        return { ok: false, reason: err };
+        if (window.UI) UI.toast('系统日历写入被拒，已生成 .ics 供导入', 'warn');
+        return fallbackICS(events);
       } catch (e) {
         console.warn('[cal] 原生写入失败', e);
-        if (window.UI) UI.toast(errorText(e), 'warn');
+        if (window.UI) UI.toast(errorText(e) + '，已生成 .ics 供导入', 'warn');
+        return fallbackICS(events);
       }
     }
     const { ics } = buildICS();

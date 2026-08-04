@@ -39,12 +39,7 @@
   window.scrollTo(0, 0);
   }
 
-  function wireCommon() {
-  UI.$all('.collapse-btn').forEach((btn) => {
-  if (btn._wired) return; btn._wired = true;
-  btn.addEventListener('click', () => { const card = btn.closest('.card'); if (card) card.classList.toggle('collapsed'); });
-  });
-  }
+  function wireCommon() { /* 折叠已由 #content 委托处理，无需逐元素绑定 */ }
 
   // ---- 侧栏 / 底部导航渲染 ----
   function buildNav() {
@@ -302,7 +297,16 @@
   window.addEventListener('piggy:deduct', renderSidebarPiggy);
   window.addEventListener('cw:changed', renderSidebarPiggy);
   // 统一委托点击：各页面通过 window.PageHandler 注册处理器，避免重复绑定
-  document.getElementById('content').addEventListener('click', (e) => { if (window.PageHandler) window.PageHandler(e); });
+  const _content = document.getElementById('content');
+  _content.addEventListener('click', (e) => {
+  const cbtn = e.target.closest && e.target.closest('.collapse-btn');
+  if (cbtn) {
+  const card = cbtn.closest('.card');
+  if (card) card.classList.toggle('collapsed');
+  return;
+  }
+  if (window.PageHandler) window.PageHandler(e);
+  });
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
   }

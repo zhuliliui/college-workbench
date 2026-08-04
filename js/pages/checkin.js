@@ -26,11 +26,6 @@ Pages.checkin = function () {
     </div>
   </div>`;
 
-  c.querySelectorAll('.collapse-btn').forEach((btn) => {
-    if (btn._wired) return; btn._wired = true;
-    btn.addEventListener('click', () => { const card = btn.closest('.card'); if (card) card.classList.toggle('collapsed'); });
-  });
-
   window.PageHandler = (e) => {
     const b = e.target.closest('[data-act]');
     if (!b) return;

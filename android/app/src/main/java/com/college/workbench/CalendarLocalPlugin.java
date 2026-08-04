@@ -88,7 +88,9 @@ public class CalendarLocalPlugin extends Plugin {
         cv.put(CalendarContract.Calendars.VISIBLE, 1);
         cv.put(CalendarContract.Calendars.SYNC_EVENTS, 1);
         try {
-            Uri r = getContext().getContentResolver().insert(CalendarContract.Calendars.CONTENT_URI, cv);
+            Uri calUri = CalendarContract.Calendars.CONTENT_URI.buildUpon()
+                    .appendQueryParameter(CalendarContract.CALLER_IS_SYNCADAPTER, "true").build();
+            Uri r = getContext().getContentResolver().insert(calUri, cv);
             if (r != null) return Long.parseLong(r.getLastPathSegment());
         } catch (Exception ignore) {
         }
@@ -119,9 +121,9 @@ public class CalendarLocalPlugin extends Plugin {
     private long pickCalendar() {
         long id = findOurCalendar();
         if (id > 0) return id;
-        id = createOurCalendar();
+        id = findWritableCalendar();
         if (id > 0) return id;
-        return findWritableCalendar();
+        return createOurCalendar();
     }
 
     @PluginMethod()
@@ -147,6 +149,7 @@ public class CalendarLocalPlugin extends Plugin {
             call.reject("no-writable-calendar");
             return;
         }
+        String method = (findOurCalendar() == calId) ? "local" : ("picked:" + calId);
         try {
             getContext().getContentResolver().delete(CalendarContract.Events.CONTENT_URI,
                     CalendarContract.Events.DESCRIPTION + " LIKE ?",
@@ -200,6 +203,7 @@ public class CalendarLocalPlugin extends Plugin {
         }
         JSObject ret = new JSObject();
         ret.put("count", count);
+        ret.put("method", method);
         if (lastError != null) ret.put("lastError", lastError);
         call.resolve(ret);
     }
