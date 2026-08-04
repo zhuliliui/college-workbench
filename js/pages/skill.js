@@ -70,7 +70,7 @@ Pages.skill = function () {
   // 后端 server.js 的 /api/ai/topics 每日首次启动抓取真实 AI 热门（arXiv + Hacker News），落盘 data/ai-topics.json
   let _aiTopicsLoaded = false;
   async function loadDailyAITopics() {
-    const backend = (Store.get().english.readerBackend || '').replace(/\/$/, '');
+    const backend = Store.readerBackend();
     if (!backend) return false;
     const today = D.todayStr();
     const cur = Store.get().skill;
@@ -174,7 +174,7 @@ Pages.skill = function () {
     </div>`;
     }).join('');
   }
-  const backendOn = !!(Store.get().english.readerBackend || '').replace(/\/$/, '');
+  const backendOn = !!Store.readerBackend();
   const liveTag = backendOn ? `<span class="tag tag-live" title="已接入联网后端，每日实时更新真实 AI 热门选题">实时</span>` : '';
   return `
   <div class="card mt12 sk-daily-card">

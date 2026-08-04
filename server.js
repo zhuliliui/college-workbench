@@ -682,7 +682,7 @@ function checkDailyFetch() {
   }).catch((e) => { console.warn('[reader] 每日抓取失败', e.message); journal.lastDaily = today; saveJournal(); });
 }
 setInterval(checkDailyFetch, 60 * 60 * 1000);
-setTimeout(checkDailyFetch, 15000);
+setTimeout(checkDailyFetch, 5000);
 
 // ---------- 每日 AI 学习选题：后端实时抓取真实热门 AI 话题 ----------
 // 数据源（均免费、无需密钥，Railway 海外节点可直接访问）：
@@ -767,7 +767,7 @@ function checkDailyAITopics() {
   buildAITopics().catch((e) => console.warn('[ai-topics] 生成失败', e.message));
 }
 setInterval(checkDailyAITopics, 60 * 60 * 1000);
-setTimeout(checkDailyAITopics, 12000);
+setTimeout(checkDailyAITopics, 5000);
 
 // ---------- 路由 ----------
 const server = http.createServer(async (req, res) => {
@@ -877,19 +877,24 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // 静态文件托管（单页应用）；禁止直接访问后端数据目录 /data/
+  // 静态文件托管（单页应用）；优先 dist/ 构建产物，回退根目录源码；禁止直接访问后端数据目录 /data/
   let file = pathname === '/' ? '/index.html' : pathname;
-  file = path.join(__dirname, file);
-  if (file.indexOf(path.join(__dirname, 'data')) === 0) { send(res, 404, 'Not Found', 'text/plain'); return; }
-  fs.readFile(file, (err, data) => {
+  const distFile = path.join(__dirname, 'dist', file);
+  const rootFile = path.join(__dirname, file);
+  const target = fs.existsSync(distFile) ? distFile : rootFile;
+  if (target.indexOf(path.join(__dirname, 'data')) === 0) { send(res, 404, 'Not Found', 'text/plain'); return; }
+  fs.readFile(target, (err, data) => {
     if (err) {
-      fs.readFile(path.join(__dirname, 'index.html'), (e2, idx) => {
+      const fallback = fs.existsSync(path.join(__dirname, 'dist', 'index.html'))
+        ? path.join(__dirname, 'dist', 'index.html')
+        : path.join(__dirname, 'index.html');
+      fs.readFile(fallback, (e2, idx) => {
         if (e2) send(res, 404, 'Not Found', 'text/plain');
         else send(res, 200, idx, 'text/html; charset=utf-8');
       });
       return;
     }
-    const ext = path.extname(file).toLowerCase();
+    const ext = path.extname(target).toLowerCase();
     send(res, 200, data, MIME[ext] || 'application/octet-stream');
   });
 });

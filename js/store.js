@@ -37,10 +37,12 @@
         items: [],                // {id,name,icon,records:{date:true}}
         scores: {},               // {date:{score,reason,pros,cons}}
         tempTasks: [],            // 今日执行计划·临时任务 [{id,name,done,doneAt}]
+        counters: {},             // { 'YYYY-MM-DD': { care:0, mentor:0, submit:0 } }
       },
       // 专注计时（自律模块·工作台底部）
       focus: {
-        sessions: [],             // [{id,theme,start,end,dur(ms),abandoned}]
+        sessions: [],             // [{id,theme,category,note,start,end,dur(ms),abandoned}]
+        categories: ['学习', '科研', '阅读', '运动', '写作', '其他'],
       },
       // 假期旅行
       travel: {
@@ -243,6 +245,17 @@
     save();
   }
 
+  // 解析联网后端地址：本地后端运行时优先走同源 /api（不依赖外部 Railway）
+  const DEFAULT_RAILWAY_BACKEND = 'https://cw-backup-production.up.railway.app';
+  function readerBackend() {
+    const raw = (get().english.readerBackend || '').replace(/\/$/, '');
+    if (raw && raw !== DEFAULT_RAILWAY_BACKEND) return raw;
+    const loc = (typeof location !== 'undefined' && location) || {};
+    const isLocalhost = /^localhost$|^127\.0\.0\.1$/i.test(loc.hostname || '');
+    if (isLocalhost) return ''; // localhost 走同源 /api/...
+    return raw;
+  }
+
   // 技能学习数据结构兜底（topic/course 字段完整性）
   function normSkill(st) {
     if (!st.skill || !Array.isArray(st.skill.topics)) { st.skill = { topics: [], dailyTopics: [], topicSeedIndex: 0 }; return; }
@@ -261,6 +274,6 @@
 
   window.Store = {
     uid, load, get, save, update, earn, withdraw, deduct,
-    exportJSON, importJSON, reset, init, isNative,
+    exportJSON, importJSON, reset, init, isNative, readerBackend,
   };
 })();

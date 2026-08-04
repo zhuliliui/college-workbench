@@ -866,7 +866,7 @@ window.Pages = window.Pages || {};
   const today = todayStr();
   const eng = Store.get().english;
   if (!eng) return;
-  const backend = (Store.get().english.readerBackend || '').replace(/\/$/, '');
+  const backend = Store.readerBackend();
   if (backend) {
   // 已配置后端：每次打开都拉取最新外刊并合并进本地文库（去重，不会重复灌）
   try {
@@ -1170,7 +1170,7 @@ window.Pages = window.Pages || {};
   // 联网获取今日外刊（可选功能）：仅当用户在下方配置了「后端地址」时才调用我们自己后端的接口。
   // 浏览器只请求后端域名（国内可直连），绝不直接访问 allorigins / corsproxy / jina 等被墙代理，因此不会卡顿。
   async function fetchReaderFromBackend(force) {
-  const backend = (Store.get().english.readerBackend || '').replace(/\/$/, '');
+  const backend = Store.readerBackend();
   if (!backend) { UI.toast('未配置联网后端，当前展示离线精选文章（在「学业DDL」页配置推送后端后也可联网获取）', 'warn'); return null; }
   try {
   const r = await fetchWithTimeout(backend + '/api/reader/article?force=' + (force ? 1 : 0), 8000);
@@ -1349,7 +1349,7 @@ window.Pages = window.Pages || {};
   // 「 实时外刊」：优先从已配置的联网后端**强制爬取**最新外刊（POST /api/reader/fetch 立即抓 2 篇入库，
   // 再 GET /api/reader/list 全量同步进本地文库）；无后端则回退离线外媒精选种子。
   async function importRealtimeNews() {
-  const backend = (Store.get().english.readerBackend || '').replace(/\/$/, '');
+  const backend = Store.readerBackend();
   if (backend) {
   UI.toast('正在从后端强制爬取最新外刊…', 'ok');
   try {
