@@ -57,18 +57,25 @@ Pages.ddl = function () {
   </div>`;
   }
 
-  // 考试倒计时：每行一项（名称 / 日期 / 剩余天数 / 删除）
+  // 考试倒计时：卡片式（左侧大数字天数，右侧名称/类型/日期，删除按钮）
   function examRow(d) {
     const hl = D.hoursLeft(d.due);
     const danger = hl <= 72;
-    const left = D.daysLeftText(d.due);
-    return `<div class="item exam-item ${danger ? 'danger' : ''}">
-      <div class="body">
-        <div class="name">${UI.esc(d.name)}</div>
-        <div class="meta"><span>${d.due ? D.fmtDateTime(D.parseLDT(d.due)) : '未设置'}</span></div>
+    const leftText = D.daysLeftText(d.due);
+    const num = leftText.replace(/[^0-9\-]/g, '') || '—';
+    const unit = leftText.includes('分钟') ? '分钟后' : leftText.includes('小时') ? '小时后' : leftText.includes('逾期') ? '已逾期' : '天后';
+    const dateStr = d.due ? (d.due.split('T')[0] || '') : '';
+    const typeStr = d.name ? d.name : '考试';
+    return `<div class="exam-card ${danger ? 'danger' : ''}">
+      <div class="exam-days-big">
+        <div class="exam-num">${num}</div>
+        <div class="exam-unit">${unit}</div>
       </div>
-      <div class="exam-days"><b>${left}</b></div>
-      <div class="ops"><button class="btn btn-soft btn-icon" data-act="del" data-id="${d.id}" title="删除"><img class="ic" src="assets/icons/hk-18.png" alt=""/></button></div>
+      <div class="exam-info">
+        <div class="exam-name">${UI.esc(d.name)}</div>
+        <div class="exam-meta">${UI.esc(typeStr)} · ${dateStr}</div>
+      </div>
+      <button class="btn btn-soft btn-icon exam-del" data-act="del" data-id="${d.id}" title="删除"><img class="ic" src="assets/icons/hk-18.png" alt=""/></button>
     </div>`;
   }
   // 学业 DDL 清单：每行一项（名称 / 剩余 / 进度 / 完成·编辑·删除）
@@ -205,13 +212,17 @@ Pages.ddl = function () {
   </div>`).join('') + '</div>'
   : `<div class="empty"><img class="emoji" src="assets/icons/hk-39.png" alt=""/><div class="t">暂无遗留问题</div><div class="s">记录没搞懂的难题，逐个攻克</div></div>`;
 
-  const examHtml = exams.length ? '<div class="list">' + exams.map(examRow).join('') + '</div>'
+  const examListHtml = exams.length ? '<div class="exam-list">' + exams.map(examRow).join('') + '</div>'
   : `<div class="empty"><img class="emoji" src="assets/icons/hk-41.png" alt=""/><div class="t">暂无考试安排</div><div class="s">新增 DDL 时类型选「考试」，这里会显示倒计时</div></div>`;
+  const examHtml = `
+    ${examListHtml}
+    <button class="btn btn-soft btn-sm" data-act="add-exam" style="margin-top:12px">＋ 添加考试</button>
+  `;
   c.innerHTML = `
   ${stats}
   <div class="card" style="margin-top:16px">
   <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-41.png" alt=""/>考试倒计时</div>
-  <div class="spacer"></div><button class="btn btn-sm" data-act="add-exam">＋ 新增考试</button>
+  <div class="spacer"></div>
   <button class="collapse-btn" title="折叠">▾</button></div>
   <div class="card-body">${examHtml}</div>
   </div>

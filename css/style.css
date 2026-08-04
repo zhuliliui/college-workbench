@@ -834,18 +834,29 @@ table.tbl tr:hover td { background: var(--surface-2); }
   .ai-ops .btn-icon { width: 32px; height: 32px; }
   .ai-ops .ic { width: 18px; height: 18px; }
 }
-/* 学业 DDL · 考试倒计时 + 每行清单 */
-.exam-days { flex: 0 0 auto; font-size: 22px; font-weight: 800; color: var(--danger); white-space: nowrap; }
-.exam-item.danger .exam-days { color: var(--danger); }
-.exam-item .meta { color: var(--text-faint); }
+/* 学业 DDL · 考试倒计时卡片 + 每行清单 */
+.exam-list { display: flex; flex-direction: column; gap: 12px; }
+.exam-card { display: flex; align-items: center; gap: 16px; background: #fff8fb; border: 1px solid #f3e5eb; border-radius: 16px; padding: 16px 18px; transition: .15s; }
+.exam-card.danger { background: #fff5f5; border-color: #f3c7c2; }
+.exam-days-big { flex: 0 0 auto; text-align: center; min-width: 64px; }
+.exam-num { font-size: 38px; font-weight: 800; color: var(--danger); line-height: 1; letter-spacing: -1px; }
+.exam-card.danger .exam-num { color: var(--danger); }
+.exam-unit { font-size: 12px; color: var(--text-soft); margin-top: 4px; }
+.exam-info { flex: 1 1 auto; min-width: 0; }
+.exam-name { font-size: 17px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.exam-meta { font-size: 13px; color: var(--text-soft); margin-top: 5px; }
+.exam-del { flex: 0 0 auto; width: 36px; height: 36px; border-radius: 50%; }
+.exam-del .ic { width: 18px; height: 18px; opacity: .7; }
 .ddl-item .ops { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
 .ddl-item .prog-range { width: 96px; }
 .prog-range { accent-color: var(--primary); }
 @media (max-width: 560px) {
-  .exam-days { font-size: 18px; }
+  .exam-card { padding: 14px 14px; gap: 12px; }
+  .exam-num { font-size: 32px; }
+  .exam-days-big { min-width: 54px; }
+  .exam-name { font-size: 15px; }
   .ddl-item .ops { flex-wrap: wrap; }
   .ddl-item .prog-range { width: 80px; }
-}
 }
 
 /* ---------- 艾宾浩斯复习计划（闪卡页）---------- */

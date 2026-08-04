@@ -3,9 +3,9 @@
   清新首页：欢迎横幅 + 4 统计卡 + 今日任务/临近DDL + 快速入口
   ============================================================ */
 window.Pages = window.Pages || {};
-// 自律模块·专注计时器运行态（模块级，跨重渲染保留）
-let _focusTimer = { running: false, startTs: 0, theme: '', tickId: null };
-let _focusPeriod = 'day';
+// 自律模块·打卡计时器运行态（模块级，跨重渲染保留）
+let _checkinTimer = { running: false, startTs: 0, theme: '', itemId: null, tickId: null };
+let _checkinPeriod = 'day';
 Pages.dashboard = function () {
   const s = Store.get();
   const c = UI.$('#content');
@@ -164,17 +164,17 @@ Pages.dashboard = function () {
   </div>
   </div>
 
-  <!-- 自律模块（今日执行计划 / 专注计时 / 统计大盘）-->
-  <div id="focusModule"></div>`;
+  <!-- 自律模块（今日执行计划 / 打卡计时 / 统计大盘）-->
+  <div id="checkinModule"></div>`;
 
-  renderFocusModule(UI.$('#focusModule'));
+  renderCheckinModule(UI.$('#checkinModule'));
 
   window.PageHandler = (e) => {
   const b = e.target.closest('[data-act], [data-nav]');
   if (!b) return;
   const act = b.dataset.act, id = b.dataset.id, nav = b.dataset.nav;
 
-  if (act && act.indexOf('f-') === 0) return handleFocusAct(act, id, b);
+  if (act && act.indexOf('c-') === 0) return handleCheckinAct(act, id, b);
   if (nav) return (location.hash = '#/' + nav);
   if (act === 'go-study') return (location.hash = '#/study');
   if (act === 'go-ddl') return (location.hash = '#/ddl');
@@ -203,13 +203,13 @@ Pages.dashboard = function () {
 };
 
 /* ============================================================
-  自律模块（嵌入工作台底部）：今日执行计划 + 专注计时器 + 统计大盘
+  自律模块（嵌入工作台底部）：今日执行计划 + 打卡计时器 + 统计大盘
   ============================================================ */
 function pad2(n) { return String(n).padStart(2, '0'); }
 function fmtTime(d) { d = (d instanceof Date) ? d : new Date(d); if (isNaN(d)) return ''; return pad2(d.getHours()) + ':' + pad2(d.getMinutes()); }
 function fmtClock(ms) { const s = Math.max(0, Math.floor(ms / 1000)); const hh = Math.floor(s / 3600); const mm = Math.floor((s % 3600) / 60); const ss = s % 60; return pad2(hh) + ':' + pad2(mm) + ':' + pad2(ss); }
 function fmtDur(ms) { const totalMin = Math.round((ms || 0) / 60000); const h = Math.floor(totalMin / 60); const m = totalMin % 60; return h > 0 ? (h + ' 小时 ' + m + ' 分') : (totalMin + ' 分钟'); }
-function focusPeriodRange(p) {
+function checkinPeriodRange(p) {
   const today = D.todayStr();
   if (p === 'day') return [today, today];
   if (p === 'week') {
@@ -223,152 +223,188 @@ function focusPeriodRange(p) {
   return [mk + '-01', mk + '-' + pad2(days)];
 }
 
-function startTimer(theme) {
-  if (_focusTimer.running) return;
-  _focusTimer.theme = theme || '专注';
-  _focusTimer.startTs = Date.now();
-  _focusTimer.running = true;
-  if (_focusTimer.tickId) clearInterval(_focusTimer.tickId);
-  _focusTimer.tickId = setInterval(() => {
-    const el = UI.$('#fTimer'); if (el) el.textContent = fmtClock(Date.now() - _focusTimer.startTs);
+function startCheckinTimer(theme, itemId) {
+  if (_checkinTimer.running) return;
+  _checkinTimer.theme = theme || '打卡';
+  _checkinTimer.itemId = itemId || null;
+  _checkinTimer.startTs = Date.now();
+  _checkinTimer.running = true;
+  if (_checkinTimer.tickId) clearInterval(_checkinTimer.tickId);
+  _checkinTimer.tickId = setInterval(() => {
+    const el = UI.$('#cTimer'); if (el) el.textContent = fmtClock(Date.now() - _checkinTimer.startTs);
   }, 1000);
-  renderFocusModule(UI.$('#focusModule'));
+  renderCheckinModule(UI.$('#checkinModule'));
 }
-function stopTimer(abandoned) {
-  if (!_focusTimer.running) return;
-  if (_focusTimer.tickId) { clearInterval(_focusTimer.tickId); _focusTimer.tickId = null; }
-  const dur = Date.now() - _focusTimer.startTs;
-  const theme = _focusTimer.theme;
-  Store.update((st) => { st.focus.sessions.push({ id: Store.uid(), theme, start: _focusTimer.startTs, end: Date.now(), dur, abandoned: !!abandoned }); });
-  _focusTimer.running = false; _focusTimer.theme = ''; _focusTimer.startTs = 0;
-  renderFocusModule(UI.$('#focusModule'));
+function stopCheckinTimer(abandoned) {
+  if (!_checkinTimer.running) return;
+  if (_checkinTimer.tickId) { clearInterval(_checkinTimer.tickId); _checkinTimer.tickId = null; }
+  const dur = Date.now() - _checkinTimer.startTs;
+  const theme = _checkinTimer.theme;
+  const itemId = _checkinTimer.itemId;
+  Store.update((st) => {
+    st.focus.sessions.push({ id: Store.uid(), theme, itemId, start: _checkinTimer.startTs, end: Date.now(), dur, abandoned: !!abandoned });
+    // 结束打卡计时且未放弃时，自动完成对应打卡项
+    if (!abandoned && itemId) {
+      const it = (st.discipline.items || []).find((x) => x.id === itemId);
+      if (it && !it.records[D.todayStr()]) { it.records[D.todayStr()] = true; }
+    }
+  });
+  _checkinTimer.running = false; _checkinTimer.theme = ''; _checkinTimer.itemId = null; _checkinTimer.startTs = 0;
+  renderCheckinModule(UI.$('#checkinModule'));
 }
 
-function handleFocusAct(act, id, b) {
+function handleCheckinAct(act, id, b) {
   const s = Store.get();
-  const mod = UI.$('#focusModule');
-  const rerender = () => renderFocusModule(mod);
+  const mod = UI.$('#checkinModule');
+  const rerender = () => renderCheckinModule(mod);
 
-  if (act === 'f-period') { _focusPeriod = b.dataset.p || 'day'; rerender(); return; }
-  if (act === 'f-start') {
-    const custom = UI.$('#fThemeCustom'); const sel = UI.$('#fTheme');
-    const theme = (custom && custom.value.trim()) || (sel && sel.value) || '专注';
-    startTimer(theme); return;
+  if (act === 'c-period') { _checkinPeriod = b.dataset.p || 'day'; rerender(); return; }
+  if (act === 'c-start') {
+    const custom = UI.$('#cThemeCustom'); const sel = UI.$('#cTheme');
+    const theme = (custom && custom.value.trim()) || (sel && sel.value) || '打卡';
+    const itemId = sel ? sel.options[sel.selectedIndex].dataset.id : '';
+    startCheckinTimer(theme, itemId); return;
   }
-  if (act === 'f-stop') { stopTimer(false); return; }
-  if (act === 'f-abort') { stopTimer(true); return; }
+  if (act === 'c-stop') { stopCheckinTimer(false); return; }
+  if (act === 'c-abort') { stopCheckinTimer(true); return; }
 
-  if (act === 'f-add-temp') {
-    const inp = UI.$('#fTempInput'); const name = inp ? inp.value.trim() : '';
+  if (act === 'c-add-temp') {
+    const inp = UI.$('#cTempInput'); const name = inp ? inp.value.trim() : '';
     if (!name) return UI.toast('请输入临时任务', 'warn');
     Store.update((st) => { st.discipline.tempTasks.push({ id: Store.uid(), name, done: false, doneAt: null }); });
     rerender(); return;
   }
-  if (act === 'f-done-temp') {
+  if (act === 'c-done-temp') {
     const t = (s.discipline.tempTasks || []).find((x) => x.id === id); if (!t) return;
     Store.update((st) => { const x = st.discipline.tempTasks.find((y) => y.id === id); x.done = !x.done; x.doneAt = x.done ? new Date().toISOString() : null; });
     rerender(); return;
   }
-  if (act === 'f-del-temp') {
+  if (act === 'c-del-temp') {
     Store.update((st) => { st.discipline.tempTasks = (st.discipline.tempTasks || []).filter((x) => x.id !== id); });
     rerender(); return;
   }
-  if (act === 'f-start-temp') {
+  if (act === 'c-start-temp') {
     const t = (s.discipline.tempTasks || []).find((x) => x.id === id); if (!t) return;
-    startTimer(t.name); return;
+    startCheckinTimer(t.name, null); return;
   }
-  if (act === 'f-done-plan') {
+  if (act === 'c-done-plan') {
     const t = s.tasks.find((x) => x.id === id); if (!t) return;
     const was = t.done; const will = !was;
     Store.update((st) => { const x = st.tasks.find((y) => y.id === id); x.done = will; x.doneAt = will ? new Date().toISOString() : null; });
     if (will) Store.earn(1, '完成学习复习任务'); else if (was) Store.deduct(1, '取消完成任务');
     Pages.dashboard(); return;
   }
-  if (act === 'f-start-plan') {
+  if (act === 'c-start-plan') {
     const t = s.tasks.find((x) => x.id === id); if (!t) return;
-    startTimer(t.name); return;
+    startCheckinTimer(t.name, null); return;
   }
-  if (act === 'f-edit-plan') {
+  if (act === 'c-edit-plan') {
     const t = s.tasks.find((x) => x.id === id); if (!t) return;
-    UI.openModal({ title: '修改今日任务', body: `<div class="field"><label>任务名称</label><input class="input" id="fPlanName" value="${UI.esc(t.name)}"/></div>`,
+    UI.openModal({ title: '修改今日任务', body: `<div class="field"><label>任务名称</label><input class="input" id="cPlanName" value="${UI.esc(t.name)}"/></div>`,
       actions: [{ label: '取消', cls: 'btn-soft', onClick: UI.closeModal },
       { label: '保存', onClick: () => {
-        const name = UI.val('#fPlanName'); if (!name) return UI.toast('请输入名称', 'warn');
+        const name = UI.val('#cPlanName'); if (!name) return UI.toast('请输入名称', 'warn');
         Store.update((st) => { const x = st.tasks.find((y) => y.id === id); x.name = name; });
         UI.closeModal(); Pages.dashboard();
       } }] });
-    setTimeout(() => { const el = UI.$('#fPlanName'); if (el) el.focus(); }, 50);
+    setTimeout(() => { const el = UI.$('#cPlanName'); if (el) el.focus(); }, 50);
     return;
+  }
+  if (act === 'c-check') {
+    const it = s.discipline.items.find((x) => x.id === id); if (!it) return;
+    const was = !!it.records[D.todayStr()];
+    Store.update((st) => { const x = st.discipline.items.find((y) => y.id === id); if (x.records[D.todayStr()]) delete x.records[D.todayStr()]; else x.records[D.todayStr()] = true; });
+    if (!was) { Store.earn(1, '自律打卡'); UI.toast('打卡成功 +1 金币', 'ok'); }
+    else { Store.deduct(1, '取消自律打卡'); UI.toast('已取消打卡，-1 金币', 'warn'); }
+    Pages.dashboard(); return;
+  }
+  if (act === 'c-start-item') {
+    const it = s.discipline.items.find((x) => x.id === id); if (!it) return;
+    startCheckinTimer(it.name, it.id); return;
   }
 }
 
-function renderFocusModule(container) {
+function renderCheckinModule(container) {
   if (!container) return;
   const s = Store.get();
   const today = D.todayStr();
   const isToday = (t) => !t.due || D.fmtDate(D.parseLDT(t.due)) === today;
   const planTasks = s.tasks.filter(isToday);
   const tempTasks = s.discipline.tempTasks || [];
+  const items = s.discipline.items || [];
 
-  // 主题下拉：今日未完成任务 + 打卡项
+  // 主题下拉：打卡项优先
   const themeOps = [];
-  planTasks.filter((t) => !t.done).forEach((t) => { if (t.name && !themeOps.includes(t.name)) themeOps.push(t.name); });
-  (s.discipline.items || []).forEach((it) => { if (it.name && !themeOps.includes(it.name)) themeOps.push(it.name); });
+  items.forEach((it) => { if (it.name) themeOps.push({ id: it.id, name: it.name }); });
 
   const planHtml = planTasks.length ? planTasks.map((t) => `
     <div class="item ${t.done ? 'done' : ''}">
-      <button class="check" data-act="f-done-plan" data-id="${t.id}" aria-label="完成">${t.done ? '<img class="ic" src="assets/icons/hk-38.png" alt=""/>' : ''}</button>
+      <button class="check" data-act="c-done-plan" data-id="${t.id}" aria-label="完成">${t.done ? '<img class="ic" src="assets/icons/hk-38.png" alt=""/>' : ''}</button>
       <div class="body"><div class="name">${UI.esc(t.name)}</div>
       <div class="meta">${t.category ? `<span class="tag">${UI.esc(t.category)}</span>` : ''}<span>${t.due ? D.fmtDateTime(D.parseLDT(t.due)) : '无截止'}</span></div></div>
       <div class="ops">
-        <button class="btn btn-soft btn-icon" data-act="f-start-plan" data-id="${t.id}" title="开始专注"><img class="ic" src="assets/icons/hk-09.png" alt=""/></button>
-        <button class="btn btn-soft btn-icon" data-act="f-edit-plan" data-id="${t.id}" title="修改"><img class="ic" src="assets/icons/hk-32.png" alt=""/></button>
+        <button class="btn btn-soft btn-icon" data-act="c-start-plan" data-id="${t.id}" title="开始打卡计时"><img class="ic" src="assets/icons/hk-09.png" alt=""/></button>
+        <button class="btn btn-soft btn-icon" data-act="c-edit-plan" data-id="${t.id}" title="修改"><img class="ic" src="assets/icons/hk-32.png" alt=""/></button>
       </div>
     </div>`).join('') : `<div class="empty soft"><div class="t">今天还没有学习计划任务</div><div class="s">在「学习复习计划」添加，会自动出现在这里</div></div>`;
 
   const tempHtml = tempTasks.length ? tempTasks.map((t) => `
     <div class="item ${t.done ? 'done' : ''}">
-      <button class="check" data-act="f-done-temp" data-id="${t.id}" aria-label="完成">${t.done ? '<img class="ic" src="assets/icons/hk-38.png" alt=""/>' : ''}</button>
+      <button class="check" data-act="c-done-temp" data-id="${t.id}" aria-label="完成">${t.done ? '<img class="ic" src="assets/icons/hk-38.png" alt=""/>' : ''}</button>
       <div class="body"><div class="name">${UI.esc(t.name)}</div></div>
       <div class="ops">
-        <button class="btn btn-soft btn-icon" data-act="f-start-temp" data-id="${t.id}" title="开始专注"><img class="ic" src="assets/icons/hk-09.png" alt=""/></button>
-        <button class="btn btn-soft btn-icon" data-act="f-del-temp" data-id="${t.id}" title="删除"><img class="ic" src="assets/icons/hk-18.png" alt=""/></button>
+        <button class="btn btn-soft btn-icon" data-act="c-start-temp" data-id="${t.id}" title="开始打卡计时"><img class="ic" src="assets/icons/hk-09.png" alt=""/></button>
+        <button class="btn btn-soft btn-icon" data-act="c-del-temp" data-id="${t.id}" title="删除"><img class="ic" src="assets/icons/hk-18.png" alt=""/></button>
       </div>
     </div>`).join('') : `<div class="muted-text">还没有临时任务，下面快速加一个</div>`;
 
-  const running = _focusTimer.running;
-  const themeSel = `<select id="fTheme" class="input" style="max-width:200px">` +
-    (themeOps.length ? themeOps.map((o) => `<option value="${UI.esc(o)}">${UI.esc(o)}</option>`).join('') : `<option value="">— 暂无可选主题 —</option>`) +
+  const checkinHtml = items.length ? items.map((it) => {
+    const checked = !!it.records[today];
+    const mk = D.monthKey();
+    const monthCount = Object.keys(it.records || {}).filter((dt) => dt.slice(0, 7) === mk).length;
+    return `<div class="item ${checked ? 'done' : ''}">
+      <button class="check" data-act="c-check" data-id="${it.id}" aria-label="打卡">${checked ? '<img class="ic" src="assets/icons/hk-38.png" alt=""/>' : ''}</button>
+      <div class="body"><div class="name">${it.icon ? UI.esc(it.icon) : '<img class="ic" src="assets/icons/hk-06.png" alt=""/>'} ${UI.esc(it.name)}</div>
+      <div class="meta"><span>本月已打卡 <b style="color:var(--primary-deep)">${monthCount}</b> 天</span></div></div>
+      <div class="ops">
+        <button class="btn btn-soft btn-icon" data-act="c-start-item" data-id="${it.id}" title="开始打卡计时"><img class="ic" src="assets/icons/hk-09.png" alt=""/></button>
+      </div>
+    </div>`;
+  }).join('') : `<div class="empty soft"><div class="t">还没有打卡项目</div><div class="s">去「自律成长」添加运动、阅读等打卡项</div></div>`;
+
+  const running = _checkinTimer.running;
+  const themeSel = `<select id="cTheme" class="input" style="max-width:200px">` +
+    (themeOps.length ? themeOps.map((o) => `<option value="${UI.esc(o.name)}" data-id="${UI.esc(o.id)}">${UI.esc(o.name)}</option>`).join('') : `<option value="">— 暂无打卡项 —</option>`) +
     `</select>`;
-  const timerDisplay = running ? fmtClock(Date.now() - _focusTimer.startTs) : '00:00:00';
+  const timerDisplay = running ? fmtClock(Date.now() - _checkinTimer.startTs) : '00:00:00';
   const timerBtns = running
-    ? `<button class="btn btn-danger btn-sm" data-act="f-stop">结束</button><button class="btn btn-soft btn-sm" data-act="f-abort">放弃</button>`
-    : `<button class="btn btn-sm" data-act="f-start">▶ 开始专注</button>`;
+    ? `<button class="btn btn-danger btn-sm" data-act="c-stop">结束打卡</button><button class="btn btn-soft btn-sm" data-act="c-abort">放弃</button>`
+    : `<button class="btn btn-sm" data-act="c-start">▶ 开始打卡计时</button>`;
 
   const todaySessions = (s.focus.sessions || []).filter((x) => D.fmtDate(new Date(x.start)) === today);
   const recHtml = todaySessions.length ? todaySessions.slice().reverse().map((x) => `
     <div class="focus-rec-row ${x.abandoned ? 'aborted' : ''}">
-      <span class="fr-theme">${UI.esc(x.theme || '专注')}</span>
+      <span class="fr-theme">${UI.esc(x.theme || '打卡')}</span>
       <span class="fr-time">${fmtTime(new Date(x.start))}–${fmtTime(new Date(x.end))}</span>
-      <span class="fr-dur">${fmtDur(x.dur)}${x.abandoned ? ' · 已放弃' : ''}</span>
-    </div>`).join('') : `<div class="muted-text">今天还没有专注记录，点「开始专注」吧</div>`;
+      <span class="fr-dur">${fmtDur(x.dur)}${x.abandoned ? ' · 已放弃' : x.itemId ? ' · 已打卡' : ''}</span>
+    </div>`).join('') : `<div class="muted-text">今天还没有打卡计时记录，选一个打卡项开始吧</div>`;
 
   // 统计大盘
-  const [ps, pe] = focusPeriodRange(_focusPeriod);
+  const [ps, pe] = checkinPeriodRange(_checkinPeriod);
   const inP = (ds) => ds >= ps && ds <= pe;
   let focusMs = 0;
   (s.focus.sessions || []).forEach((x) => { if (x.abandoned) return; const ds = D.fmtDate(new Date(x.start)); if (inP(ds)) focusMs += (x.dur || 0); });
   const checkDays = new Set();
-  (s.discipline.items || []).forEach((it) => { Object.keys(it.records || {}).forEach((dt) => { if (inP(dt)) checkDays.add(dt); }); });
+  items.forEach((it) => { Object.keys(it.records || {}).forEach((dt) => { if (inP(dt)) checkDays.add(dt); }); });
   let reviewCount = 0;
   Object.keys(s.dailySummary || {}).forEach((dt) => { if (inP(dt)) reviewCount++; });
   let doneCount = 0;
   s.tasks.forEach((t) => { if (t.done && t.doneAt) { const ds = (t.doneAt || '').slice(0, 10); if (inP(ds)) doneCount++; } });
   (s.ddls || []).forEach((d) => { if (d.done && d.doneAt) { const ds = (d.doneAt || '').slice(0, 10); if (inP(ds)) doneCount++; } });
-  const periodLabel = _focusPeriod === 'day' ? '今日' : _focusPeriod === 'week' ? '本周' : '本月';
+  const periodLabel = _checkinPeriod === 'day' ? '今日' : _checkinPeriod === 'week' ? '本周' : '本月';
 
   container.innerHTML = `
-  <div class="card focus-plan">
+  <div class="card checkin-plan">
     <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-38.png" alt=""/>今日执行计划</div>
       <div class="spacer"></div><button class="collapse-btn" title="折叠">▾</button></div>
     <div class="card-body">
@@ -376,45 +412,47 @@ function renderFocusModule(container) {
       <div class="list">${planHtml}</div>
       <div class="focus-section-label mt12">临时任务</div>
       <div class="flex-wrap gap8" style="margin:8px 0">
-        <input class="input" id="fTempInput" placeholder="加一个临时任务，点添加" style="flex:1;min-width:160px"/>
-        <button class="btn btn-sm" data-act="f-add-temp">添加</button>
+        <input class="input" id="cTempInput" placeholder="加一个临时任务，点添加" style="flex:1;min-width:160px"/>
+        <button class="btn btn-sm" data-act="c-add-temp">添加</button>
       </div>
       <div class="list">${tempHtml}</div>
+      <div class="focus-section-label mt12">打卡项目</div>
+      <div class="list">${checkinHtml}</div>
     </div>
   </div>
 
-  <div class="card focus-timer">
-    <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-09.png" alt=""/>专注计时器</div></div>
+  <div class="card checkin-timer">
+    <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-09.png" alt=""/>打卡计时器</div></div>
     <div class="card-body center">
-      <div class="timer-display" id="fTimer">${timerDisplay}</div>
-      ${running ? `<div class="muted-text" style="margin-top:4px">当前主题：<b style="color:var(--primary-deep)">${UI.esc(_focusTimer.theme)}</b></div>` : ''}
+      <div class="timer-display" id="cTimer">${timerDisplay}</div>
+      ${running ? `<div class="muted-text" style="margin-top:4px">当前打卡：<b style="color:var(--primary-deep)">${UI.esc(_checkinTimer.theme)}</b></div>` : ''}
       <div class="flex-wrap gap8 center mt12" style="justify-content:center;align-items:center">
         ${themeSel}
-        <input class="input" id="fThemeCustom" placeholder="或自定义主题" style="max-width:160px"/>
+        <input class="input" id="cThemeCustom" placeholder="或自定义主题" style="max-width:160px"/>
       </div>
       <div class="flex-wrap gap8 center mt12" style="justify-content:center">${timerBtns}</div>
-      <div class="focus-section-label mt16" style="text-align:left">今日专注记录</div>
+      <div class="focus-section-label mt16" style="text-align:left">今日打卡计时记录</div>
       <div class="focus-records mt8">${recHtml}</div>
     </div>
   </div>
 
-  <div class="card focus-stats">
-    <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-37.png" alt=""/>专注统计大盘</div>
+  <div class="card checkin-stats">
+    <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-37.png" alt=""/>自律统计大盘</div>
       <div class="spacer"></div>
       <div class="seg">
-        <button class="seg-btn ${_focusPeriod === 'day' ? 'on' : ''}" data-act="f-period" data-p="day">日</button>
-        <button class="seg-btn ${_focusPeriod === 'week' ? 'on' : ''}" data-act="f-period" data-p="week">周</button>
-        <button class="seg-btn ${_focusPeriod === 'month' ? 'on' : ''}" data-act="f-period" data-p="month">月</button>
+        <button class="seg-btn ${_checkinPeriod === 'day' ? 'on' : ''}" data-act="c-period" data-p="day">日</button>
+        <button class="seg-btn ${_checkinPeriod === 'week' ? 'on' : ''}" data-act="c-period" data-p="week">周</button>
+        <button class="seg-btn ${_checkinPeriod === 'month' ? 'on' : ''}" data-act="c-period" data-p="month">月</button>
       </div>
     </div>
     <div class="card-body">
       <div class="grid grid-4 stat-row">
-        <div class="focus-stat"><div class="fs-val">${fmtDur(focusMs)}</div><div class="fs-label">专注时长</div></div>
+        <div class="focus-stat"><div class="fs-val">${fmtDur(focusMs)}</div><div class="fs-label">打卡计时</div></div>
         <div class="focus-stat"><div class="fs-val">${checkDays.size} 天</div><div class="fs-label">打卡天数</div></div>
         <div class="focus-stat"><div class="fs-val">${reviewCount}</div><div class="fs-label">复盘次数</div></div>
         <div class="focus-stat"><div class="fs-val">${doneCount}</div><div class="fs-label">完成任务数</div></div>
       </div>
-      <div class="muted-text mt8">${periodLabel} · 专注时长汇总已结束的专注；打卡天数 = 该区间至少打卡 1 次的天数；复盘次数 = 写过的每日小结篇数。注：打卡为按天记录，故以「天数」呈现。</div>
+      <div class="muted-text mt8">${periodLabel} · 打卡计时汇总已结束的计时；打卡天数 = 该区间至少打卡 1 次的天数；复盘次数 = 写过的每日小结篇数。</div>
     </div>
   </div>`;
 
