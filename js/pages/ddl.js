@@ -315,8 +315,7 @@ Pages.ddl = function () {
   if (r.ok) {
   if (r.fallback) UI.toast('已生成日历文件，请在系统日历中导入', 'ok');
   else UI.toast('已同步 ' + r.count + ' 个日程到系统日历', 'ok');
-  } else if (r.reason === 'empty') UI.toast('没有可同步的 DDL / 计划', 'warn');
-  else UI.toast('同步失败', 'warn');
+  }
   Pages.ddl();
   }).catch(() => { UI.toast('同步失败', 'warn'); Pages.ddl(); });
   return;
@@ -397,7 +396,7 @@ Pages.ddl = function () {
   actions: [{ label: '取消', cls: 'btn-soft', onClick: UI.closeModal },
   { label: d ? '保存' : '添加', onClick: () => {
   const name = UI.val('#dName'); if (!name) return UI.toast('请填写名称', 'warn');
-  const data = { name, due: UI.val('#dDue'), progress: parseInt(UI.val('#dProg')) || 0, remindBefore: parseInt(UI.val('#dRemind')) || 0 };
+  const data = { name, type: UI.val('#dType') || 'ddl', due: UI.val('#dDue'), progress: parseInt(UI.val('#dProg')) || 0, remindBefore: parseInt(UI.val('#dRemind')) || 0 };
   Store.update((st) => {
   if (d) { const x = st.ddls.find((y) => y.id === editId); Object.assign(x, data); x.remindedAt = null; }
   else st.ddls.unshift(Object.assign({ id: Store.uid(), done: false, remindedAt: null }, data));

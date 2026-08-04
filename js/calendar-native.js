@@ -94,7 +94,22 @@ window.NativeCalendar = (function () {
   async function sync() {
     const events = collectEvents();
     const reminders = remindersArray();
-    if (!events.length) { if (window.UI) UI.toast('没有可同步的日程', 'warn'); return { ok: false, reason: 'empty' }; }
+    if (!events.length) {
+      const st = (typeof Store !== 'undefined' && Store.get) ? Store.get() : { ddls: [], tasks: [] };
+      const ddls = st.ddls || [];
+      const tasks = st.tasks || [];
+      const doneDdl = ddls.filter((d) => d.done).length;
+      const noDateDdl = ddls.filter((d) => !d.due).length;
+      const doneTask = tasks.filter((t) => t.done).length;
+      const noDateTask = tasks.filter((t) => !t.due).length;
+      console.warn('[cal] 无同步事件', { ddl: ddls.length, doneDdl, noDateDdl, task: tasks.length, doneTask, noDateTask });
+      if (window.UI && (ddls.length || tasks.length)) {
+        UI.toast('没有可同步的日程：DDL ' + ddls.length + ' 个（已完 ' + doneDdl + ' · 无日期 ' + noDateDdl + '），计划 ' + tasks.length + ' 个（已完 ' + doneTask + ' · 无日期 ' + noDateTask + '）', 'warn');
+      } else if (window.UI) {
+        UI.toast('还没有 DDL 或计划，添加带日期的条目后再同步', 'warn');
+      }
+      return { ok: false, reason: 'empty' };
+    }
     const plugin = nativePlugin();
     if (plugin) {
       try {
