@@ -47,9 +47,9 @@ art_id = ad["artifacts"][0]["id"]
 print("ART_ID", art_id, flush=True)
 
 # 取临时下载地址（GitHub 返回 302 到 Azure blob；token 不能带去 blob，否则 401）
+# 用 -I HEAD 请求拿 Location，避免 body 写入问题
 hdr = subprocess.check_output(
-    ["curl", "-s", "-D", "-", "-o", "/dev/null",
-     "-H", "Authorization: Bearer " + TOKEN,
+    ["curl", "-sI", "-H", "Authorization: Bearer " + TOKEN,
      "https://api.github.com/repos/%s/actions/artifacts/%d/zip" % (REPO, art_id)],
     timeout=60).decode("utf-8", "ignore")
 loc = ""
