@@ -1,16 +1,8 @@
-/* ============================================================
-   本地系统日历同步
-   - 原生 App（安卓 APK）：通过自写 Capacitor 本地插件 CalendarLocal 直接写入
-     设备系统级 CalendarContract 数据库（华为/安卓日历 App 共享该数据源），
-     写入后系统日历自动显示，离线可用，不用 Google 服务、不依赖 .ics 导入。
-   - 浏览器 / PWA：降级为生成 .ics 文件下载，由用户手动导入系统日历。
-   ============================================================ */
 window.NativeCalendar = (function () {
   function isNative() {
     return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
   }
 
-  // 取得原生 CalendarLocal 插件（必要时显式注册）
   function nativePlugin() {
     try {
       if (!isNative()) return null;
@@ -24,7 +16,6 @@ window.NativeCalendar = (function () {
 
   function available() { return !!nativePlugin(); }
 
-  // 收集待同步事件（DDL + 学习计划，未完成且有截止时间）
   function collectEvents() {
     const s = (typeof Store !== 'undefined' && Store.get) ? Store.get() : { ddls: [], tasks: [] };
     const out = [];
@@ -47,7 +38,6 @@ window.NativeCalendar = (function () {
     return arr;
   }
 
-  // 构造 .ics（浏览器降级用）
   function buildICS() {
     const events = collectEvents();
     const reminders = remindersArray();
@@ -78,7 +68,6 @@ window.NativeCalendar = (function () {
     return { ics: lines.join('\r\n'), count };
   }
 
-  // 浏览器：下载 .ics
   function downloadFallback(ics) {
     const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
     const a = document.createElement('a');
@@ -88,11 +77,18 @@ window.NativeCalendar = (function () {
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
 
-  // 同步主入口
+  function errorText(e) {
+    const msg = (e && (e.message || e.code || String(e))) || '';
+    if (msg.indexOf('no-writable-calendar') >= 0) return '没有可写入的日历账户';
+    if (msg.indexOf('permission') >= 0) return '日历权限被拒绝';
+    if (msg.indexOf('insert-event-returned-null') >= 0) return '系统拒绝写入事件';
+    return '同步失败：' + msg;
+  }
+
   async function sync() {
     const events = collectEvents();
     const reminders = remindersArray();
-    if (!events.length) { if (window.UI) UI.toast('没有可同步的 DDL / 计划', 'warn'); return { ok: false, reason: 'empty' }; }
+    if (!events.length) { if (window.UI) UI.toast('没有可同步的日程', 'warn'); return { ok: false, reason: 'empty' }; }
     const plugin = nativePlugin();
     if (plugin) {
       try {
@@ -102,23 +98,26 @@ window.NativeCalendar = (function () {
           if (!(r && r.granted)) { if (window.UI) UI.toast('日历授权被拒绝', 'warn'); return { ok: false, reason: 'denied' }; }
         }
         const res = await plugin.sync({ events: events, reminders: reminders });
-        const cnt = (res && typeof res.count === 'number') ? res.count : events.length;
+        const cnt = (res && typeof res.count === 'number') ? res.count : 0;
         if (window.Store) Store.update((st) => { st.cal = st.cal || {}; st.cal.local = { authorized: true, syncedCount: cnt, lastAt: Date.now() }; });
-        if (window.UI) UI.toast('已写入系统日历 ' + cnt + ' 个日程', cnt > 0 ? 'ok' : 'warn');
-        return { ok: cnt > 0, count: cnt };
+        if (cnt > 0) {
+          if (window.UI) UI.toast('已写入系统日历 ' + cnt + ' 个日程', 'ok');
+          return { ok: true, count: cnt };
+        }
+        const err = (res && res.lastError) ? res.lastError : 'unknown';
+        if (window.UI) UI.toast('写入 0 个日程：' + err, 'warn');
+        return { ok: false, reason: err };
       } catch (e) {
-        console.warn('[cal] 原生写入失败，降级 .ics', e);
-        if (window.UI) UI.toast('系统日历写入失败，已改用 .ics', 'warn');
+        console.warn('[cal] 原生写入失败', e);
+        if (window.UI) UI.toast(errorText(e), 'warn');
       }
     }
-    // 降级：下载 .ics
     const { ics } = buildICS();
     downloadFallback(ics);
     if (window.UI) UI.toast('已生成 .ics，请在系统日历中导入', 'ok');
     return { ok: true, count: events.length, fallback: true };
   }
 
-  // 清除系统日历里本插件写入的日程 + 本地标记
   async function clearRecord() {
     const plugin = nativePlugin();
     if (plugin) { try { await plugin.clear(); } catch (e) { console.warn('[cal] clear failed', e); } }

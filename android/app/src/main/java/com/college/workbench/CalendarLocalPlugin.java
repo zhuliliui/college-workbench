@@ -18,10 +18,6 @@ import java.util.TimeZone;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-/**
- * 本地系统日历写入插件（不依赖 Google 服务，离线可用）。
- * 直接读写 Android 系统级 CalendarContract 数据库，华为/安卓日历 App 共享该数据源，写入后自动显示。
- */
 @CapacitorPlugin(name = "CalendarLocal", requestCodes = { 7321 })
 public class CalendarLocalPlugin extends Plugin {
     private static final String PERM_READ = Manifest.permission.READ_CALENDAR;
@@ -50,7 +46,6 @@ public class CalendarLocalPlugin extends Plugin {
         ActivityCompat.requestPermissions(getActivity(), new String[] { PERM_READ, PERM_WRITE }, REQ_CODE);
     }
 
-    // 由 BridgeActivity → Bridge.onRequestPermissionsResult 按 @CapacitorPlugin(requestCodes) 路由到本插件实例
     @Override
     protected void handleRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         if (requestCode == REQ_CODE && savedCall != null) {
@@ -69,8 +64,8 @@ public class CalendarLocalPlugin extends Plugin {
             && ContextCompat.checkSelfPermission(getContext(), PERM_WRITE) == PackageManager.PERMISSION_GRANTED;
     }
 
-    private long findCalendar() {
-        String[] proj = { CalendarContract.Calendars._ID };
+    private long findOurCalendar() {
+        String[] proj = { CalendarContract.Calendars._ID, CalendarContract.Calendars.VISIBLE };
         try (Cursor c = getContext().getContentResolver().query(
                 CalendarContract.Calendars.CONTENT_URI, proj,
                 CalendarContract.Calendars.ACCOUNT_NAME + " = ? AND " + CalendarContract.Calendars.ACCOUNT_TYPE + " = ?",
@@ -81,48 +76,29 @@ public class CalendarLocalPlugin extends Plugin {
         return -1;
     }
 
-    private long ensureCalendar() {
-        long id = findCalendar();
-        if (id > 0) return id;
+    private long createOurCalendar() {
         ContentValues cv = new ContentValues();
         cv.put(CalendarContract.Calendars.ACCOUNT_NAME, CAL_NAME);
         cv.put(CalendarContract.Calendars.ACCOUNT_TYPE, CalendarContract.ACCOUNT_TYPE_LOCAL);
         cv.put(CalendarContract.Calendars.NAME, CAL_NAME);
         cv.put(CalendarContract.Calendars.CALENDAR_DISPLAY_NAME, CAL_NAME);
-        cv.put(CalendarContract.Calendars.CALENDAR_COLOR, 0x5e8268);
+        cv.put(CalendarContract.Calendars.CALENDAR_COLOR, 0xFF5E8268);
         cv.put(CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL, CalendarContract.Calendars.CAL_ACCESS_OWNER);
         cv.put(CalendarContract.Calendars.OWNER_ACCOUNT, CAL_NAME);
         cv.put(CalendarContract.Calendars.VISIBLE, 1);
         cv.put(CalendarContract.Calendars.SYNC_EVENTS, 1);
-        Uri calUri = CalendarContract.Calendars.CONTENT_URI.buildUpon()
-                .appendQueryParameter(CalendarContract.CALLER_IS_SYNCADAPTER, "true")
-                .appendQueryParameter(CalendarContract.Calendars.ACCOUNT_NAME, CAL_NAME)
-                .appendQueryParameter(CalendarContract.Calendars.ACCOUNT_TYPE, CalendarContract.ACCOUNT_TYPE_LOCAL)
-                .build();
         try {
-            Uri r = getContext().getContentResolver().insert(calUri, cv);
+            Uri r = getContext().getContentResolver().insert(CalendarContract.Calendars.CONTENT_URI, cv);
             if (r != null) return Long.parseLong(r.getLastPathSegment());
         } catch (Exception ignore) {
         }
         return -1;
     }
 
-    private boolean isVisible(long id) {
-        String[] proj = { CalendarContract.Calendars.VISIBLE };
-        try (Cursor c = getContext().getContentResolver().query(
-                CalendarContract.Calendars.CONTENT_URI, proj,
-                CalendarContract.Calendars._ID + " = ?", new String[] { String.valueOf(id) }, null)) {
-            if (c != null && c.moveToFirst()) return c.getInt(0) == 1;
-        } catch (Exception ignore) {
-        }
-        return false;
-    }
-
-    // 优先选系统里“本来就显示”的本地日历；华为/国产 ROM 不渲染我们自建的 LOCAL 账户日历
-    private long findWritableVisibleCalendar() {
+    private long findWritableCalendar() {
         String[] proj = { CalendarContract.Calendars._ID, CalendarContract.Calendars.ACCOUNT_TYPE,
                 CalendarContract.Calendars.VISIBLE, CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL };
-        long localVisible = -1, anyVisible = -1;
+        long localVisible = -1, anyWritable = -1;
         try (Cursor c = getContext().getContentResolver().query(
                 CalendarContract.Calendars.CONTENT_URI, proj, null, null, null)) {
             if (c == null) return -1;
@@ -132,22 +108,20 @@ public class CalendarLocalPlugin extends Plugin {
                 int vis = c.getInt(2);
                 int lvl = c.getInt(3);
                 if (lvl < CalendarContract.Calendars.CAL_ACCESS_CONTRIBUTOR) continue;
-                if (vis == 1) {
-                    if (CalendarContract.ACCOUNT_TYPE_LOCAL.equals(type) && localVisible < 0) localVisible = id;
-                    if (anyVisible < 0) anyVisible = id;
-                }
+                if (CalendarContract.ACCOUNT_TYPE_LOCAL.equals(type) && vis == 1 && localVisible < 0) localVisible = id;
+                if (anyWritable < 0) anyWritable = id;
             }
         } catch (Exception ignore) {
         }
-        return localVisible > 0 ? localVisible : anyVisible;
+        return localVisible > 0 ? localVisible : anyWritable;
     }
 
     private long pickCalendar() {
-        long id = findCalendar();
-        if (id > 0 && isVisible(id)) return id;
-        long sys = findWritableVisibleCalendar();
-        if (sys > 0) return sys;
-        return ensureCalendar();
+        long id = findOurCalendar();
+        if (id > 0) return id;
+        id = createOurCalendar();
+        if (id > 0) return id;
+        return findWritableCalendar();
     }
 
     @PluginMethod()
@@ -170,7 +144,7 @@ public class CalendarLocalPlugin extends Plugin {
         }
         long calId = pickCalendar();
         if (calId < 0) {
-            call.reject("calendar-create-failed");
+            call.reject("no-writable-calendar");
             return;
         }
         try {
@@ -180,6 +154,7 @@ public class CalendarLocalPlugin extends Plugin {
         } catch (Exception ignore) {
         }
         int count = 0;
+        String lastError = null;
         for (int i = 0; i < events.length(); i++) {
             try {
                 JSONObject e = events.getJSONObject(i);
@@ -196,7 +171,10 @@ public class CalendarLocalPlugin extends Plugin {
                 cv.put(CalendarContract.Events.CALENDAR_TIME_ZONE, TimeZone.getDefault().getID());
                 cv.put(CalendarContract.Events.HAS_ALARM, 1);
                 Uri evUri = getContext().getContentResolver().insert(CalendarContract.Events.CONTENT_URI, cv);
-                if (evUri == null) continue;
+                if (evUri == null) {
+                    lastError = "insert-event-returned-null";
+                    continue;
+                }
                 long evId = Long.parseLong(evUri.getLastPathSegment());
                 if (rems != null && rems.length() > 0) {
                     for (int k = 0; k < rems.length(); k++) {
@@ -216,11 +194,13 @@ public class CalendarLocalPlugin extends Plugin {
                     getContext().getContentResolver().insert(CalendarContract.Reminders.CONTENT_URI, rem);
                 }
                 count++;
-            } catch (Exception ignore) {
+            } catch (Exception ex) {
+                lastError = ex.getClass().getSimpleName() + ":" + ex.getMessage();
             }
         }
         JSObject ret = new JSObject();
         ret.put("count", count);
+        if (lastError != null) ret.put("lastError", lastError);
         call.resolve(ret);
     }
 

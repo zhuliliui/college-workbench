@@ -63,7 +63,14 @@ if not loc:
     sys.exit(4)
 
 # blob 用 curl 直接下，不带 token（且 -k 规避部分环境 blob 证书过期）
-subprocess.run(["curl", "-sL", "-k", loc, "-o", os.path.join(OUTDIR, "apk_dl.zip")], check=True)
+# artifact 是 zip 包，大文件容易中断，用断点续传 + 重试
+zip_path = os.path.join(OUTDIR, "apk_dl.zip")
+for attempt in range(3):
+    print("DOWNLOAD_ATTEMPT", attempt, flush=True)
+    subprocess.run(["curl", "-C", "-", "-sL", "-k", "--retry", "5", "--retry-delay", "3", loc, "-o", zip_path], check=True)
+    if os.path.getsize(zip_path) > 1024 * 1024:
+        break
+    time.sleep(2)
 with open(os.path.join(OUTDIR, "apk_dl.zip"), "rb") as f:
     raw = f.read()
 print("ZIP_BYTES", len(raw), flush=True)

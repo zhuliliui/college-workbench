@@ -114,7 +114,6 @@ Pages.ddl = function () {
   <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-37.png" alt=""/>手机日历订阅（DDL 自动进手机日历）</div>
   <div class="spacer"></div><button class="collapse-btn" title="折叠">▾</button></div>
   <div class="card-body">
-  <div class="muted-text" style="margin-bottom:12px">DDL、待办、学习复习计划都会同步到后端并写入日历。两种接入方式：① 在手机日历里「订阅」下方链接（一次性，之后自动更新）；② 手机日历「添加 CalDAV 账户」，服务器填本地址、用户名填下方「固定客户端 ID」、密码填 <b>workbench</b>，之后系统级自动双向同步、零手动链接。到期前按设定时间弹通知提醒。</div>
   <div class="row">
   <div class="field"><label>定时推送 / 日历后端地址</label>
   <input class="input" id="calUrl" value="${UI.esc(cal.backendUrl || '')}" placeholder="https://your-server.example.com"/></div>
@@ -138,7 +137,7 @@ Pages.ddl = function () {
   ${cal.subscribed ? `
   <div class="field mt12"><label>订阅链接（复制到手机日历 App 订阅）</label>
   <div class="row gap8"><input class="input" id="calLink" readonly value="${UI.esc(calSubUrl(cal))}"/><button class="btn btn-soft btn-sm" data-act="cal-copy">复制</button></div>
-  <div style="font-size:12px;color:var(--text-faint);margin-top:6px">华为/Android：日历 App → 设置 → 添加「其他日历 / 通过链接订阅」，粘贴上面的 https 链接（一次性，之后自动更新）。进阶零链接：日历 → 添加 CalDAV 账户，服务器填后端地址、用户名填上方「固定客户端 ID」、密码填 <b>workbench</b>。</div>
+  <div style="font-size:12px;color:var(--text-faint);margin-top:6px">把链接复制到系统日历 App 的「通过链接订阅」即可。</div>
   </div>` : ''}
   </div>
   </div>`;
@@ -155,14 +154,13 @@ Pages.ddl = function () {
   <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-37.png" alt=""/>本地日历（一键写入系统日历）</div>
   <div class="spacer"></div><button class="collapse-btn" title="折叠">▾</button></div>
   <div class="card-body">
-  <div class="muted-text" style="margin-bottom:12px">把 DDL 与学习复习计划<b>直接写入设备的系统日历</b>：点「同步到系统日历」会弹出系统授权，授权后<b>离线自动写入</b>，到期前按上方「提前提醒时间」弹通知，无需后端。<b>每次同步先清除本应用旧日程再重建</b>，与当前清单保持一致。若系统日历看不到，请到日历设置中勾选显示「小朱工作台」日历。</div>
   ${nativeOn
   ? `<div class="flex-wrap gap8">
   <button class="btn btn-sm" data-act="cal-local-sync">${localAuthorized ? '重新同步到系统日历' : '同步到系统日历'}</button>
   ${localAuthorized ? '<button class="btn btn-soft btn-sm" data-act="cal-local-revoke">清除系统日历日程</button>' : ''}
   </div>
   <div class="muted-text mt12">${localStatusText}</div>`
-  : `<div class="muted-text" style="color:var(--text-faint)">浏览器/PWA 可直接点上方「下载 .ics」导入系统日历；安装「小朱工作台」App（APK）可获得一键调起系统日历的体验。</div>`}
+  : `<div class="muted-text" style="color:var(--text-faint)">浏览器环境请使用「下载 .ics」导入。</div>`}
   </div>
   </div>`;
 
@@ -173,7 +171,6 @@ Pages.ddl = function () {
   <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-36.png" alt=""/>微信推送提醒（Server酱 自动推送）</div>
   <div class="spacer"></div><button class="collapse-btn" title="折叠">▾</button></div>
   <div class="card-body">
-  <div class="muted-text" style="margin-bottom:12px"><b>完全免费</b>——通过 <b>Server酱</b> 推送到微信，<b>无需部署后端</b>。打开本页面时自动检查临近 DDL 并推送提醒（<b>仅 DDL 任务</b>会推送）。</div>
   <div class="row">
   <div class="field"><label>SendKey（推送密钥）</label>
   <input class="input" id="pushToken" value="${UI.esc(push.token || '')}" placeholder="SCT 开头，Server酱官网获取"/></div>
@@ -188,16 +185,7 @@ Pages.ddl = function () {
   ${push.enabled ? '<button class="btn btn-soft btn-sm" data-act="push-unbind">解绑</button>' : ''}
   <span class="tag ${push.enabled ? 'success' : 'muted'}">${push.enabled ? ' 已绑定' : '未绑定'}</span>
   </div>
-  <details style="margin-top:12px"><summary class="muted-text" style="cursor:pointer">3 步搞定免费微信推送（点击展开）</summary>
-  <div style="font-size:13px;color:var(--text-faint);margin-top:8px;line-height:1.9">
-  <b>Server酱（免费，推荐）：</b><br/>
-  ① 打开 <a href="https://sct.ftqq.com" target="_blank">sct.ftqq.com</a>（Server酱官网）用微信扫码登录，在「Key」页复制你的 <b>SendKey</b>（SCT 开头）<br/>
-  ② 把 SendKey 填入上方「保存绑定」，点「测试推送」<br/>
-  ③ 微信关注「Server酱」服务号，即可收到 DDL 到期提醒（仅 DDL 任务会推送）<br/><br/>
-  <b>不部署后端也能用：</b>打开本页面时自动检查并推送临近 DDL 提醒（仅 DDL 任务）。<br/>
-  <b>想关页面也推送？</b>在长期开机的电脑上运行 <code>server.js</code>（免费），把地址填入上方即可。
-  </div>
-  </details>
+  <div class="muted-text mt12">SendKey 从 sct.ftqq.com 获取，仅 DDL 到期前推送。</div>
   </div>
   </div>`;
 
