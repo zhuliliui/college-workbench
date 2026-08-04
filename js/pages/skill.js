@@ -66,12 +66,42 @@ Pages.skill = function () {
     }
   }
 
+  // 从联网后端实时拉取「每日 AI 学习选题」：仅当日首次自动填充（之后用本地已存，避免覆盖用户编辑）
+  // 后端 server.js 的 /api/ai/topics 每日首次启动抓取真实 AI 热门（arXiv + Hacker News），落盘 data/ai-topics.json
+  let _aiTopicsLoaded = false;
+  async function loadDailyAITopics() {
+    const backend = (Store.get().english.readerBackend || '').replace(/\/$/, '');
+    if (!backend) return false;
+    const today = D.todayStr();
+    const cur = Store.get().skill;
+    if (cur.aiTopicsDate === today && cur.dailyTopics && cur.dailyTopics.length) return false; // 今日已加载，不覆盖
+    if (_aiTopicsLoaded) return false;
+    _aiTopicsLoaded = true; // 本次会话当日只拉一次
+    try {
+      const ctrl = new AbortController();
+      const to = setTimeout(() => ctrl.abort(), 8000);
+      const r = await fetch(backend + '/api/ai/topics', { signal: ctrl.signal });
+      clearTimeout(to);
+      if (!r.ok) return false;
+      const j = await r.json().catch(() => null);
+      if (!j || !Array.isArray(j.topics) || !j.topics.length) return false;
+      if (j.date && j.date !== today) return false; // 后端还没生成今日选题
+      Store.update((st) => {
+        st.skill.aiTopicsDate = today;
+        st.skill.dailyTopics = j.topics.map((t) => ({ id: Store.uid(), title: t.title, tags: (t.tags || []).slice(), url: t.url || '' }));
+      });
+      return true;
+    } catch (e) { return false; }
+  }
+
   function render() {
   syncTopicSeed();
   const vid = window.__skillViewId;
   const t = vid ? findTopic(vid) : null;
   if (t) renderDetail(t); else renderList();
   wire();
+  // 若配置了联网后端，异步拉取当日真实 AI 选题；加载成功后重渲染列表展示
+  loadDailyAITopics().then((loaded) => { if (loaded) Pages.skill(); });
   }
 
   // ---------- 第一级：专题列表 ----------
@@ -144,10 +174,12 @@ Pages.skill = function () {
     </div>`;
     }).join('');
   }
+  const backendOn = !!(Store.get().english.readerBackend || '').replace(/\/$/, '');
+  const liveTag = backendOn ? `<span class="tag tag-live" title="已接入联网后端，每日实时更新真实 AI 热门选题">实时</span>` : '';
   return `
   <div class="card mt12 sk-daily-card">
   <div class="card-head">
-    <div class="title"><img class="ic" src="assets/icons/hk-01.png" alt=""/>每日AI学习选题</div>
+    <div class="title"><img class="ic" src="assets/icons/hk-01.png" alt=""/>每日AI学习选题${liveTag}</div>
     <div class="spacer"></div>
     <button class="btn btn-sm btn-refresh" data-act="ai-refresh">⟳ 刷新一批选题</button>
     <button class="collapse-btn" title="折叠">▾</button>
@@ -307,7 +339,30 @@ Pages.skill = function () {
   Pages.skill();
   return;
   }
-  if (act === 'ai-refresh') return UI.confirm('刷新将用一批新的 AI 热门选题覆盖当前列表，继续？', () => {
+  if (act === 'ai-refresh') return UI.confirm('刷新将用一批新的 AI 热门选题覆盖当前列表，继续？', async () => {
+  const backend = (Store.get().english.readerBackend || '').replace(/\/$/, '');
+  if (backend) {
+    try {
+    UI.toast('正在从后端获取实时 AI 选题…', 'ok');
+    const ctrl = new AbortController();
+    const to = setTimeout(() => ctrl.abort(), 12000);
+    const r = await fetch(backend + '/api/ai/topics?refresh=1', { signal: ctrl.signal });
+    clearTimeout(to);
+    if (r.ok) {
+      const j = await r.json().catch(() => null);
+      if (j && Array.isArray(j.topics) && j.topics.length) {
+      Store.update((st) => {
+        st.skill.aiTopicsDate = D.todayStr();
+        st.skill.dailyTopics = j.topics.map((t) => ({ id: Store.uid(), title: t.title, tags: (t.tags || []).slice(), url: t.url || '' }));
+      });
+      UI.toast('已刷新：后端实时 AI 选题 ' + j.topics.length + ' 条', 'ok');
+      Pages.skill();
+      return;
+      }
+    }
+    } catch (e) { /* 后端失败则回退本地种子 */ }
+  }
+  // 无后端或后端失败：本地种子循环
   Store.update((st) => {
     const seed = TOPIC_SEED.slice();
     const idx = st.skill.topicSeedIndex || 0;

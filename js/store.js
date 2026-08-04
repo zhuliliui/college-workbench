@@ -65,6 +65,7 @@
         articles: [],             // 外刊收藏
         reader: null,             // 当日外刊缓存 {date,title,source,text,link}
         readerBackend: '',        // 联网获取外刊的后端地址（选填，用于绕过被墙代理）
+        readerToday: null,         // 当日后端摘取的外刊缓存 {date, list:[...]}，每日刷新
         lastGroupDoneAt: null,
         daily: { date: '', learned: 0 }, // 每日已学单词数（满 20 词奖励 +1 元）
       },
@@ -72,6 +73,7 @@
       skill: {
         topics: [],               // [{id,name,icon,intro,courses:[{id,icon,title,tags:[],desc,duration,url,done}]}]
         dailyTopics: [],          // 每日AI学习选题 [{id,title,tags[],url}]
+        aiTopicsDate: '',          // 已从后端加载当日选题的日期（同日不重复覆盖用户编辑）
         topicSeedIndex: 0,        // 内置热门话题种子读取位置
       },
       // 云端同步配置（默认码云 Gitee 私有仓库备份，国内直连免代理；亦可切 GitHub）

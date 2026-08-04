@@ -870,12 +870,16 @@ window.Pages = window.Pages || {};
   if (backend) {
   // 已配置后端：每次打开都拉取最新外刊并合并进本地文库（去重，不会重复灌）
   try {
-  const r = await fetchWithTimeout(backend + '/api/reader/list', 8000);
-  if (r.ok) {
-  const j = await r.json().catch(() => null);
-  const arts = (j && j.articles) || [];
-  if (arts.length) importFromBackendList(arts); // 合并全部后端文章（含历史篇章），无需每日限制
-  }
+    const r = await fetchWithTimeout(backend + '/api/reader/list', 8000);
+    if (r.ok) {
+    const j = await r.json().catch(() => null);
+    const arts = (j && j.articles) || [];
+    if (arts.length) importFromBackendList(arts); // 合并全部后端文章（含历史篇章），无需每日限制
+    // 当日后端摘取的 5 篇外刊：单独缓存到本地，按天保存（即便后端休眠也能离线回看今日外刊）
+    if (j && Array.isArray(j.todayArticles) && j.todayArticles.length) {
+      Store.update((s) => { s.english.readerToday = { date: today, list: j.todayArticles }; });
+    }
+    }
   } catch (e) { /* 后端不可达，不阻塞页面 */ }
   return; // 有后端就不走离线种子
   }
@@ -1411,6 +1415,11 @@ window.Pages = window.Pages || {};
   if (readerFilter === 'read') list = items.filter((x) => x.read);
   else if (readerFilter === 'unread') list = items.filter((x) => !x.read);
   const curKey = readerArticle ? getLibKey(readerArticle) : '';
+  // 当日后端摘取的外刊横幅（每日自动保存本地，离线可见）
+  const _rt = Store.get().english.readerToday;
+  const readerTodayBanner = (_rt && _rt.date === todayStr() && _rt.list && _rt.list.length)
+    ? `<div class="rd-today-banner">📰 今日外刊 <b>${_rt.list.length}</b> 篇 · 后端已实时摘取并保存本地（${_rt.date}）</div>`
+    : '';
   const toc = list.map((x) => {
   const active = curKey && curKey === x.key ? ' active' : '';
   const ds = x.offline ? `data-off="${x.idx}"` : `data-lib="${x.idx}"`;
@@ -1435,6 +1444,7 @@ window.Pages = window.Pages || {};
   <button class="rs-fbtn ${readerFilter === 'unread' ? 'on' : ''}" data-filter="unread">未读</button>
   </div>
   ${readerBatch ? `<div class="rd-batchbar">已选 <b id="rdChkCount">${readerChecked.size}</b> 篇 <button class="btn btn-sm btn-danger" data-act="delbatch">删除选中</button> <button class="btn btn-sm btn-soft" data-act="batchcancel">取消</button></div>` : ''}
+  ${readerTodayBanner}
   <div class="rd-toc">${toc}</div>
   <details class="rd-adv"><summary> 联网设置</summary>
   <div class="rd-adv-body">

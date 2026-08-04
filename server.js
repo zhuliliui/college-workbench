@@ -646,7 +646,7 @@ async function buildArticle(it) {
   }
   const summary = await summarize(text);
   const date = it.date ? new Date(it.date).toISOString().slice(0, 10) : todayISO();
-  return { title: it.title, source: it.source, link: it.link, date, category: '', summary, chapters, text: chapters.map((c) => c.en).join('\n\n'), translation: {} };
+  return { title: it.title, source: it.source, link: it.link, date, fetchDate: todayISO(), category: '', summary, chapters, text: chapters.map((c) => c.en).join('\n\n'), translation: {} };
 }
 // 抓取最新 count 篇（去重：已入库的 link/title 跳过；话题过滤：跳过金融/地缘）
 async function fetchLatestArticles(count, force) {
@@ -671,11 +671,11 @@ async function fetchLatestArticles(count, force) {
   }
   return arts;
 }
-// 每日定时抓取：每天首次运行时拉取最新 2 篇入库（落盘持久化，重启不丢）
+// 每日定时抓取：每天首次运行时拉取最新 5 篇外刊入库（落盘持久化，重启不丢），每篇标记 fetchDate=当日
 function checkDailyFetch() {
   const today = todayISO();
   if (journal.lastDaily === today) return;
-  fetchLatestArticles(2, true).then((arts) => {
+  fetchLatestArticles(5, true).then((arts) => {
     if (arts.length) { journal.articles = journal.articles.concat(arts); console.log('[reader] 今日实时入库', arts.length, '篇'); }
     else console.log('[reader] 今日无新外刊可入库');
     journal.lastDaily = today; saveJournal();
@@ -683,6 +683,91 @@ function checkDailyFetch() {
 }
 setInterval(checkDailyFetch, 60 * 60 * 1000);
 setTimeout(checkDailyFetch, 15000);
+
+// ---------- 每日 AI 学习选题：后端实时抓取真实热门 AI 话题 ----------
+// 数据源（均免费、无需密钥，Railway 海外节点可直接访问）：
+//   1) arXiv 最新 AI / CL / LG 论文（真实、当下的 AI 研究选题）
+//   2) Hacker News 热门故事（按 AI 关键词过滤，偏实战 / 产品）
+// 每日首次启动抓取并落盘 data/ai-topics.json（含 date）；同日刷新不重复抓；GET /api/ai/topics?refresh=1 强制重抓。
+// 两个源都失败则回退内置种子，保证永不返回空列表。
+const AI_TOPICS_FILE = path.join(__dirname, 'data', 'ai-topics.json');
+const AI_TOPICS_SEED = [
+  { title: 'Vibe Coding：用自然语言让 AI 自动写程序（2025 热门范式）', tags: ['VibeCoding', 'AI编程'], url: 'https://github.com/filipecalegario/awesome-vibe-coding' },
+  { title: 'Model Context Protocol (MCP)：让 AI 连接外部工具与数据', tags: ['MCP', '协议', 'Agent'], url: 'https://modelcontextprotocol.io' },
+  { title: 'Context Engineering：用 CLAUDE.md 给 AI 编程助手完整上下文', tags: ['ContextEngineering', '提示词', '工程化'], url: 'https://github.com/coleam00/context-engineering-intro' },
+  { title: 'CrewAI 多智能体协作框架实战：组建会分工的 AI 团队', tags: ['CrewAI', '多智能体', '协作'], url: 'https://github.com/crewAIInc/crewAI' },
+  { title: 'LangGraph：用图状态机构建可控、可循环的 Agent 工作流', tags: ['LangGraph', 'Agent', '工作流'], url: 'https://github.com/langchain-ai/langgraph' },
+  { title: 'RAG 检索增强生成实战：向量库 + Embeddings 搭建知识问答', tags: ['RAG', '向量库', 'LLM应用'], url: 'https://github.com/langchain-ai/langchain' },
+  { title: 'LLMs from Scratch：从零构建大语言模型', tags: ['LLM', 'Transformer', '从零构建'], url: 'https://github.com/rasbt/LLMs-from-scratch' },
+  { title: 'Hands-On Large Language Models 大型语言模型实战指南', tags: ['LLM', '实战', 'Python'], url: 'https://github.com/HandsOnLLM/Hands-On-Large-Language-Models' },
+  { title: 'Awesome AI Applications：100+ AI 应用开发实例', tags: ['AI应用', 'RAG', 'CrewAI'], url: 'https://github.com/Arindam200/awesome-ai-apps' },
+  { title: 'Agents Engineering Mastery：企业级 AI 智能体工程实践', tags: ['Agent工程', 'MCP', 'AutoGen'], url: 'https://github.com/ed-donner/agents' },
+  { title: 'Claude Code 设置与命令集：把规格驱动开发带入 Vibe Coding', tags: ['ClaudeCode', '规格驱动', 'Agent'], url: 'https://github.com/feiskyer/claude-code-settings' },
+  { title: 'Made With ML：生产级机器学习系统工程', tags: ['MLOps', 'Ray', '生产部署'], url: 'https://github.com/GokuMohandas/Made-With-ML' },
+];
+function loadAITopics() {
+  try { const j = JSON.parse(fs.readFileSync(AI_TOPICS_FILE, 'utf8')); return { date: j.date || '', topics: Array.isArray(j.topics) ? j.topics : [] }; }
+  catch (e) { return { date: '', topics: [] }; }
+}
+function saveAITopics(obj) { try { fs.mkdirSync(path.dirname(AI_TOPICS_FILE), { recursive: true }); fs.writeFileSync(AI_TOPICS_FILE, JSON.stringify(obj, null, 2)); } catch (e) { console.error('[ai-topics] 保存失败', e.message); } }
+let aiTopics = loadAITopics();
+
+const HN_AI_KW = ['ai', 'llm', 'gpt', 'openai', 'anthropic', 'claude', 'gemini', 'deepseek', 'llama', 'chatgpt', 'machine learning', 'neural', 'diffusion', 'transformer', 'agent', 'rag', 'mcp', 'fine-tun', 'embedding', 'prompt', 'copilot', 'mistral', 'qwen', 'grok', 'vibe coding'];
+async function fetchText(url, ms) {
+  const r = await fetch(url, { signal: AbortSignal.timeout(ms || 9000), headers: { 'User-Agent': 'Mozilla/5.0' } });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return await r.text();
+}
+async function fetchArxivTopics() {
+  const url = 'http://export.arxiv.org/api/query?search_query=cat:cs.AI+OR+cat:cs.CL+OR+cat:cs.LG&sortBy=submittedDate&sortOrder=descending&max_results=20';
+  const xml = await fetchText(url, 12000);
+  const entries = xml.match(/<entry>([\s\S]*?)<\/entry>/g) || [];
+  const out = [];
+  for (const e of entries) {
+    const tm = e.match(/<title>([\s\S]*?)<\/title>/);
+    const im = e.match(/<id>([\s\S]*?)<\/id>/);
+    if (!tm) continue;
+    const title = tm[1].replace(/\s+/g, ' ').trim();
+    if (title.length < 8) continue;
+    out.push({ title: title, url: im ? im[1].trim() : '', tags: ['arXiv', 'AI论文'] });
+  }
+  return out;
+}
+async function fetchHNTopics() {
+  const idsJson = await fetchText('https://hacker-news.firebaseio.com/v0/topstories.json', 9000);
+  const ids = JSON.parse(idsJson).slice(0, 30);
+  const out = [];
+  await Promise.all(ids.map(async (id) => {
+    try {
+      const item = JSON.parse(await fetchText('https://hacker-news.firebaseio.com/v0/item/' + id + '.json', 6000));
+      if (!item || item.type !== 'story' || !item.title) return;
+      const t = item.title.toLowerCase();
+      if (!HN_AI_KW.some((k) => t.includes(k))) return;
+      out.push({ title: item.title.trim(), url: item.url || ('https://news.ycombinator.com/item?id=' + id), tags: ['HackerNews', 'AI热点'] });
+    } catch (e) { /* 单条失败忽略 */ }
+  }));
+  return out;
+}
+async function buildAITopics() {
+  const collected = [];
+  const seen = new Set();
+  const pushUnique = (arr) => { for (const x of (arr || [])) { const k = (x.title || '').toLowerCase().trim(); if (k && !seen.has(k)) { seen.add(k); collected.push(x); } } };
+  const results = await Promise.allSettled([fetchArxivTopics(), fetchHNTopics()]);
+  results.forEach((r) => { if (r.status === 'fulfilled') pushUnique(r.value); });
+  let topics = collected.slice(0, 12);
+  if (!topics.length) topics = AI_TOPICS_SEED.slice(0, 12); // 全部失败则回退内置种子
+  const obj = { date: todayISO(), topics, generatedAt: Date.now() };
+  aiTopics = obj;
+  saveAITopics(obj);
+  console.log('[ai-topics] 今日选题生成', topics.length, '条（来源：', results.map((r) => r.status === 'fulfilled' ? 'OK' : 'FAIL').join('/'), '）');
+  return obj;
+}
+function checkDailyAITopics() {
+  if (aiTopics.date === todayISO() && aiTopics.topics.length) return;
+  buildAITopics().catch((e) => console.warn('[ai-topics] 生成失败', e.message));
+}
+setInterval(checkDailyAITopics, 60 * 60 * 1000);
+setTimeout(checkDailyAITopics, 12000);
 
 // ---------- 路由 ----------
 const server = http.createServer(async (req, res) => {
@@ -751,7 +836,21 @@ const server = http.createServer(async (req, res) => {
 
   // 外刊阅读：返回已持久化的实时外刊库（前端自动同步 / 「实时外刊」按钮从此拉取）
   if (pathname === '/api/reader/list' && req.method === 'GET') {
-    send(res, 200, JSON.stringify({ ok: true, articles: journal.articles || [], lastDaily: journal.lastDaily || null }), 'application/json');
+    const today = todayISO();
+    const arts = journal.articles || [];
+    const todayArticles = arts.filter((a) => (a.fetchDate || '') === today);
+    send(res, 200, JSON.stringify({ ok: true, articles: arts, todayArticles, todayCount: todayArticles.length, lastDaily: journal.lastDaily || null }), 'application/json');
+    return;
+  }
+  // 每日 AI 学习选题：后端实时抓取真实热门 AI 话题（?refresh=1 强制重新抓取一批）
+  if (pathname === '/api/ai/topics' && req.method === 'GET') {
+    const refresh = parsed.query.refresh === '1';
+    if (refresh) {
+      try { const obj = await buildAITopics(); send(res, 200, JSON.stringify(obj), 'application/json'); return; }
+      catch (e) { /* 抓取失败则回退已缓存的当日选题 */ }
+    }
+    if (!aiTopics.topics.length) { try { await buildAITopics(); } catch (e) {} }
+    send(res, 200, JSON.stringify(aiTopics), 'application/json');
     return;
   }
   // 手动触发立即抓取 2 篇入库（「实时外刊」按钮的强制刷新）
