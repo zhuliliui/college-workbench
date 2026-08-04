@@ -967,3 +967,67 @@ table.tbl tr:hover td { background: var(--surface-2); }
   .focus-btn-group { width: 100%; }
   .focus-btn { flex: 1; }
 }
+
+/* ---------- 专注打卡界面（严格仿截图 + KT猫图标） ---------- */
+.focus-layout { display: grid; grid-template-columns: 1fr 360px; gap: 16px; align-items: start; }
+.focus-main-col, .focus-side-col { display: flex; flex-direction: column; gap: 16px; }
+.focus-side-col { position: sticky; top: 70px; align-self: start; }
+
+.focus-stats-grid { grid-template-columns: repeat(6, 1fr); }
+.focus-stat-cell .ic-sm { width: 16px; height: 16px; margin-right: 4px; }
+
+.focus-plan-card .card-body, .focus-timer-card .card-body, .focus-manual-card .card-body, .focus-timeline-card .card-body { padding: 14px; }
+
+.fp-section { font-size: 12.5px; color: var(--text-soft); font-weight: 700; margin: 10px 0 6px; }
+.fp-list { display: flex; flex-direction: column; gap: 8px; }
+.fp-item { display: flex; align-items: center; gap: 10px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.fp-item.done { opacity: .65; background: var(--surface); }
+.fp-check { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--primary); background: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; padding: 0; }
+.fp-check .ic { width: 16px; height: 16px; object-fit: contain; }
+.fp-body { flex: 1; min-width: 0; }
+.fp-name { font-size: 14px; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fp-name .ic { width: 16px; height: 16px; vertical-align: middle; margin-right: 4px; }
+.fp-tags { display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
+.fp-tag { font-size: 11px; padding: 2px 8px; border-radius: 999px; }
+.fp-tag.tag-orange { background: #fff4e8; color: #c77a3c; }
+.fp-tag.tag-soft { background: var(--surface); color: var(--text-soft); }
+.fp-ops { display: flex; gap: 6px; }
+.fp-add-line { display: flex; gap: 8px; margin: 8px 0; }
+.fp-add-line .input { flex: 1; }
+
+.focus-timer-center .input { width: 100%; max-width: 420px; }
+.focus-type-select { max-width: 120px; }
+.focus-btn-record { background: var(--primary-deep); color: #fff; }
+
+.fr-type { font-size: 10px; padding: 2px 7px; border-radius: 999px; color: #fff; flex-shrink: 0; }
+.fr-type.type-focus { background: #e08b4c; }
+.fr-type.type-checkin { background: #5a9fd4; }
+
+.focus-schedule-card .card-body { padding: 12px; }
+.focus-schedule-body { display: flex; flex-direction: column; gap: 12px; }
+.focus-schedule-axis { position: relative; height: 520px; border-left: 1px solid var(--line); margin-left: 40px; }
+.focus-slot { position: absolute; left: -40px; right: 0; height: 1px; border-top: 1px dashed rgba(0,0,0,.08); }
+.focus-slot-label { position: absolute; right: calc(100% + 6px); top: -8px; font-size: 11px; color: var(--text-soft); width: 34px; text-align: right; }
+.focus-event { position: absolute; left: 6px; right: 4px; border-radius: 8px; padding: 4px 8px; color: #fff; font-size: 12px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,.08); display: flex; flex-direction: column; justify-content: center; z-index: 2; }
+.focus-event.event-focus { background: linear-gradient(135deg, #f3a060, #e08b4c); }
+.focus-event.event-checkin { background: linear-gradient(135deg, #7bb3d9, #5a9fd4); }
+.focus-event-title { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.focus-event-meta { font-size: 11px; opacity: .9; }
+.focus-now-line { position: absolute; left: -40px; right: 0; border-top: 2px solid #e0584c; z-index: 3; }
+.focus-now-line::before { content: '现在'; position: absolute; left: -38px; top: -9px; font-size: 10px; color: #e0584c; background: #fff; padding: 0 2px; }
+.focus-unscheduled { margin-top: 4px; }
+.focus-schedule-tip { font-size: 12px; color: var(--text-soft); margin-bottom: 6px; }
+.focus-schedule-controls { display: flex; gap: 8px; margin-bottom: 10px; }
+.focus-schedule-controls .input { flex: 1; min-width: 0; }
+.focus-event.event-schedule { background: linear-gradient(135deg, #a7c4ab, #5e8268); }
+
+@media (max-width: 1100px) {
+  .focus-layout { grid-template-columns: 1fr; }
+  .focus-side-col { position: static; }
+  .focus-stats-grid { grid-template-columns: repeat(3, 1fr); }
+  .focus-schedule-axis { height: 460px; }
+}
+@media (max-width: 720px) {
+  .focus-stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .focus-schedule-axis { height: 420px; }
+}
