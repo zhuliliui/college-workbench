@@ -157,6 +157,7 @@
   <input type="checkbox" id="rCalEnable" ${cal.subscribed ? 'checked' : ''}/>
   <span>开启日历订阅同步</span>
   </label>
+  <div class="muted-text" style="margin-top:6px">或在 App 内「学业 DDL」页点「本地日历」卡片，直接把日程写入设备系统日历（离线、无需后端）。</div>
   </div>`,
   actions: [
   { label: '取消', cls: 'btn-soft', onClick: UI.closeModal },
@@ -167,6 +168,11 @@
   UI.toast('正在发送测试推送…', 'ok');
   if (window.doPush) doPush('serverchan', token, '测试推送', '大学生AI万能工作台 · 微信推送绑定成功！', backendUrl, '')
   .then((r) => { if (r.ok) UI.toast('测试推送成功，请查看微信', 'ok'); else UI.toast('推送失败：' + r.error, 'warn'); });
+  } },
+  { label: '同步本地日历', cls: 'btn-soft', onClick: () => {
+  if (!window.NativeCalendar || !window.NativeCalendar.available()) return UI.toast('本地日历需在 App 中使用', 'warn');
+  UI.toast('正在写入系统日历…', 'ok');
+  window.NativeCalendar.sync().then((r) => { if (r.ok) UI.toast('已同步 ' + r.count + ' 个', 'ok'); else if (r.reason === 'denied') UI.toast('授权被拒绝', 'warn'); else UI.toast('同步失败', 'warn'); });
   } },
   { label: '保存', onClick: () => {
   const pushToken = (UI.val('#rPushToken') || '').trim();

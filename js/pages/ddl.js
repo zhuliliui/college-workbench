@@ -96,6 +96,29 @@ Pages.ddl = function () {
   </div>
   </div>`;
 
+  // 本地日历（离线自动同步）：直接写入设备系统日历，无需后端
+  const local = cal.local || {};
+  const localAuthorized = !!local.authorized;
+  const localStatusText = localAuthorized
+  ? ('已授权 · 最近同步 ' + (local.syncedCount || 0) + ' 个日程（' + new Date(local.lastAt).toLocaleString('zh-CN') + '）')
+  : '尚未授权本地日历';
+  const nativeOn = !!(window.NativeCalendar && window.NativeCalendar.available());
+  const localCalHtml = `
+  <div class="card" style="margin-top:16px">
+  <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-37.png" alt=""/>本地日历（离线自动同步）</div>
+  <div class="spacer"></div><button class="collapse-btn" title="折叠">▾</button></div>
+  <div class="card-body">
+  <div class="muted-text" style="margin-bottom:12px">把 DDL 与学习复习计划直接写入设备的<b>系统日历</b>：弹窗授权后即可用，<b>无需后端、离线可用</b>，到期前按上方「提前提醒时间」弹通知。每次同步都会与当前清单保持一致（旧日程自动清除再重建）。</div>
+  ${nativeOn
+  ? `<div class="flex-wrap gap8">
+  <button class="btn btn-sm" data-act="cal-local-sync">${localAuthorized ? '重新同步到本地日历' : '授权并同步到本地日历'}</button>
+  ${localAuthorized ? '<button class="btn btn-soft btn-sm" data-act="cal-local-revoke">清除本地日程</button>' : ''}
+  </div>
+  <div class="muted-text mt12">${localStatusText}</div>`
+  : `<div class="muted-text" style="color:var(--text-faint)">本地日历写入需在「小朱工作台」App（APK）中使用。当前为浏览器/PWA，可改用上方「下载 .ics」导入系统日历。</div>`}
+  </div>
+  </div>`;
+
   // 微信推送（通过 Server酱 推送到微信，仅 DDL 任务会触发推送）
   const push = s.push;
   const pushHtml = `
@@ -159,7 +182,8 @@ Pages.ddl = function () {
   <div class="card-body">${iHtml}</div>
   </div>
   ${pushHtml}
-  ${calHtml}`;
+  ${calHtml}
+  ${localCalHtml}`;
 
   // 列表内联进度条：拖动实时更新进度条与百分比，松开即保存
   c.querySelectorAll('input[data-prog]').forEach((inp) => {
@@ -192,13 +216,14 @@ Pages.ddl = function () {
   if (act === 'add') return openModal();
   if (act === 'edit') return openModal(id);
   if (act === 'del') return UI.confirm('删除这条 DDL？', () => {
-  Store.update((st) => { st.ddls = st.ddls.filter((x) => x.id !== id); }); Pages.ddl();
+  Store.update((st) => { st.ddls = st.ddls.filter((x) => x.id !== id); }); maybeSyncLocal(); Pages.ddl();
   });
   if (act === 'done') {
   Store.update((st) => { const x = st.ddls.find((y) => y.id === id); x.done = true; x.progress = 100; });
   Store.earn(1, '完成 DDL 任务');
   syncCalendar(true);
   syncPush();
+  maybeSyncLocal();
   Pages.ddl(); return;
   }
   if (act === 'cal-bind') {
@@ -233,6 +258,21 @@ Pages.ddl = function () {
   const link = UI.$('#calLink') ? UI.$('#calLink').value : calSubUrl(Store.get().cal);
   if (navigator.clipboard) navigator.clipboard.writeText(link).then(() => UI.toast('订阅链接已复制', 'ok'), () => UI.toast('复制失败，请手动复制', 'warn'));
   else UI.toast('当前环境不支持自动复制', 'warn');
+  return;
+  }
+  if (act === 'cal-local-sync') {
+  if (!window.NativeCalendar || !window.NativeCalendar.available()) return UI.toast('本地日历需在 App 中使用', 'warn');
+  UI.toast('正在写入系统日历…', 'ok');
+  window.NativeCalendar.sync().then((r) => {
+  if (r.ok) UI.toast('已同步 ' + r.count + ' 个日程到本地日历', 'ok');
+  else if (r.reason === 'denied') UI.toast('日历授权被拒绝', 'warn');
+  else UI.toast('本地日历同步失败', 'warn');
+  Pages.ddl();
+  });
+  return;
+  }
+  if (act === 'cal-local-revoke') {
+  if (window.NativeCalendar) window.NativeCalendar.revoke().then(() => { UI.toast('已清除本地日程', 'ok'); Pages.ddl(); });
   return;
   }
   // ---- 微信推送（Server酱）----
@@ -307,7 +347,7 @@ Pages.ddl = function () {
   if (d) { const x = st.ddls.find((y) => y.id === editId); Object.assign(x, data); x.remindedAt = null; }
   else st.ddls.unshift(Object.assign({ id: Store.uid(), done: false, remindedAt: null }, data));
   });
-  UI.closeModal(); Pages.ddl();
+  UI.closeModal(); maybeSyncLocal(); Pages.ddl();
   } }],
   });
   setTimeout(() => {
@@ -351,6 +391,16 @@ function syncCalendar(silent) {
   });
 }
 window.syncCalendar = syncCalendar;
+
+// DDL 变化后若已授权本地日历，则静默重新同步（不刷新界面，不打扰）
+function maybeSyncLocal() {
+  try {
+    const local = Store.get().cal && Store.get().cal.local;
+    if (local && local.authorized && window.NativeCalendar && window.NativeCalendar.available()) {
+      window.NativeCalendar.sync().catch(() => {});
+    }
+  } catch (e) {}
+}
 
 // 前端本地生成 .ics 并触发下载（无需后端）
 function buildLocalICS(ddls, reminders) {

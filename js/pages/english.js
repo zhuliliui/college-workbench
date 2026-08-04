@@ -519,7 +519,7 @@ window.Pages = window.Pages || {};
   const act = b.dataset.act;
   if (act === 'speak') return speak(w0.word);
   if (act === 'flip') return flip();
-  if (act === 'dictate-start') return startDictate(dList);
+  if (act === 'dictate-start') return startDictate();
   if (act === 'dictate-stop') return stopDictate();
   if (act === 'remember' || act === 'forget') {
   Store.update((st) => {
@@ -571,8 +571,9 @@ window.Pages = window.Pages || {};
   <div class="dictate-list mt12">${rows}</div>
   </div></div>`;
   }
-  // 开始逐词朗读（快照当前清单，避免播放途中新增单词打乱顺序）
-  function startDictate(list) {
+  // 开始逐词朗读（取最新清单；播放途中新增单词不打断当前序列）
+  function startDictate() {
+  const list = todayWords();
   if (!list || !list.length) { UI.toast('今天还没有已背单词', 'warn'); return; }
   stopDictate();
   dictate.playing = true;

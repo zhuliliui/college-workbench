@@ -20,7 +20,7 @@
       ddls: [],
       issues: [],
       // 手机日历订阅（DDL 自动进日历并到期提醒）
-      cal: { backendUrl: '', clientId: '', subscribed: false, reminders: [1440, 720, 60] },
+      cal: { backendUrl: '', clientId: '', subscribed: false, reminders: [1440, 720, 60], local: { authorized: false, calendarId: '', syncedCount: 0, lastAt: 0 } },
       // 微信推送（通过 Server酱 推送到微信，仅 DDL 任务会触发推送）
       push: { service: 'serverchan', token: '', uid: '', enabled: false, backendUrl: '' },
       // 记账存钱
