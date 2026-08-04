@@ -1,6 +1,5 @@
 /* ============================================================
   技能学习页（两级：专题列表 → 专题详情）
-  · 完成任意 1 门课程 +1 金币（进入虚拟存钱罐）
   · 课程可关联到「学习复习计划」，在计划页统一打卡
   · 数据本地持久化，纳入全局 JSON 备份（store.skill）
   ============================================================ */
@@ -60,7 +59,7 @@ Pages.skill = function () {
   </div>
   <div class="card-body">${listHtml}</div>
   </div>
-  <div class="muted-text mt8"> 每完成 1 门课程 +1 金币；课程可关联到「学习复习计划」统一打卡。</div>`;
+  <div class="muted-text mt8"> 课程可关联到「学习复习计划」统一打卡。</div>`;
   }
 
   // ---------- 第二级：专题详情 ----------
@@ -175,8 +174,8 @@ Pages.skill = function () {
   }
   }
   });
-  if (nowDone) { Store.earn(1, '完成技能课程'); UI.toast('打卡成功 +1 金币', 'ok'); }
-  else if (wasDone) { Store.deduct(1, '取消技能课程打卡'); UI.toast('已取消打卡，-1 金币', 'warn'); }
+  if (nowDone) { Store.earn(1, '完成技能课程'); UI.toast('打卡成功', 'ok'); }
+  else if (wasDone) { Store.deduct(1, '取消技能课程打卡'); UI.toast('已取消打卡', 'warn'); }
   else UI.toast('已取消打卡', 'ok');
   // 就地更新，避免整页跳转/重绘
   const row = UI.$(`.sk-course[data-id="${id}"]`);
@@ -222,8 +221,8 @@ Pages.skill = function () {
   <div class="field"><label>专题名称</label><input class="input" id="skName" value="${UI.esc(t ? t.name : '')}" placeholder="如：Python 数据分析"/></div>
   <div class="field"><label>专题类型</label>
   <select class="input" id="skType">
-  <option value="skill"${(!t || !t.reward) ? ' selected' : ''}>技能学习（独立记录，打卡不加金币）</option>
-  <option value="major"${(t && t.reward) ? ' selected' : ''}>专业列表（每完成 1 门课程 +1 金币）</option>
+  <option value="skill"${(!t || !t.reward) ? ' selected' : ''}>技能学习</option>
+  <option value="major"${(t && t.reward) ? ' selected' : ''}>专业列表</option>
   </select>
   </div>
   <div class="field"><label>图标（emoji）</label><input class="input" id="skIcon" value="${UI.esc(t && t.icon ? t.icon : '')}" placeholder="" style="max-width:130px"/></div>

@@ -58,13 +58,11 @@ window.Pages = window.Pages || {};
   const over = budget > 0 && monthExp > budget;
   const budgetBar = over ? 'danger' : (budgetPct > 80 ? 'warn' : '');
 
-  // 存钱目标
+  // 存钱目标（独立于虚拟存钱罐，金额由用户手动记录）
   const goal = f.savingsGoal || 0;
-  const saved = p.balance;
+  const saved = f.savedAmount || 0;
   const goalPct = goal > 0 ? Math.min(100, Math.round((saved / goal) * 100)) : 0;
   const remain = Math.max(0, goal - saved);
-  // 本月收入与存钱目标的关联：存钱率 = 存钱罐余额 ÷ 本月收入
-  const saveRate = monthInc > 0 ? Math.round((saved / monthInc) * 100) : null;
 
   // 本月最大开销
   const monthRecs = f.records.filter((r) => r.type === 'expense' && (r.date || '').slice(0, 7) === mk);
@@ -139,11 +137,11 @@ window.Pages = window.Pages || {};
   </div>
   <div class="progress mt8"><span style="width:${goalPct}%"></span></div>
   <div class="muted-text mt8">完成度 <b style="color:var(--primary-deep)">${goalPct}%</b></div>
-  <div class="flex-between mt12" style="padding:9px 11px;background:rgba(167,196,171,.18);border-radius:10px">
-  <div class="muted-text">本月收入 <b style="color:var(--success)">${D.money(monthInc)}</b></div>
-  <div class="muted-text">存钱率 <b style="color:var(--primary-deep)">${saveRate === null ? '—' : saveRate + '%'}</b></div>
+  <div class="row mt12">
+  <div class="field" style="margin:0"><label>已存金额</label>
+  <input class="input" id="savedInput" type="number" min="0" value="${saved}" placeholder="如 1000"/></div>
+  <button class="btn btn-sm" data-act="save-saved" style="align-self:flex-end">保存</button>
   </div>
-  <div class="muted-text mt8">存钱率 = 存钱罐余额 ÷ 本月收入${monthInc > 0 ? '（本月收入的 ' + saveRate + '% 已存进存钱罐）' : '（记一笔收入后显示）'}</div>
   <div class="row mt12">
   <div class="field" style="margin:0"><label>设置存钱总目标</label>
   <input class="input" id="goalInput" type="number" min="0" value="${goal}" placeholder="如 5000"/></div>
@@ -227,6 +225,10 @@ window.Pages = window.Pages || {};
   if (act === 'save-goal') {
   const v = parseFloat(UI.$('#goalInput').value) || 0;
   Store.update((st) => { st.finance.savingsGoal = v; }); UI.toast('目标已更新', 'ok'); Pages.finance(); return;
+  }
+  if (act === 'save-saved') {
+  const v = parseFloat(UI.$('#savedInput').value) || 0;
+  Store.update((st) => { st.finance.savedAmount = v; }); UI.toast('已存金额已更新', 'ok'); Pages.finance(); return;
   }
   if (act === 'withdraw') return openWithdraw();
   if (act === 'piggy-talk') return showPiggyMonologue();
