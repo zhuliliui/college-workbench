@@ -22,7 +22,7 @@ import org.json.JSONObject;
  * 本地系统日历写入插件（不依赖 Google 服务，离线可用）。
  * 直接读写 Android 系统级 CalendarContract 数据库，华为/安卓日历 App 共享该数据源，写入后自动显示。
  */
-@CapacitorPlugin(name = "CalendarLocal")
+@CapacitorPlugin(name = "CalendarLocal", requestCodes = { 7321 })
 public class CalendarLocalPlugin extends Plugin {
     private static final String PERM_READ = Manifest.permission.READ_CALENDAR;
     private static final String PERM_WRITE = Manifest.permission.WRITE_CALENDAR;
@@ -50,8 +50,9 @@ public class CalendarLocalPlugin extends Plugin {
         ActivityCompat.requestPermissions(getActivity(), new String[] { PERM_READ, PERM_WRITE }, REQ_CODE);
     }
 
-    // 由 MainActivity.onRequestPermissionsResult 转发过来（Capacitor 6 的 Plugin 基类无此方法，故在这里用普通方法接收）
-    public void onPermResult(int requestCode, String[] permissions, int[] grantResults) {
+    // 由 BridgeActivity → Bridge.onRequestPermissionsResult 按 @CapacitorPlugin(requestCodes) 路由到本插件实例
+    @Override
+    protected void handleRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         if (requestCode == REQ_CODE && savedCall != null) {
             boolean ok = grantResults.length >= 2
                 && grantResults[0] == PackageManager.PERMISSION_GRANTED
