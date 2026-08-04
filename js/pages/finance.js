@@ -63,6 +63,8 @@ window.Pages = window.Pages || {};
   const saved = p.balance;
   const goalPct = goal > 0 ? Math.min(100, Math.round((saved / goal) * 100)) : 0;
   const remain = Math.max(0, goal - saved);
+  // 本月收入与存钱目标的关联：存钱率 = 存钱罐余额 ÷ 本月收入
+  const saveRate = monthInc > 0 ? Math.round((saved / monthInc) * 100) : null;
 
   // 本月最大开销
   const monthRecs = f.records.filter((r) => r.type === 'expense' && (r.date || '').slice(0, 7) === mk);
@@ -137,6 +139,11 @@ window.Pages = window.Pages || {};
   </div>
   <div class="progress mt8"><span style="width:${goalPct}%"></span></div>
   <div class="muted-text mt8">完成度 <b style="color:var(--primary-deep)">${goalPct}%</b></div>
+  <div class="flex-between mt12" style="padding:9px 11px;background:rgba(167,196,171,.18);border-radius:10px">
+  <div class="muted-text">本月收入 <b style="color:var(--success)">${D.money(monthInc)}</b></div>
+  <div class="muted-text">存钱率 <b style="color:var(--primary-deep)">${saveRate === null ? '—' : saveRate + '%'}</b></div>
+  </div>
+  <div class="muted-text mt8">存钱率 = 存钱罐余额 ÷ 本月收入${monthInc > 0 ? '（本月收入的 ' + saveRate + '% 已存进存钱罐）' : '（记一笔收入后显示）'}</div>
   <div class="row mt12">
   <div class="field" style="margin:0"><label>设置存钱总目标</label>
   <input class="input" id="goalInput" type="number" min="0" value="${goal}" placeholder="如 5000"/></div>
