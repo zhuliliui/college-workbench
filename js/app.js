@@ -170,9 +170,9 @@
   .then((r) => { if (r.ok) UI.toast('测试推送成功，请查看微信', 'ok'); else UI.toast('推送失败：' + r.error, 'warn'); });
   } },
   { label: '同步本地日历', cls: 'btn-soft', onClick: () => {
-  if (!window.NativeCalendar || !window.NativeCalendar.available()) return UI.toast('本地日历需在 App 中使用', 'warn');
-  UI.toast('正在写入系统日历…', 'ok');
-  window.NativeCalendar.sync().then((r) => { if (r.ok) UI.toast('已同步 ' + r.count + ' 个', 'ok'); else if (r.reason === 'denied') UI.toast('授权被拒绝', 'warn'); else UI.toast('同步失败', 'warn'); });
+  if (!window.NativeCalendar) return UI.toast('本地日历模块未加载', 'warn');
+  UI.toast('正在同步到系统日历…', 'ok');
+  window.NativeCalendar.sync().then((r) => { if (r.ok) { if (r.fallback) UI.toast('已生成日历文件，请在系统日历导入', 'ok'); else UI.toast('已同步 ' + r.count + ' 个', 'ok'); } else if (r.reason === 'empty') UI.toast('没有可同步的 DDL / 计划', 'warn'); else UI.toast('同步失败', 'warn'); });
   } },
   { label: '保存', onClick: () => {
   const pushToken = (UI.val('#rPushToken') || '').trim();
