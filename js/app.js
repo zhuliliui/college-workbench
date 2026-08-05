@@ -117,15 +117,30 @@
   if (el) el.textContent = D.money(Store.get().piggy.balance || 0);
   }
 
-  // ---- 提醒设置弹窗（微信推送 + 日历订阅）----
+  // ---- 提醒设置弹窗（微信推送 / 日历订阅 / 本地日历 三 tab）----
   function openRemindModal() {
   const cal = Store.get().cal || {};
   const push = Store.get().push || {};
+  const local = cal.local || {};
+  const localAuthorized = !!local.authorized;
+  const localStatusText = localAuthorized
+  ? ('已授权 · 最近同步 ' + (local.syncedCount || 0) + ' 个日程（' + new Date(local.lastAt).toLocaleString('zh-CN') + '）')
+  : '尚未授权本地日历';
+  const nativeOn = !!(window.NativeCalendar && window.NativeCalendar.available());
+  const cloudOn = !!cal.backendUrl;
+
   UI.openModal({
-  title: '提醒设置', icon: '<img class="ic" src="assets/icons/hk-41.png" alt=""/>',
+  title: '🔔 提醒设置', icon: '<img class="ic" src="assets/icons/hk-41.png" alt=""/>',
   body: `
-  <div style="font-weight:700;margin-bottom:4px;color:var(--primary-deep)"><img src="assets/icons/hk-36.png" alt="" style="width:16px;height:16px;vertical-align:-3px;margin-right:4px"/>微信推送（完全免费 · Server酱）</div>
-  <div style="font-size:12px;color:var(--text-faint);margin-bottom:10px">通过 Server酱 推送到微信，无需后端、无需付费（<b>仅 DDL 任务</b>会推送）。</div>
+  <div class="muted-text mb8">统一管理三类提醒：微信推送 / 手机日历订阅 / 本地日历写入。点下方按钮分别配置。</div>
+  <div class="grid grid-3" style="gap:8px;margin-bottom:10px">
+  <button type="button" class="btn btn-soft btn-sm rtab" data-rtab="push">💬 微信推送</button>
+  <button type="button" class="btn btn-soft btn-sm rtab" data-rtab="cal">📅 日历订阅</button>
+  <button type="button" class="btn btn-soft btn-sm rtab" data-rtab="local">📲 本地日历</button>
+  </div>
+
+  <!-- Tab: 微信推送 -->
+  <div data-rpane="push">
   <div class="field">
   <label>SendKey（推送密钥）</label>
   <input class="input" id="rPushToken" value="${UI.esc(push.token || '')}" placeholder="SCT 开头，Server酱官网获取"/>
@@ -135,26 +150,45 @@
   <input class="input" id="rPushBackend" value="${UI.esc(push.backendUrl || '')}" placeholder="https://your-server:3000"/>
   <div style="font-size:12px;color:var(--text-faint);margin-top:6px">填写后即使关闭网页，后端也会每 30 分钟自动扫描并推送 DDL 提醒到微信。需运行 <code>server.js</code>。</div>
   </div>
-  <div class="field" style="margin-top:12px">
-  <label class="row" style="align-items:center;gap:8px;cursor:pointer">
+  <label class="row" style="align-items:center;gap:8px;cursor:pointer;font-weight:700;margin:8px 0">
   <input type="checkbox" id="rPushEnable" ${push.enabled ? 'checked' : ''}/>
   <span>开启微信推送</span>
   </label>
   </div>
-  <hr style="border:none;border-top:1px solid var(--surface-2);margin:16px 0"/>
-  <div style="font-weight:700;margin-bottom:8px;color:var(--primary-deep)"><img src="assets/icons/hk-37.png" alt="" style="width:16px;height:16px;vertical-align:-3px;margin-right:4px"/>手机日历订阅</div>
+
+  <!-- Tab: 日历订阅 + 云端同步 -->
+  <div data-rpane="cal" style="display:none">
   <div class="field">
   <label>后端地址</label>
-  <input class="input" id="rCalBackend" value="${UI.esc(cal.backendUrl || '')}" placeholder="https://your-server.example.com"/>
+  <input class="input" id="rCalBackend" value="${UI.esc(cal.backendUrl || '')}" placeholder="如 https://cw-backup-production.up.railway.app"/>
   <div style="font-size:12px;color:var(--text-faint);margin-top:6px">部署 <code>server.js</code> 后填入地址，可生成可订阅日历链接。DDL 自动进手机日历并到期提醒。无后端也可在「学业 DDL」页下载 .ics 导入。</div>
   </div>
-  <div class="field" style="margin-top:12px">
-  <label class="row" style="align-items:center;gap:8px;cursor:pointer">
-  <input type="checkbox" id="rCalEnable" ${cal.subscribed ? 'checked' : ''}/>
-  <span>开启日历订阅同步</span>
-  </label>
-  <div class="muted-text" style="margin-top:6px">或在 App 内「学业 DDL」页点「本地日历」卡片，直接把日程写入设备系统日历（离线、无需后端）。</div>
-  </div>`,
+  <div class="field">
+  <label>固定客户端 ID（多设备共用同一日历，留空则本机自动生成）</label>
+  <input class="input" id="rCalFixedId" value="${UI.esc(cal.clientId || '')}" placeholder="如 my-workbench（两设备填相同即共享日历与跨设备 DDL）"/>
+  </div>
+  <div class="field">
+  <label>提前提醒时间</label>
+  <div class="row gap8">
+  <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="rRm1" ${cal.reminders && cal.reminders.indexOf(1440) >= 0 ? 'checked' : ''}/> 1 天前</label>
+  <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="rRm2" ${cal.reminders && cal.reminders.indexOf(720) >= 0 ? 'checked' : ''}/> 12 小时前</label>
+  <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="rRm3" ${cal.reminders && cal.reminders.indexOf(60) >= 0 ? 'checked' : ''}/> 1 小时前</label>
+  </div>
+  </div>
+  </div>
+
+  <!-- Tab: 本地日历 -->
+  <div data-rpane="local" style="display:none">
+  ${nativeOn
+  ? `<div class="flex-wrap gap8 mb8">
+  <button type="button" class="btn btn-sm" id="rLocalSync">${localAuthorized ? '重新同步到系统日历' : '一键写入系统日历'}</button>
+  ${localAuthorized ? '<button type="button" class="btn btn-soft btn-sm" id="rLocalRevoke">清除系统日历日程</button>' : ''}
+  </div>
+  <div class="muted-text">${localStatusText}</div>
+  <div class="muted-text mt8" style="font-size:12px">💡 vivo/华为/小米/鸿蒙等国产系统的日历 App 默认不显示 LOCAL 账户日历（系统行为，无法绕过）。遇到这种情况时，会自动把 webcal 订阅链接复制到剪贴板——到系统日历 App 「通过链接订阅」粘贴即可。</div>`
+  : `<div class="muted-text" style="color:var(--text-faint)">浏览器环境请使用「日历订阅」tab 里的下载 .ics 导入。</div>`}
+  </div>
+  `,
   actions: [
   { label: '取消', cls: 'btn-soft', onClick: UI.closeModal },
   { label: '测试推送', cls: 'btn-soft', onClick: () => {
@@ -165,31 +199,89 @@
   if (window.doPush) doPush('serverchan', token, '测试推送', '大学生AI万能工作台 · 微信推送绑定成功！', backendUrl, '')
   .then((r) => { if (r.ok) UI.toast('测试推送成功，请查看微信', 'ok'); else UI.toast('推送失败：' + r.error, 'warn'); });
   } },
-  { label: '同步本地日历', cls: 'btn-soft', onClick: () => {
-  if (!window.NativeCalendar) return UI.toast('本地日历模块未加载', 'warn');
-  UI.toast('正在同步到系统日历…', 'ok');
-  window.NativeCalendar.sync().then((r) => { if (r.ok) { if (r.fallback) UI.toast('已生成日历文件，请在系统日历导入', 'ok'); else UI.toast('已同步 ' + r.count + ' 个', 'ok'); } else if (r.reason === 'empty') UI.toast('没有可同步的 DDL / 计划', 'warn'); else UI.toast('同步失败', 'warn'); });
+  { label: '复制订阅链接', cls: 'btn-soft', onClick: () => {
+  const backendUrl = (UI.val('#rCalBackend') || '').trim().replace(/\/$/, '');
+  if (!backendUrl) return UI.toast('请先填写后端地址', 'warn');
+  const fixedId = (UI.val('#rCalFixedId') || '').trim();
+  const cid = fixedId || getClientId();
+  const url = backendUrl + '/api/ddl/calendar.ics?clientId=' + encodeURIComponent(cid);
+  const webcal = 'webcal://' + url.replace(/^https?:\/\//, '');
+  try {
+  if (navigator.clipboard) { navigator.clipboard.writeText(webcal).then(() => UI.toast('订阅链接已复制（含 webcal:// 协议）', 'ok'), () => fallbackCopy(webcal)); }
+  else fallbackCopy(webcal);
+  } catch (e) { fallbackCopy(webcal); }
+  function fallbackCopy(text) {
+  const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.left = '-9999px';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); UI.toast('订阅链接已复制', 'ok'); } catch (e) { UI.toast('复制失败，请手动复制', 'warn'); }
+  document.body.removeChild(ta);
+  }
   } },
   { label: '保存', onClick: () => {
   const pushToken = (UI.val('#rPushToken') || '').trim();
   const pushBackend = (UI.val('#rPushBackend') || '').replace(/\/$/, '').trim();
   const pushEnabled = UI.$('#rPushEnable').checked && !!pushToken;
   const calBackend = (UI.val('#rCalBackend') || '').replace(/\/$/, '').trim();
-  const calSubscribed = UI.$('#rCalEnable').checked && !!calBackend;
+  const fixedId = (UI.val('#rCalFixedId') || '').trim();
+  const cid = fixedId || getClientId();
+  const reminders = [];
+  if (UI.$('#rRm1') && UI.$('#rRm1').checked) reminders.push(1440);
+  if (UI.$('#rRm2') && UI.$('#rRm2').checked) reminders.push(720);
+  if (UI.$('#rRm3') && UI.$('#rRm3').checked) reminders.push(60);
   Store.update((st) => {
   st.push = { service: 'serverchan', token: pushToken, uid: '', enabled: pushEnabled, backendUrl: pushBackend };
   st.cal = st.cal || {};
   st.cal.backendUrl = calBackend;
-  st.cal.subscribed = calSubscribed;
+  st.cal.clientId = cid;
+  st.cal.reminders = reminders.length ? reminders : [1440, 720, 60];
+  st.cal.subscribed = !!calBackend;
   });
   if (pushEnabled) { if (window.syncPush) syncPush(); if (window.checkAndPushDirect) checkAndPushDirect(); }
-  if (calSubscribed && window.syncCalendar) syncCalendar();
+  if (calBackend && window.syncDDLCloud) syncDDLCloud(false);
   UI.closeModal();
   UI.toast('提醒设置已保存', 'ok');
   if (window.Pages && Pages.ddl) Pages.ddl();
   } },
   ],
   });
+
+  // tab 切换（注意：modal 实际插入 document.body 下的 .modal-mask，不是 #modalRoot）
+  setTimeout(() => {
+  const root = document.querySelector('.modal-mask');
+  if (!root) return;
+  root.querySelectorAll('.rtab').forEach((btn) => {
+  btn.addEventListener('click', () => {
+  const tab = btn.dataset.rtab;
+  root.querySelectorAll('[data-rpane]').forEach((p) => p.style.display = 'none');
+  const pane = root.querySelector('[data-rpane="' + tab + '"]');
+  if (pane) pane.style.display = '';
+  });
+  });
+  // 本地日历按钮
+  const syncBtn = document.getElementById('rLocalSync');
+  if (syncBtn && window.NativeCalendar) {
+  syncBtn.addEventListener('click', () => {
+  UI.toast('正在同步到系统日历…', 'ok');
+  window.NativeCalendar.sync().then((r) => {
+  if (r.ok) {
+  if (r.fallback === 'webcal') UI.toast((r.copied ? '订阅链接已复制' : '订阅链接生成失败') + '，请到系统日历 App 粘贴订阅' + (r.hint ? '（' + r.hint + '）' : ''), 'ok');
+  else if (r.fallback === 'ics') UI.toast('已下载 .ics 文件，请到系统日历导入', 'ok');
+  else UI.toast('已写入系统日历 ' + r.count + ' 个日程' + (r.where || ''), 'ok');
+  }
+  else if (r.reason === 'empty') UI.toast('没有可同步的日程', 'warn');
+  else if (r.reason === 'denied') UI.toast('日历权限被拒绝，请到系统设置开启', 'warn');
+  else UI.toast(r.error || '同步失败', 'warn');
+  });
+  });
+  }
+  const revBtn = document.getElementById('rLocalRevoke');
+  if (revBtn && window.NativeCalendar) {
+  revBtn.addEventListener('click', () => {
+  window.NativeCalendar.clearRecord();
+  UI.toast('已清除系统日历日程', 'ok');
+  });
+  }
+  }, 30);
   }
 
   // ---- 云端同步（码云 Gitee / GitHub 私有仓库）----
