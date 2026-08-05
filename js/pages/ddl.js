@@ -11,9 +11,10 @@ Pages.ddl = function () {
   reminderTimers.forEach((t) => clearTimeout(t)); reminderTimers = [];
   const ddls = s.ddls.slice().sort((a, b) => (a.done - b.done) || (a.due || '').localeCompare(b.due || ''));
   const exams = ddls.filter((d) => (d.type || 'ddl') === 'exam' && !d.done);
-  const total = ddls.length;
-  const doneCount = ddls.filter((d) => d.done).length;
-  const soon = ddls.filter((d) => !d.done && D.hoursLeft(d.due) <= 48).length;
+  const tasks = ddls.filter((d) => (d.type || 'ddl') !== 'exam');
+  const total = tasks.length;
+  const doneCount = tasks.filter((d) => d.done).length;
+  const soon = tasks.filter((d) => !d.done && D.hoursLeft(d.due) <= 48).length;
 
   const stats = `
   <div class="grid grid-3">
@@ -103,9 +104,9 @@ Pages.ddl = function () {
     </div>`;
   }
 
-  const listHtml = ddls.length
-  ? '<div class="list ddl-list">' + ddls.map(listRow).join('') + '</div>'
-  : `<div class="empty"><img class="emoji" src="assets/icons/hk-41.png" alt=""/><div class="t">还没有 DDL</div><div class="s">添加课程作业、考试、提交节点，到期前自动提醒</div></div>`;
+  const listHtml = tasks.length
+  ? '<div class="list ddl-list">' + tasks.map(listRow).join('') + '</div>'
+  : `<div class="empty"><img class="emoji" src="assets/icons/hk-41.png" alt=""/><div class="t">还没有学业 DDL</div><div class="s">添加课程作业、提交节点等，到期前自动提醒</div></div>`;
 
   // 手机日历订阅
   const cal = s.cal;
@@ -202,7 +203,10 @@ Pages.ddl = function () {
 
   const examListHtml = exams.length ? '<div class="exam-list">' + exams.map(examRow).join('') + '</div>'
   : `<div class="empty"><img class="emoji" src="assets/icons/hk-41.png" alt=""/><div class="t">暂无考试安排</div><div class="s">新增 DDL 时类型选「考试」，这里会显示倒计时</div></div>`;
+  const examDone = s.ddls.filter((d) => (d.type || 'ddl') === 'exam' && d.done).length;
+  const examStat = `<div class="muted-text mb8">共 <b>${exams.length + examDone}</b> 场考试 · 待考 <b style="color:var(--danger)">${exams.length}</b> · 已结束 <b style="color:var(--success)">${examDone}</b></div>`;
   const examHtml = `
+    ${examStat}
     ${examListHtml}
     <button class="btn btn-soft btn-sm" data-act="add-exam" style="margin-top:12px">＋ 添加考试</button>
   `;
