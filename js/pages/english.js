@@ -689,7 +689,7 @@ window.Pages = window.Pages || {};
   // ---------- 默写自测 ----------
   function renderQuiz(body, bank) {
   if (!bank.length) { wrap(body, `<div class="empty"><img class="emoji" src="assets/icons/hk-38.png" alt=""/><div class="t">词库为空</div></div>`); return; }
-  if (!quiz || quiz.done) quiz = { mode: 'ec', idx: 0, list: bank.slice().sort(() => Math.random() - 0.5), revealed: false, answer: '', done: false };
+  if (!quiz || quiz.done) quiz = { mode: 'ec', idx: 0, list: bank.slice().sort(() => Math.random() - 0.5), revealed: false, answer: '', done: false, feedback: null };
   const total = quiz.list.length;
   if (quiz.idx >= total) {
   const html = `<div class="empty"><img class="emoji" src="assets/icons/hk-06.png" alt=""/><div class="t">本轮自测完成</div><div class="s">共 ${total} 词 · 点击下方重来</div></div><div class="center mt12"><button class="btn btn-sm" data-act="restart">再来一轮</button></div>`;
@@ -699,6 +699,29 @@ window.Pages = window.Pages || {};
   }
   const w0 = quiz.list[quiz.idx];
   const isEC = quiz.mode === 'ec';
+  // 答案归一化：忽略大小写/空格/标点（中英通用）
+  const norm = (s) => ('' + (s || '')).toLowerCase().replace(/[\s,.;:!?·、，。；：！？()（）"'“”‘’'\-]/g, '');
+  // 判断输入是否正确
+  function judge(input) {
+  const inp = norm(input);
+  if (!inp) return null; // 空输入不判
+  if (isEC) {
+  // 英→中：用户写中文，宽松判（释义归一化后包含用户输入，且用户输入够长）
+  const target = norm(w0.cn);
+  return target && inp.length >= 2 && (target === inp || target.indexOf(inp) >= 0);
+  }
+  // 中→英：用户写英文，严格判（忽略大小写空格）
+  return inp === norm(w0.word);
+  }
+  const fb = quiz.feedback;
+  const fbHtml = fb ? (fb.ok
+  ? `<div class="mt16" style="background:rgba(60,150,90,.12);border:1px solid var(--success);border-radius:12px;padding:12px;text-align:left;color:var(--success);font-weight:700">✓ 回答正确！<span class="muted-text" style="font-weight:400">${UI.esc(w0.word)} ${UI.esc(w0.phonetic)}</span></div>`
+  : `<div class="mt16" style="background:rgba(200,60,60,.08);border:1px solid var(--danger);border-radius:12px;padding:12px;text-align:left">
+  <div style="color:var(--danger);font-weight:700">✗ 答错了</div>
+  <div class="mt4"><b style="color:var(--primary-deep)">${UI.esc(w0.word)}</b> <span class="muted-text">${UI.esc(w0.phonetic)} ${UI.esc(w0.pos)}</span></div>
+  <div class="mt4">${UI.esc(w0.cn)}</div>
+  <div class="muted-text mt4">你的答案：${UI.esc(fb.input || '')}</div>
+  </div>`) : '';
   const html = `
   <div class="card">
   <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-38.png" alt=""/>默写自测</div>
@@ -707,27 +730,43 @@ window.Pages = window.Pages || {};
   <div class="card-body center">
   <div class="mt8">${isEC ? '英文：<b style="color:var(--primary-deep);font-size:20px">' + UI.esc(w0.word) + '</b>' : '中文：<b style="color:var(--primary-deep);font-size:18px">' + UI.esc(w0.cn) + '</b>'}</div>
   <input class="input mt12" id="qInput" placeholder="${isEC ? '写出中文释义' : '写出英文单词'}" style="max-width:320px;margin:12px auto;text-align:center"/>
+  ${fbHtml}
   <div class="flex-wrap gap8" style="justify-content:center">
   <button class="btn btn-soft btn-sm" data-act="speak">发音</button>
-  <button class="btn btn-sm" data-act="reveal">显示答案</button>
-  <button class="btn btn-success btn-sm" data-act="next">下一题 →</button>
+  <button class="btn btn-soft btn-sm" data-act="reveal">显示答案</button>
+  <button class="btn btn-success btn-sm" data-act="next">${fb && !fb.ok ? '下一题 →' : '判断并下一题 →'}</button>
   </div>
-  ${quiz.revealed ? `<div class="mt16" style="background:var(--surface-2);border-radius:12px;padding:14px;text-align:left">
-  <div><b style="color:var(--primary-deep)">${UI.esc(w0.word)}</b> <span class="muted-text">${UI.esc(w0.phonetic)} ${UI.esc(w0.pos)}</span></div>
-  <div class="mt8">${UI.esc(w0.cn)}</div>
-  <div class="muted-text mt8">你的答案：${isEC ? UI.esc(quiz.answer) : '<b>' + UI.esc(quiz.answer) + '</b>'}</div>
-  </div>` : ''}
+  <div class="muted-text mt8" style="font-size:12px">输入答案后点「判断并下一题」：答对自动跳到下一题，答错会显示正确答案。</div>
   </div>
   </div>`;
   const w = wrap(body, html);
+  const qIn = w.querySelector('#qInput');
   w.addEventListener('click', (e) => {
   const b = e.target.closest('[data-act]'); if (!b) return;
   const act = b.dataset.act;
   if (act === 'speak') return speak(w0.word);
-  if (act === 'switch') { quiz.mode = quiz.mode === 'ec' ? 'ce' : 'ec'; quiz.revealed = false; quiz.answer = ''; renderQuiz(body, bank); return; }
-  if (act === 'reveal') { quiz.answer = w.querySelector('#qInput').value; quiz.revealed = true; renderQuiz(body, bank); return; }
-  if (act === 'next') { quiz.answer = w.querySelector('#qInput').value; quiz.revealed = false; quiz.idx++; renderQuiz(body, bank); return; }
+  if (act === 'switch') { quiz.mode = quiz.mode === 'ec' ? 'ce' : 'ec'; quiz.revealed = false; quiz.answer = ''; quiz.feedback = null; renderQuiz(body, bank); return; }
+  if (act === 'reveal') { quiz.answer = (qIn ? qIn.value : ''); quiz.feedback = { ok: false, input: quiz.answer }; renderQuiz(body, bank); return; }
+  if (act === 'next') {
+  const input = (qIn ? qIn.value : '') || '';
+  // 答错后：再点「下一题」直接进入下一题
+  if (fb && !fb.ok) { quiz.feedback = null; quiz.idx++; renderQuiz(body, bank); return; }
+  const ok = judge(input);
+  if (ok === null) { UI.toast('请先输入答案', 'warn'); return; }
+  if (ok) {
+  quiz.feedback = { ok: true, input: input };
+  renderQuiz(body, bank);
+  // 答对：1 秒后自动进入下一题
+  setTimeout(() => { if (quiz && quiz.feedback && quiz.feedback.ok) { quiz.feedback = null; quiz.idx++; renderQuiz(body, bank); } }, 1000);
+  } else {
+  quiz.feedback = { ok: false, input: input };
+  renderQuiz(body, bank);
+  }
+  return;
+  }
   });
+  // 回车提交判断
+  if (qIn) qIn.addEventListener('keydown', (e) => { if (e.key === 'Enter') { const b = w.querySelector('[data-act="next"]'); if (b) b.click(); } });
   }
 
   // ---------- 外刊阅读（离线优先：内置多篇英文外刊 + 中文译文，打开即读，绝不卡顿）----------

@@ -791,6 +791,11 @@ table.tbl tr:hover td { background: var(--surface-2); }
   background: var(--surface-2); margin-bottom: 10px;
 }
 .ai-topic-row:last-child { margin-bottom: 0; }
+.ai-topic-row.ai-read-done { opacity: .45; filter: grayscale(.4); }
+.ai-topic-row.ai-read-done .ai-num {
+  background: linear-gradient(135deg, #9bb8a3, #7da088);
+  box-shadow: none;
+}
 .ai-num {
   flex: 0 0 34px; width: 34px; height: 34px; border-radius: 50%;
   display: grid; place-items: center;

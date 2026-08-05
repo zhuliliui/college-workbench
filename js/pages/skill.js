@@ -154,15 +154,17 @@ Pages.skill = function () {
   }
 
   // ---------- 每日AI学习选题 ----------
+  // _showReadTopics：true 时同时显示已读条目（置灰），可取消已读恢复
+  let _showReadTopics = false;
   function renderDailyTopics() {
   const all = getDailyTopics();
-  const topics = all.filter((x) => !x.read); // 已读的不再显示
+  const topics = _showReadTopics ? all : all.filter((x) => !x.read); // 默认隐藏已读
   let html;
   if (!topics.length) {
     html = all.length
     ? `<div class="empty"><img class="emoji" src="assets/icons/hk-38.png" alt=""/>
     <div class="t">今日选题已全部读完</div>
-    <div class="s">点上方「刷新一批选题」获取新热门，或取消下方「显示已读」。</div></div>`
+    <div class="s">点上方「刷新一批选题」获取新热门，或「显示已读」恢复查看。</div></div>`
     : `<div class="empty"><img class="emoji" src="assets/icons/hk-01.png" alt=""/>
     <div class="t">还没有选题</div>
     <div class="s">点击右下角「＋」新增，或点上方「刷新一批选题」获取热门 AI 话题。</div></div>`;
@@ -170,15 +172,18 @@ Pages.skill = function () {
     html = topics.map((x, i) => {
     const tags = (x.tags || []).map((tg) => '#' + UI.esc(tg)).join(' ');
     const hasUrl = !!x.url;
-    return `<div class="ai-topic-row" data-tid="${x.id}">
-    <div class="ai-num">${i + 1}</div>
+    const isRead = !!x.read;
+    return `<div class="ai-topic-row ${isRead ? 'ai-read-done' : ''}" data-tid="${x.id}">
+    <div class="ai-num">${isRead ? '✓' : (i + 1)}</div>
     <div class="ai-main">
       <div class="ai-title" contenteditable="true" data-field="title" data-tid="${x.id}">${UI.esc(x.title || '')}</div>
       <div class="ai-tags" contenteditable="true" data-field="tags" data-tid="${x.id}">${tags}</div>
     </div>
     <div class="ai-ops">
       <button class="btn btn-soft btn-icon ai-link ${hasUrl ? '' : 'disabled'}" data-act="ai-link" data-tid="${x.id}" title="${hasUrl ? '打开链接' : '未设置链接'}"><img class="ic" src="assets/icons/hk-29.png" alt=""/></button>
-      <button class="btn btn-soft btn-icon" data-act="ai-read" data-tid="${x.id}" title="标记已读（不再显示）"><img class="ic" src="assets/icons/hk-38.png" alt=""/></button>
+      ${isRead
+      ? `<button class="btn btn-soft btn-icon" data-act="ai-unread" data-tid="${x.id}" title="取消已读（恢复显示）">↺</button>`
+      : `<button class="btn btn-soft btn-icon" data-act="ai-read" data-tid="${x.id}" title="标记已读（不再显示）"><img class="ic" src="assets/icons/hk-38.png" alt=""/></button>`}
       <button class="btn btn-soft btn-icon" data-act="ai-del" data-tid="${x.id}" title="删除"><img class="ic" src="assets/icons/hk-18.png" alt=""/></button>
     </div>
     </div>`;
@@ -193,6 +198,7 @@ Pages.skill = function () {
     <div class="title"><img class="ic" src="assets/icons/hk-01.png" alt=""/>每日AI学习选题${liveTag}</div>
     <div class="spacer"></div>
     ${readCount ? `<span class="tag muted">已读 ${readCount}</span>` : ''}
+    ${readCount ? `<button class="btn btn-soft btn-sm" data-act="ai-show-read">${_showReadTopics ? '隐藏已读' : '显示已读'}</button>` : ''}
     <button class="btn btn-sm btn-refresh" data-act="ai-refresh">⟳ 刷新一批选题</button>
     <button class="collapse-btn" title="折叠">▾</button>
   </div>
@@ -345,6 +351,17 @@ Pages.skill = function () {
   if (act === 'ai-read') {
   Store.update((st) => { const x = (st.skill.dailyTopics || []).find((y) => y.id === tid); if (x) x.read = true; });
   UI.toast('已标记已读，不再显示', 'ok');
+  Pages.skill();
+  return;
+  }
+  if (act === 'ai-unread') {
+  Store.update((st) => { const x = (st.skill.dailyTopics || []).find((y) => y.id === tid); if (x) x.read = false; });
+  UI.toast('已取消已读，恢复显示', 'ok');
+  Pages.skill();
+  return;
+  }
+  if (act === 'ai-show-read') {
+  _showReadTopics = !_showReadTopics;
   Pages.skill();
   return;
   }
