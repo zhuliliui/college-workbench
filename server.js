@@ -879,8 +879,15 @@ const server = http.createServer(async (req, res) => {
   if (pathname === '/api/reader/fetch' && req.method === 'POST') {
     try {
       const arr = await fetchLatestArticles(2, true);
-      if (arr.length) { const seen = new Set(arr.map((a) => a.link || a.title)); journal.articles = arr.concat((journal.articles || []).filter((a) => !seen.has(a.link || a.title))); journal.lastDaily = todayISO(); saveJournal(); }
-      send(res, 200, JSON.stringify({ ok: true, added: arr.length, articles: arr }), 'application/json');
+      let added = 0;
+      if (arr.length) {
+        const seen = new Set(arr.map((a) => a.link || a.title));
+        const before = (journal.articles || []).length;
+        journal.articles = arr.concat((journal.articles || []).filter((a) => !seen.has(a.link || a.title)));
+        added = journal.articles.length - before;
+        journal.lastDaily = todayISO(); saveJournal();
+      }
+      send(res, 200, JSON.stringify({ ok: true, added: added, articles: arr }), 'application/json');
     } catch (e) { send(res, 500, JSON.stringify({ ok: false, error: e.message }), 'application/json'); }
     return;
   }
