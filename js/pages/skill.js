@@ -4,8 +4,8 @@
   · 数据本地持久化，纳入全局 JSON 备份（store.skill）
   ============================================================ */
 window.Pages = window.Pages || {};
-// 模块级状态：AI 选题是否显示已读（必须在页面函数外，否则每次重渲染被重置）
-let _showReadTopics = false;
+// 模块级状态：AI 选题是否处于「已读热点」视图（必须在页面函数外，否则每次重渲染被重置）
+let _topicReadView = false;
 Pages.skill = function () {
   const c = UI.$('#content');
   window.__skillViewId = null; // 从导航进入时默认回到专题列表；页内下钻用 render() 保留状态
@@ -156,15 +156,48 @@ Pages.skill = function () {
   }
 
   // ---------- 每日AI学习选题 ----------
-  function renderDailyTopics() {
+  // 已读热点独立视图（切换界面展示所有已读）
+  function renderReadTopics() {
   const all = getDailyTopics();
-  const topics = _showReadTopics ? all : all.filter((x) => !x.read); // 默认隐藏已读
+  const readList = all.filter((x) => x.read);
+  const body = readList.length
+  ? `<div class="list ddl-list">` + readList.map((x) => {
+    const tags = (x.tags || []).map((tg) => '#' + UI.esc(tg)).join(' ');
+    return `<div class="item ddl-item" style="opacity:.72">
+    <div class="body">
+      <div class="name">${UI.esc(x.title || '')} <span class="tag muted">已读</span></div>
+      ${tags ? `<div class="meta"><span>${tags}</span></div>` : ''}
+      ${x.url ? `<div class="meta"><span>${UI.esc(x.url)}</span></div>` : ''}
+    </div>
+    <div class="ops">
+      ${x.url ? `<button class="btn btn-soft btn-icon" data-act="ai-link" data-tid="${x.id}" title="打开链接"><img class="ic" src="assets/icons/hk-29.png" alt=""/></button>` : ''}
+      <button class="btn btn-soft btn-icon" data-act="ai-unread" data-tid="${x.id}" title="取消已读（回到列表）">↺</button>
+      <button class="btn btn-soft btn-icon" data-act="ai-del" data-tid="${x.id}" title="删除"><img class="ic" src="assets/icons/hk-18.png" alt=""/></button>
+    </div>
+    </div>`;
+  }).join('') + '</div>'
+  : `<div class="empty"><img class="emoji" src="assets/icons/hk-38.png" alt=""/><div class="t">暂无已读热点</div><div class="s">把选题标记为已读后会出现在这里，方便回顾。</div></div>`;
+  return `
+  <div class="card mt12 sk-daily-card">
+  <div class="card-head">
+    <button class="btn btn-soft btn-sm" data-act="ai-read-back">← 返回选题</button>
+    <div class="title" style="margin-left:8px"><img class="ic" src="assets/icons/hk-38.png" alt=""/>已读热点<span class="tag muted" style="margin-left:6px">${readList.length} 条</span></div>
+    <div class="spacer"></div>
+    <button class="collapse-btn" title="折叠">▾</button>
+  </div>
+  <div class="card-body">${body}</div>
+  </div>`;
+  }
+  function renderDailyTopics() {
+  if (_topicReadView) return renderReadTopics(); // 已读热点独立界面
+  const all = getDailyTopics();
+  const topics = all.filter((x) => !x.read); // 默认隐藏已读
   let html;
   if (!topics.length) {
     html = all.length
     ? `<div class="empty"><img class="emoji" src="assets/icons/hk-38.png" alt=""/>
     <div class="t">今日选题已全部读完</div>
-    <div class="s">点上方「刷新一批选题」获取新热门，或「显示已读」恢复查看。</div></div>`
+    <div class="s">点上方「刷新一批选题」获取新热门，或「显示已读」查看已读热点。</div></div>`
     : `<div class="empty"><img class="emoji" src="assets/icons/hk-01.png" alt=""/>
     <div class="t">还没有选题</div>
     <div class="s">点击右下角「＋」新增，或点上方「刷新一批选题」获取热门 AI 话题。</div></div>`;
@@ -198,7 +231,7 @@ Pages.skill = function () {
     <div class="title"><img class="ic" src="assets/icons/hk-01.png" alt=""/>每日AI学习选题${liveTag}</div>
     <div class="spacer"></div>
     ${readCount ? `<span class="tag muted">已读 ${readCount}</span>` : ''}
-    ${readCount ? `<button class="btn btn-soft btn-sm" data-act="ai-show-read">${_showReadTopics ? '隐藏已读' : '显示已读'}</button>` : ''}
+    ${readCount ? `<button class="btn btn-soft btn-sm" data-act="ai-show-read">已读热点</button>` : ''}
     <button class="btn btn-sm btn-refresh" data-act="ai-refresh">⟳ 刷新一批选题</button>
     <button class="collapse-btn" title="折叠">▾</button>
   </div>
@@ -354,14 +387,19 @@ Pages.skill = function () {
   Pages.skill();
   return;
   }
-  if (act === 'ai-unread') {
-  Store.update((st) => { const x = (st.skill.dailyTopics || []).find((y) => y.id === tid); if (x) x.read = false; });
-  UI.toast('已取消已读，恢复显示', 'ok');
+  if (act === 'ai-show-read') {
+  _topicReadView = true; // 切换到已读热点独立界面
   Pages.skill();
   return;
   }
-  if (act === 'ai-show-read') {
-  _showReadTopics = !_showReadTopics;
+  if (act === 'ai-read-back') {
+  _topicReadView = false; // 返回选题列表
+  Pages.skill();
+  return;
+  }
+  if (act === 'ai-unread') {
+  Store.update((st) => { const x = (st.skill.dailyTopics || []).find((y) => y.id === tid); if (x) x.read = false; });
+  UI.toast('已取消已读，恢复显示', 'ok');
   Pages.skill();
   return;
   }
