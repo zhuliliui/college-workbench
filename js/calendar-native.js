@@ -38,9 +38,9 @@ window.NativeCalendar = (function () {
     return arr;
   }
 
-  function buildICS() {
-    const events = collectEvents();
-    const reminders = remindersArray();
+  function buildICS(eventsArg, remindersArg) {
+    const events = eventsArg || collectEvents();
+    const reminders = remindersArg || remindersArray();
     const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
     const esc = (str) => ('' + (str || '')).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
     const toICS = (ms) => { const d = new Date(ms); const p = (n) => String(n).padStart(2, '0'); return '' + d.getUTCFullYear() + p(d.getUTCMonth() + 1) + p(d.getUTCDate()) + 'T' + p(d.getUTCHours()) + p(d.getUTCMinutes()) + '00Z'; };
@@ -68,27 +68,47 @@ window.NativeCalendar = (function () {
     return { ics: lines.join('\r\n'), count };
   }
 
-  function downloadFallback(ics) {
+  function downloadFallback(ics, filename) {
     const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'cw-calendar.ics';
+    a.download = filename || 'cw-calendar.ics';
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
 
-  function fallbackICS() {
-    const { ics, count } = buildICS();
+  // fallback 1：复制 webcal 订阅链接到剪贴板（推荐给华为/vivo 等不支持 .ics 导入的日历 App）
+  function fallbackCopyWebcal(backendUrl) {
+    const url = backendUrl.replace(/\/$/, '') + '/api/ddl/calendar.ics?clientId=' + getClientId();
+    const webcal = 'webcal://' + url.replace(/^https?:\/\//, '');
+    let copied = false;
+    try { if (navigator.clipboard) { navigator.clipboard.writeText(webcal); copied = true; } } catch (e) {}
+    return { webcal: webcal, httpUrl: url, copied: copied, fallback: 'webcal' };
+  }
+
+  // fallback 2：直接下载 .ics 文件（备用，部分日历 App 支持）
+  function fallbackDownload(events, reminders) {
+    const { ics, count } = buildICS(events, reminders);
     downloadFallback(ics);
-    return { ok: true, count: count, fallback: true };
+    return { fallback: 'ics', count: count };
   }
 
   function errorText(e) {
     const msg = (e && (e.message || e.code || String(e))) || '';
-    if (msg.indexOf('no-writable-calendar') >= 0) return '没有可写入的日历账户';
+    if (msg.indexOf('no-writable-calendar') >= 0) return '设备没有可写入的日历账户（请先在系统日历里添加 Google/QQ/邮箱账户）';
     if (msg.indexOf('permission') >= 0) return '日历权限被拒绝';
     if (msg.indexOf('insert-event-returned-null') >= 0) return '系统拒绝写入事件';
     return '同步失败：' + msg;
+  }
+
+  function getClientId() {
+    const st = (typeof Store !== 'undefined' && Store.get) ? Store.get() : {};
+    const cur = st.cal && st.cal.clientId;
+    if (cur) return cur;
+    let id = (typeof localStorage !== 'undefined') ? localStorage.getItem('cw_client_id') : null;
+    if (!id) { id = 'cw_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); try { localStorage.setItem('cw_client_id', id); } catch (e) {} }
+    if (window.Store) Store.update((st) => { st.cal = st.cal || {}; if (!st.cal.clientId) st.cal.clientId = id; });
+    return id;
   }
 
   async function sync() {
@@ -103,42 +123,55 @@ window.NativeCalendar = (function () {
       const doneTask = tasks.filter((t) => t.done).length;
       const noDateTask = tasks.filter((t) => !t.due).length;
       console.warn('[cal] 无同步事件', { ddl: ddls.length, doneDdl, noDateDdl, task: tasks.length, doneTask, noDateTask });
-      if (window.UI && (ddls.length || tasks.length)) {
-        UI.toast('没有可同步的日程：DDL ' + ddls.length + ' 个（已完 ' + doneDdl + ' · 无日期 ' + noDateDdl + '），计划 ' + tasks.length + ' 个（已完 ' + doneTask + ' · 无日期 ' + noDateTask + '）', 'warn');
-      } else if (window.UI) {
-        UI.toast('还没有 DDL 或计划，添加带日期的条目后再同步', 'warn');
-      }
-      return { ok: false, reason: 'empty' };
+      return {
+        ok: false, reason: 'empty',
+        diagnostic: { ddls: ddls.length, doneDdl, noDateDdl, tasks: tasks.length, doneTask, noDateTask },
+      };
     }
     const plugin = nativePlugin();
+    const st = (typeof Store !== 'undefined' && Store.get) ? Store.get() : { cal: {} };
+    const backendUrl = (st.cal && st.cal.backendUrl) || '';
+
     if (plugin) {
       try {
         const p = await plugin.checkPermissions();
         if (!(p && p.granted)) {
           const r = await plugin.requestPermissions();
-          if (!(r && r.granted)) { if (window.UI) UI.toast('日历授权被拒绝', 'warn'); return { ok: false, reason: 'denied' }; }
+          if (!(r && r.granted)) return { ok: false, reason: 'denied', diagnostic: { perm: false } };
         }
         const res = await plugin.sync({ events: events, reminders: reminders });
         const cnt = (res && typeof res.count === 'number') ? res.count : 0;
-        if (window.Store) Store.update((st) => { st.cal = st.cal || {}; st.cal.local = { authorized: true, syncedCount: cnt, lastAt: Date.now() }; });
+        if (window.Store) Store.update((s) => { s.cal = s.cal || {}; s.cal.local = { authorized: true, syncedCount: cnt, lastAt: Date.now(), method: res && res.method }; });
         if (cnt > 0) {
-          const where = (res && res.method === 'local') ? '（小朱工作台日历）' : '';
-          if (window.UI) UI.toast('已写入系统日历 ' + cnt + ' 个日程' + where, 'ok');
-          return { ok: true, count: cnt };
+          const whereMap = { ours: '（小朱工作台日历）', local: '（本机 LOCAL 日历，部分国产系统不显示）' };
+          const where = whereMap[(res && res.method) || ''] || '';
+          return { ok: true, count: cnt, method: res && res.method, where: where };
         }
-        const err = (res && res.lastError) ? res.lastError : 'unknown';
-        if (window.UI) UI.toast('系统日历写入被拒，已生成 .ics 供导入', 'warn');
-        return fallbackICS(events);
+        // 写入 0 条 → 优先 webcal 链接（前提是后端地址已配）
+        if (backendUrl) {
+          const fb = fallbackCopyWebcal(backendUrl);
+          return { ok: true, count: events.length, fallback: 'webcal', webcal: fb.webcal, httpUrl: fb.httpUrl, copied: fb.copied, lastError: (res && res.lastError) || 'unknown' };
+        }
+        // 没配后端 → 下载 .ics 备用
+        const fb = fallbackDownload(events, reminders);
+        return { ok: true, count: events.length, fallback: 'ics', lastError: (res && res.lastError) || 'unknown' };
       } catch (e) {
         console.warn('[cal] 原生写入失败', e);
-        if (window.UI) UI.toast(errorText(e) + '，已生成 .ics 供导入', 'warn');
-        return fallbackICS(events);
+        if (backendUrl) {
+          const fb = fallbackCopyWebcal(backendUrl);
+          return { ok: false, reason: 'exception', error: errorText(e), fallback: 'webcal', webcal: fb.webcal, httpUrl: fb.httpUrl, copied: fb.copied };
+        }
+        const fb = fallbackDownload(events, reminders);
+        return { ok: false, reason: 'exception', error: errorText(e), fallback: 'ics' };
       }
     }
-    const { ics } = buildICS();
-    downloadFallback(ics);
-    if (window.UI) UI.toast('已生成 .ics，请在系统日历中导入', 'ok');
-    return { ok: true, count: events.length, fallback: true };
+    // 浏览器环境：复制 webcal（若已配后端）或下载 .ics
+    if (backendUrl) {
+      const fb = fallbackCopyWebcal(backendUrl);
+      return { ok: true, count: events.length, fallback: 'webcal', webcal: fb.webcal, httpUrl: fb.httpUrl, copied: fb.copied };
+    }
+    const fb = fallbackDownload(events, reminders);
+    return { ok: true, count: events.length, fallback: 'ics' };
   }
 
   async function clearRecord() {
@@ -147,5 +180,21 @@ window.NativeCalendar = (function () {
     if (window.Store) Store.update((st) => { st.cal = st.cal || {}; st.cal.local = { authorized: false, syncedCount: 0, lastAt: 0 }; });
   }
 
-  return { isNative: isNative, available: available, sync: sync, clearRecord: clearRecord, buildICS: buildICS };
+  // 直接下载 .ics（用于「手动导出」场景）
+  function downloadICS() {
+    const { ics, count } = buildICS();
+    downloadFallback(ics, 'cw-ddl-' + new Date().toISOString().slice(0, 10) + '.ics');
+    return count;
+  }
+
+  // 仅复制 webcal 链接
+  function copyWebcal() {
+    const st = (typeof Store !== 'undefined' && Store.get) ? Store.get() : { cal: {} };
+    const backendUrl = (st.cal && st.cal.backendUrl) || '';
+    if (!backendUrl) return null;
+    const fb = fallbackCopyWebcal(backendUrl);
+    return fb;
+  }
+
+  return { isNative: isNative, available: available, sync: sync, clearRecord: clearRecord, buildICS: buildICS, downloadICS: downloadICS, copyWebcal: copyWebcal };
 })();

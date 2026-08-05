@@ -64,12 +64,26 @@ public class CalendarLocalPlugin extends Plugin {
             && ContextCompat.checkSelfPermission(getContext(), PERM_WRITE) == PackageManager.PERMISSION_GRANTED;
     }
 
+    private boolean isLocalCalendar(long calId) {
+        try (Cursor c = getContext().getContentResolver().query(
+                CalendarContract.Calendars.CONTENT_URI,
+                new String[] { CalendarContract.Calendars.ACCOUNT_TYPE },
+                CalendarContract.Calendars._ID + " = ?",
+                new String[] { String.valueOf(calId) }, null)) {
+            if (c != null && c.moveToFirst()) {
+                return CalendarContract.ACCOUNT_TYPE_LOCAL.equals(c.getString(0));
+            }
+        } catch (Exception ignore) {
+        }
+        return false;
+    }
+
     private long findOurCalendar() {
         String[] proj = { CalendarContract.Calendars._ID, CalendarContract.Calendars.VISIBLE };
         try (Cursor c = getContext().getContentResolver().query(
                 CalendarContract.Calendars.CONTENT_URI, proj,
-                CalendarContract.Calendars.ACCOUNT_NAME + " = ? AND " + CalendarContract.Calendars.ACCOUNT_TYPE + " = ?",
-                new String[] { CAL_NAME, CalendarContract.ACCOUNT_TYPE_LOCAL }, null)) {
+                CalendarContract.Calendars.ACCOUNT_NAME + " = ?",
+                new String[] { CAL_NAME }, null)) {
             if (c != null && c.moveToFirst()) return c.getLong(0);
         } catch (Exception ignore) {
         }
@@ -88,9 +102,9 @@ public class CalendarLocalPlugin extends Plugin {
         cv.put(CalendarContract.Calendars.VISIBLE, 1);
         cv.put(CalendarContract.Calendars.SYNC_EVENTS, 1);
         try {
-            Uri calUri = CalendarContract.Calendars.CONTENT_URI.buildUpon()
-                    .appendQueryParameter(CalendarContract.CALLER_IS_SYNCADAPTER, "true").build();
-            Uri r = getContext().getContentResolver().insert(calUri, cv);
+            // 注意：普通 App 不能用 CALLER_IS_SYNCADAPTER=true（仅 sync adapter 进程可调用）
+            // 因此直接用普通 insert，系统会按 ACCOUNT_TYPE_LOCAL 创建
+            Uri r = getContext().getContentResolver().insert(CalendarContract.Calendars.CONTENT_URI, cv);
             if (r != null) return Long.parseLong(r.getLastPathSegment());
         } catch (Exception ignore) {
         }
@@ -100,7 +114,8 @@ public class CalendarLocalPlugin extends Plugin {
     private long findWritableCalendar() {
         String[] proj = { CalendarContract.Calendars._ID, CalendarContract.Calendars.ACCOUNT_TYPE,
                 CalendarContract.Calendars.VISIBLE, CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL };
-        long localVisible = -1, anyWritable = -1;
+        // 优先级：可见非 LOCAL 账户（Google/Exchange/QQ/网易等）→ 可见 LOCAL 账户 → 任意可写账户
+        long nonLocalVisible = -1, localVisible = -1, anyWritable = -1;
         try (Cursor c = getContext().getContentResolver().query(
                 CalendarContract.Calendars.CONTENT_URI, proj, null, null, null)) {
             if (c == null) return -1;
@@ -110,12 +125,16 @@ public class CalendarLocalPlugin extends Plugin {
                 int vis = c.getInt(2);
                 int lvl = c.getInt(3);
                 if (lvl < CalendarContract.Calendars.CAL_ACCESS_CONTRIBUTOR) continue;
-                if (CalendarContract.ACCOUNT_TYPE_LOCAL.equals(type) && vis == 1 && localVisible < 0) localVisible = id;
+                boolean isLocal = CalendarContract.ACCOUNT_TYPE_LOCAL.equals(type);
+                if (!isLocal && vis == 1 && nonLocalVisible < 0) nonLocalVisible = id;
+                if (isLocal && vis == 1 && localVisible < 0) localVisible = id;
                 if (anyWritable < 0) anyWritable = id;
             }
         } catch (Exception ignore) {
         }
-        return localVisible > 0 ? localVisible : anyWritable;
+        if (nonLocalVisible > 0) return nonLocalVisible;
+        if (localVisible > 0) return localVisible;
+        return anyWritable;
     }
 
     private long pickCalendar() {
@@ -149,7 +168,9 @@ public class CalendarLocalPlugin extends Plugin {
             call.reject("no-writable-calendar");
             return;
         }
-        String method = (findOurCalendar() == calId) ? "local" : ("picked:" + calId);
+        boolean isOur = (findOurCalendar() == calId);
+        boolean isLocal = isLocalCalendar(calId);
+        String method = isOur ? "ours" : (isLocal ? "local" : ("picked:" + calId));
         try {
             getContext().getContentResolver().delete(CalendarContract.Events.CONTENT_URI,
                     CalendarContract.Events.DESCRIPTION + " LIKE ?",
