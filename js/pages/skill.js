@@ -4,6 +4,8 @@
   · 数据本地持久化，纳入全局 JSON 备份（store.skill）
   ============================================================ */
 window.Pages = window.Pages || {};
+// 模块级状态：AI 选题是否显示已读（必须在页面函数外，否则每次重渲染被重置）
+let _showReadTopics = false;
 Pages.skill = function () {
   const c = UI.$('#content');
   window.__skillViewId = null; // 从导航进入时默认回到专题列表；页内下钻用 render() 保留状态
@@ -154,8 +156,6 @@ Pages.skill = function () {
   }
 
   // ---------- 每日AI学习选题 ----------
-  // _showReadTopics：true 时同时显示已读条目（置灰），可取消已读恢复
-  let _showReadTopics = false;
   function renderDailyTopics() {
   const all = getDailyTopics();
   const topics = _showReadTopics ? all : all.filter((x) => !x.read); // 默认隐藏已读
