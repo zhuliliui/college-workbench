@@ -2029,6 +2029,36 @@ window.Pages = window.Pages || {};
   // 杜绝错位。兼容方括号音标 [dju:] → /dju:/。
   // 关键：pdf.js 返回的文字是“内容流顺序”（word→音标→释义 逐条排列），这里直接
   // 使用原始文本，不做按 y 坐标重排（重排会打乱词条顺序导致错位）。
+  // 自定义「|」分隔格式：<单词> <中文释义> | <词组搭配> | <近义词> | <趣味助记>
+  // 每行一个单词（也可整段一行）
+  function parsePipeFormat(text) {
+  const lines = (text || '').split(/\r?\n/);
+  const entries = [];
+  const seen = new Set();
+  for (let raw of lines) {
+  const line = raw.trim();
+  if (!line || !line.includes('|')) continue;
+  const parts = line.split('|').map((s) => s.trim());
+  if (parts.length < 2) continue;
+  // 段 1：单词 + 中文释义（用第一个空格分隔）
+  const head = parts[0];
+  const m = head.match(/^([A-Za-z][A-Za-z'’.\-]{0,30})\s+(.+)$/);
+  if (!m) continue;
+  const word = m[1].trim();
+  const w = word.toLowerCase();
+  if (seen.has(w)) continue;
+  seen.add(w);
+  entries.push({
+  word, phonetic: '', pos: '',
+  cn: m[2].trim(),
+  phrases: parts[1] || '',
+  syn: parts[2] || '',
+  mnemonic: parts[3] || '',
+  });
+  }
+  return entries;
+  }
+
   function parseBilingual(text) {
   text = (text || '').replace(/\[([^\]]+)\]/g, '/$1/'); // 方括号音标 → 斜杠
   const starts = [];
@@ -2103,8 +2133,9 @@ window.Pages = window.Pages || {};
   UI.toast(`成功导入 ${added} 个单词 `, 'ok');
   }).catch((err) => { setProgress(0, 0); if (msg) msg.textContent = '联网补全失败：' + (err && err.message ? err.message : err); UI.toast('联网补全失败', 'warn'); });
   } else {
-  // 主解析：锚点切片（内容流顺序，直接取原书中文）；兜底：同行版式
-  let entries = parseBilingual(rawText);
+  // 主解析：先尝试用户自定义「|」分隔格式，再锚点切片（内容流顺序，直接取原书中文）；兜底：同行版式
+  let entries = parsePipeFormat(textAll);
+  if (entries.length < 1) entries = parseBilingual(rawText);
   if (entries.length < 5) entries = parseVocabText(textAll);
   finishParseEntries(entries);
   }
@@ -2112,12 +2143,14 @@ window.Pages = window.Pages || {};
   }).catch((err) => { if (msg) msg.textContent = 'PDF 解析失败：' + (err && err.message ? err.message : err) + '（可改用「粘贴文本解析」）'; UI.toast('PDF 解析失败', 'warn'); });
   }
   function pasteText() {
-  UI.openModal({ title: '粘贴词汇文本', icon: '<img class="ic" src="assets/icons/hk-38.png" alt=""/>', body: `<div class="field"><label>每行一条，如：abandon /əˈbændən/ v. 放弃；抛弃</label><textarea class="textarea" id="vocTxt" style="min-height:200px" placeholder="abandon /əˈbændən/ v. 放弃；抛弃"></textarea></div>`,
+  UI.openModal({ title: '粘贴词汇文本', icon: '<img class="ic" src="assets/icons/hk-38.png" alt=""/>', body: `<div class="field"><label>每行一条或粘贴整段，支持三种格式（按优先级自动识别）</label><textarea class="textarea" id="vocTxt" style="min-height:220px" placeholder="due 应支付的；到期的；预定的；预期的 | due to 由于；be due to do sth. 预计做某事；due date 到期日 | payable, expected, scheduled | due→丢，丢东西理应赔偿→应支付的\nabandon /əˈbændən/ v. 放弃；抛弃\nabandon   /əˈbændən/   v.   放弃；抛弃"></textarea></div>`,
   actions: [{ label: '取消', cls: 'btn-soft', onClick: UI.closeModal }, { label: '解析导入', onClick: () => { const t = UI.val('#vocTxt'); if (!t.trim()) return UI.toast('请粘贴内容', 'warn'); UI.closeModal(); finishParse(t); } }] });
   }
   function finishParse(text) {
-  const entries = parseBilingual(text);
+  const entries = parsePipeFormat(text);
   if (entries.length >= 1) { finishParseEntries(entries); return; }
+  const fb = parseBilingual(text);
+  if (fb.length >= 1) { finishParseEntries(fb); return; }
   finishParseEntries(parseVocabText(text));
   }
   function finishParseEntries(entries) {
