@@ -1368,11 +1368,11 @@ window.Pages = window.Pages || {};
   readerFilter = 'all'; readerBatch = false; readerChecked.clear();
   if (addedNow > 0) UI.toast('已爬取并同步：新增 ' + addedNow + ' 篇，库内共 ' + arts.length + ' 篇', 'ok');
   else UI.toast('暂无新外刊（外媒每小时才更新几篇，过会儿再来）；库内共 ' + arts.length + ' 篇', 'ok');
-  const bd = UI.$('#enBody'); if (bd) paintReader(bd); else if (Pages.english) Pages.english();
+  const bd = UI.$('#enBody'); if (bd) paintReader(bd); else if (window.__currentPage === 'english' && Pages.english) Pages.english();
   return;
   }
   UI.toast('后端已是最新（无新外刊）', 'warn');
-  const bd = UI.$('#enBody'); if (bd) paintReader(bd); else if (Pages.english) Pages.english();
+  const bd = UI.$('#enBody'); if (bd) paintReader(bd); else if (window.__currentPage === 'english' && Pages.english) Pages.english();
   return;
   }
   } catch (e) { /* 回退离线种子 */ }
@@ -1395,7 +1395,7 @@ window.Pages = window.Pages || {};
   });
   readerFilter = 'all'; readerBatch = false; readerChecked.clear();
   UI.toast('外媒精选导入完成：新增 ' + added + ' 篇' + (updated ? ('、更新 ' + updated + ' 篇') : '') + '（均为完整全文，可逐篇阅读）', 'ok');
-  const bd = UI.$('#enBody'); if (bd) paintReader(bd); else if (Pages.english) Pages.english();
+  const bd = UI.$('#enBody'); if (bd) paintReader(bd); else if (window.__currentPage === 'english' && Pages.english) Pages.english();
   }
   // 单个删除（按 key），仅自建文章可删
   function deleteArticleByKey(key) {

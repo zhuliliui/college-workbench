@@ -104,8 +104,8 @@ Pages.skill = function () {
   const t = vid ? findTopic(vid) : null;
   if (t) renderDetail(t); else renderList();
   wire();
-  // 若配置了联网后端，异步拉取当日真实 AI 选题；加载成功后重渲染列表展示
-  loadDailyAITopics().then((loaded) => { if (loaded) Pages.skill(); });
+  // 若配置了联网后端，异步拉取当日真实 AI 选题；加载成功后仅在仍处于技能页时重渲染
+  loadDailyAITopics().then((loaded) => { if (loaded && window.__currentPage === 'skill') Pages.skill(); });
   }
 
   // ---------- 第一级：专题列表 ----------

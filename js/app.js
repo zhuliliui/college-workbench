@@ -29,6 +29,7 @@
   if (!NAV.some((n) => n.id === id)) id = 'dashboard';
   const pageId = ROUTE[id] || id;
   current = id;
+  window.__currentPage = id; // 暴露给各页面异步回调判断"当前页是否还是我"
   document.getElementById('pageTitle').textContent = TITLES[id];
   // 高亮
   UI.$all('.nav-item').forEach((el) => el.classList.toggle('active', el.dataset.nav === id));
@@ -243,7 +244,8 @@
   if (calBackend && window.syncDDLCloud) syncDDLCloud(false);
   UI.closeModal();
   UI.toast('提醒设置已保存', 'ok');
-  if (window.Pages && Pages.ddl) Pages.ddl();
+  // 只在当前页是 DDL 时才刷新，避免从其他页面保存后被强制跳到 DDL 页
+  if (window.__currentPage === 'ddl' && window.Pages && Pages.ddl) Pages.ddl();
   } },
   ],
   });
