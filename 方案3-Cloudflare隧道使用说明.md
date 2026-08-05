@@ -8,11 +8,12 @@
 ## 一、Windows 一键启动
 双击 **`启动后端-Cloudflare隧道.bat`**：
 1. 自动检查 Node.js（没有会提示安装）
-2. 自动检查 cloudflared（没有会自动下载到当前目录）
+2. 自动检查本目录的 `cloudflared.exe`（**已随项目附带，无需下载**；若缺失会明确提示放置位置）
 3. 后台启动 server.js（端口 3000）
 4. 前台启动隧道，几秒后显示 `https://xxxxxxxx.trycloudflare.com`
 
 > 隧道地址每次启动都会变。**这个窗口别关**，关了隧道就断了。
+> ⚠️ 若双击后窗口一闪而过：请先确认本目录里**存在 `cloudflared.exe`**；如缺失，可让 AI 助手帮忙下载，或从 https://github.com/cloudflare/cloudflared/releases/latest 手动下载 `cloudflared-windows-amd64.exe` 改名为 `cloudflared.exe` 放到本目录。
 
 ## 二、Linux / macOS
 ```bash

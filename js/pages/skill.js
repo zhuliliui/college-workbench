@@ -89,6 +89,10 @@ Pages.skill = function () {
       Store.update((st) => {
         st.skill.aiTopicsDate = today;
         st.skill.dailyTopics = j.topics.map((t) => ({ id: Store.uid(), title: t.title, tags: (t.tags || []).slice(), url: t.url || '' }));
+        // 自动加入本地种子池（去重 + 上限 100），后端不可达时离线也能刷到最新热点
+        const pool = (st.skill.topicPool || []).slice();
+        st.skill.dailyTopics.forEach((f) => { if (!pool.some((p) => p.title === f.title)) pool.push(f); });
+        st.skill.topicPool = pool.slice(-100);
       });
       return true;
     } catch (e) { return false; }
@@ -340,7 +344,7 @@ Pages.skill = function () {
   return;
   }
   if (act === 'ai-refresh') return UI.confirm('刷新将用一批新的 AI 热门选题覆盖当前列表，继续？', async () => {
-  const backend = (Store.get().english.readerBackend || '').replace(/\/$/, '');
+  const backend = Store.readerBackend();
   if (backend) {
     try {
     UI.toast('正在从后端获取实时 AI 选题…', 'ok');
@@ -354,26 +358,30 @@ Pages.skill = function () {
       Store.update((st) => {
         st.skill.aiTopicsDate = D.todayStr();
         st.skill.dailyTopics = j.topics.map((t) => ({ id: Store.uid(), title: t.title, tags: (t.tags || []).slice(), url: t.url || '' }));
+        // 自动加入本地种子池
+        const pool = (st.skill.topicPool || []).slice();
+        st.skill.dailyTopics.forEach((f) => { if (!pool.some((p) => p.title === f.title)) pool.push(f); });
+        st.skill.topicPool = pool.slice(-100);
       });
       UI.toast('已刷新：后端实时 AI 选题 ' + j.topics.length + ' 条', 'ok');
       Pages.skill();
       return;
       }
     }
-    } catch (e) { /* 后端失败则回退本地种子 */ }
+    } catch (e) { /* 后端失败则回退本地池/种子 */ }
   }
-  // 无后端或后端失败：本地种子循环
+  // 无后端或后端失败：优先本地热点池（历史爬到的），没有再用内置种子
   Store.update((st) => {
-    const seed = TOPIC_SEED.slice();
+    const pool = (st.skill.topicPool && st.skill.topicPool.length) ? st.skill.topicPool : TOPIC_SEED.slice();
     const idx = st.skill.topicSeedIndex || 0;
     const batch = 4;
     const next = [];
     for (let i = 0; i < batch; i++) {
-    const s = seed[(idx + i) % seed.length];
+    const s = pool[(idx + i) % pool.length];
     next.push({ id: Store.uid(), title: s.title, tags: s.tags.slice(), url: s.url });
     }
     st.skill.dailyTopics = next;
-    st.skill.topicSeedIndex = (idx + batch) % seed.length;
+    st.skill.topicSeedIndex = (idx + batch) % pool.length;
   });
   UI.toast('已刷新 AI 学习选题', 'ok');
   Pages.skill();

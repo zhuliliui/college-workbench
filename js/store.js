@@ -77,6 +77,7 @@
         dailyTopics: [],          // 每日AI学习选题 [{id,title,tags[],url}]
         aiTopicsDate: '',          // 已从后端加载当日选题的日期（同日不重复覆盖用户编辑）
         topicSeedIndex: 0,        // 内置热门话题种子读取位置
+        topicPool: [],            // 后端爬到的热点累积池（自动去重，离线回退首选）
       },
       // 云端同步配置（默认码云 Gitee 私有仓库备份，国内直连免代理；亦可切 GitHub）
       cloud: {
@@ -249,17 +250,21 @@
   const DEFAULT_RAILWAY_BACKEND = 'https://cw-backup-production.up.railway.app';
   function readerBackend() {
     const raw = (get().english.readerBackend || '').replace(/\/$/, '');
-    if (raw && raw !== DEFAULT_RAILWAY_BACKEND) return raw;
+    // 「提醒→日历订阅」里填的后端（如自建隧道）同样可用于 AI 选题/外刊，自动打通
+    const calUrl = ((get().cal && get().cal.backendUrl) || '').replace(/\/$/, '');
+    const candidate = raw || calUrl;
+    if (candidate && candidate !== DEFAULT_RAILWAY_BACKEND) return candidate;
     const loc = (typeof location !== 'undefined' && location) || {};
     const isLocalhost = /^localhost$|^127\.0\.0\.1$/i.test(loc.hostname || '');
     if (isLocalhost) return ''; // localhost 走同源 /api/...
-    return raw;
+    return candidate;
   }
 
   // 技能学习数据结构兜底（topic/course 字段完整性）
   function normSkill(st) {
-    if (!st.skill || !Array.isArray(st.skill.topics)) { st.skill = { topics: [], dailyTopics: [], topicSeedIndex: 0 }; return; }
+    if (!st.skill || !Array.isArray(st.skill.topics)) { st.skill = { topics: [], dailyTopics: [], topicSeedIndex: 0, topicPool: [] }; return; }
     if (!Array.isArray(st.skill.dailyTopics)) st.skill.dailyTopics = [];
+    if (!Array.isArray(st.skill.topicPool)) st.skill.topicPool = []; // 后端爬到的热点累积池（离线可用）
     if (typeof st.skill.topicSeedIndex !== 'number') st.skill.topicSeedIndex = 0;
     st.skill.topics.forEach((t) => {
       if (!t.id) t.id = uid();

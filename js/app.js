@@ -220,7 +220,7 @@
   document.body.removeChild(ta);
   }
   } },
-  { label: '保存', onClick: () => {
+  { label: '保存并同步到云端', onClick: () => {
   const pushToken = (UI.val('#rPushToken') || '').trim();
   const pushBackend = (UI.val('#rPushBackend') || '').replace(/\/$/, '').trim();
   const pushEnabled = UI.$('#rPushEnable').checked && !!pushToken;
