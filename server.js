@@ -13,6 +13,28 @@ const path = require('path');
 const url = require('url');
 const os = require('os');
 
+// ---------- 代理支持（本机被墙时走本地代理抓外媒；Railway 等海外节点无此变量不受影响）----------
+// 注意：Node 内置 fetch()（undici）默认不读 HTTP_PROXY/HTTPS_PROXY，必须显式挂 dispatcher。
+// 用全局包装：设置了代理环境变量时，所有 fetch 自动走代理，且排除 localhost 自身请求。
+let proxyDispatcher = null;
+try {
+  const proxyUrl = process.env.HTTPS_PROXY || process.env.HTTP_PROXY || '';
+  if (proxyUrl) {
+    const undici = require('undici');
+    proxyDispatcher = new undici.ProxyAgent(proxyUrl);
+    const undiciFetch = undici.fetch;
+    // 注意：Node 内置 globalThis.fetch 不认 dispatcher 参数，必须用 undici.fetch 才能走代理
+    globalThis.fetch = (input, init) => {
+      const u = typeof input === 'string' ? input : (input && input.url) || '';
+      if (!/^https?:\/\/(localhost|127\.0\.0\.1|\[::1\]|0\.0\.0\.0)/i.test(u)) {
+        return undiciFetch(input, Object.assign({}, init, { dispatcher: proxyDispatcher }));
+      }
+      return undiciFetch(input, init);
+    };
+    console.log('[proxy] 已启用代理：' + proxyUrl);
+  }
+} catch (e) { console.warn('[proxy] 代理初始化失败（忽略）：' + e.message); }
+
 const PORT = process.env.PORT || 3000;
 const REG_FILE = path.join(__dirname, 'registrations.json');
 const REG_TTL = 30 * 24 * 60 * 60 * 1000; // 30 天未更新则清理

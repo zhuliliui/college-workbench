@@ -11,13 +11,16 @@
     "deploy:update": "node deploy-update.js"
   },
   "devDependencies": {
+    "@capacitor-community/http": "^1.4.1",
+    "@capacitor/android": "^6.1.2",
     "@capacitor/cli": "^6.1.2",
     "@capacitor/core": "^6.1.2",
-    "@capacitor/android": "^6.1.2",
-    "@capacitor/preferences": "^6.0.2",
     "@capacitor/filesystem": "^6.0.2",
+    "@capacitor/preferences": "^6.0.2",
     "@capacitor/share": "^6.0.2",
-    "@capgo/capacitor-updater": "^6.50.2",
-    "@capacitor-community/http": "^1.4.1"
+    "@capgo/capacitor-updater": "^6.50.2"
+  },
+  "dependencies": {
+    "undici": "^8.10.0"
   }
 }
