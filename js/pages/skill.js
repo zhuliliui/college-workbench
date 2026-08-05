@@ -155,10 +155,15 @@ Pages.skill = function () {
 
   // ---------- 每日AI学习选题 ----------
   function renderDailyTopics() {
-  const topics = getDailyTopics();
+  const all = getDailyTopics();
+  const topics = all.filter((x) => !x.read); // 已读的不再显示
   let html;
   if (!topics.length) {
-    html = `<div class="empty"><img class="emoji" src="assets/icons/hk-01.png" alt=""/>
+    html = all.length
+    ? `<div class="empty"><img class="emoji" src="assets/icons/hk-38.png" alt=""/>
+    <div class="t">今日选题已全部读完</div>
+    <div class="s">点上方「刷新一批选题」获取新热门，或取消下方「显示已读」。</div></div>`
+    : `<div class="empty"><img class="emoji" src="assets/icons/hk-01.png" alt=""/>
     <div class="t">还没有选题</div>
     <div class="s">点击右下角「＋」新增，或点上方「刷新一批选题」获取热门 AI 话题。</div></div>`;
   } else {
@@ -173,11 +178,13 @@ Pages.skill = function () {
     </div>
     <div class="ai-ops">
       <button class="btn btn-soft btn-icon ai-link ${hasUrl ? '' : 'disabled'}" data-act="ai-link" data-tid="${x.id}" title="${hasUrl ? '打开链接' : '未设置链接'}"><img class="ic" src="assets/icons/hk-29.png" alt=""/></button>
+      <button class="btn btn-soft btn-icon" data-act="ai-read" data-tid="${x.id}" title="标记已读（不再显示）"><img class="ic" src="assets/icons/hk-38.png" alt=""/></button>
       <button class="btn btn-soft btn-icon" data-act="ai-del" data-tid="${x.id}" title="删除"><img class="ic" src="assets/icons/hk-18.png" alt=""/></button>
     </div>
     </div>`;
     }).join('');
   }
+  const readCount = all.filter((x) => x.read).length;
   const backendOn = !!Store.readerBackend();
   const liveTag = backendOn ? `<span class="tag tag-live" title="已接入联网后端，每日实时更新真实 AI 热门选题">实时</span>` : '';
   return `
@@ -185,6 +192,7 @@ Pages.skill = function () {
   <div class="card-head">
     <div class="title"><img class="ic" src="assets/icons/hk-01.png" alt=""/>每日AI学习选题${liveTag}</div>
     <div class="spacer"></div>
+    ${readCount ? `<span class="tag muted">已读 ${readCount}</span>` : ''}
     <button class="btn btn-sm btn-refresh" data-act="ai-refresh">⟳ 刷新一批选题</button>
     <button class="collapse-btn" title="折叠">▾</button>
   </div>
@@ -334,6 +342,12 @@ Pages.skill = function () {
   }
   if (act === 'bili') return openBiliModal(id);
   if (act === 'ai-link') return openTopicLinkModal(tid);
+  if (act === 'ai-read') {
+  Store.update((st) => { const x = (st.skill.dailyTopics || []).find((y) => y.id === tid); if (x) x.read = true; });
+  UI.toast('已标记已读，不再显示', 'ok');
+  Pages.skill();
+  return;
+  }
   if (act === 'ai-del') return UI.confirm('删除这条选题？', () => {
   Store.update((st) => { st.skill.dailyTopics = st.skill.dailyTopics.filter((x) => x.id !== tid); });
   Pages.skill();

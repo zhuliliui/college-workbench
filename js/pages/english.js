@@ -1353,7 +1353,13 @@ window.Pages = window.Pages || {};
   if (backend) {
   UI.toast('正在从后端强制爬取最新外刊…', 'ok');
   try {
-  // 1) 强制后端立即爬取 2 篇新文入库（返回真实新增篇数）
+  // 0) 抓取前先记录库内篇数（用于前端自行计算真实新增，不依赖后端返回值）
+  let before = -1;
+  try {
+  const r0 = await fetchWithTimeout(backend + '/api/reader/list', 8000);
+  if (r0 && r0.ok) { const j0 = await r0.json().catch(() => null); before = (j0 && Array.isArray(j0.articles)) ? j0.articles.length : -1; }
+  } catch (e) {}
+  // 1) 强制后端立即爬取 2 篇新文入库
   let addedNow = -1;
   try {
   const f = await fetchWithTimeout(backend + '/api/reader/fetch', 25000, { method: 'POST' }).catch(() => null);
@@ -1366,6 +1372,8 @@ window.Pages = window.Pages || {};
   const arts = (j && j.articles) || [];
   if (importFromBackendList(arts)) {
   readerFilter = 'all'; readerBatch = false; readerChecked.clear();
+  // 前端自己算真实新增：抓取后篇数 - 抓取前篇数（后端旧进程 added 不可靠时也准确）
+  if (before >= 0) addedNow = arts.length - before;
   if (addedNow > 0) UI.toast('已爬取并同步：新增 ' + addedNow + ' 篇，库内共 ' + arts.length + ' 篇', 'ok');
   else UI.toast('暂无新外刊（外媒每小时才更新几篇，过会儿再来）；库内共 ' + arts.length + ' 篇', 'ok');
   const bd = UI.$('#enBody'); if (bd) paintReader(bd); else if (window.__currentPage === 'english' && Pages.english) Pages.english();
