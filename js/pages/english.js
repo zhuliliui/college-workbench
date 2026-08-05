@@ -2030,27 +2030,30 @@ window.Pages = window.Pages || {};
   // 关键：pdf.js 返回的文字是“内容流顺序”（word→音标→释义 逐条排列），这里直接
   // 使用原始文本，不做按 y 坐标重排（重排会打乱词条顺序导致错位）。
   // 自定义「|」分隔格式：<单词> <中文释义> | <词组搭配> | <近义词> | <趣味助记>
-  // 每行一个单词（也可整段一行）
+  // 每行一个单词（也可整段一行）；同时兼容无 | 的简单格式：<单词> <中文释义>（如 due 到期的）
   function parsePipeFormat(text) {
   const lines = (text || '').split(/\r?\n/);
   const entries = [];
   const seen = new Set();
   for (let raw of lines) {
   const line = raw.trim();
-  if (!line || !line.includes('|')) continue;
+  if (!line) continue;
   const parts = line.split('|').map((s) => s.trim());
-  if (parts.length < 2) continue;
+  if (parts.length < 1) continue;
   // 段 1：单词 + 中文释义（用第一个空格分隔）
   const head = parts[0];
   const m = head.match(/^([A-Za-z][A-Za-z'’.\-]{0,30})\s+(.+)$/);
   if (!m) continue;
+  const rest = m[2].trim();
+  // 无 | 时要求释义含中文（如「due 到期的」），避免把纯英文句子误识别成单词
+  if (parts.length < 2 && !/[一-鿿]/.test(rest)) continue;
   const word = m[1].trim();
   const w = word.toLowerCase();
   if (seen.has(w)) continue;
   seen.add(w);
   entries.push({
   word, phonetic: '', pos: '',
-  cn: m[2].trim(),
+  cn: rest,
   phrases: parts[1] || '',
   syn: parts[2] || '',
   mnemonic: parts[3] || '',
