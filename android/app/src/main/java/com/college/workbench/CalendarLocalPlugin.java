@@ -5,6 +5,7 @@ import android.content.ContentValues;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Build;
 import android.provider.CalendarContract;
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
@@ -31,7 +32,38 @@ public class CalendarLocalPlugin extends Plugin {
     public void checkPermissions(PluginCall call) {
         JSObject ret = new JSObject();
         ret.put("granted", hasPerm());
+        ret.put("brand", deviceBrand());
+        ret.put("manufacturer", Build.MANUFACTURER);
+        ret.put("model", Build.MODEL);
+        ret.put("androidSdk", Build.VERSION.SDK_INT);
         call.resolve(ret);
+    }
+
+    @PluginMethod()
+    public void getDeviceInfo(PluginCall call) {
+        JSObject ret = new JSObject();
+        ret.put("brand", deviceBrand());
+        ret.put("manufacturer", Build.MANUFACTURER);
+        ret.put("model", Build.MODEL);
+        ret.put("androidSdk", Build.VERSION.SDK_INT);
+        ret.put("isChinaRom", isChinaRom());
+        call.resolve(ret);
+    }
+
+    private static String deviceBrand() {
+        String b = Build.BRAND;
+        return (b == null || b.isEmpty()) ? Build.MANUFACTURER : b;
+    }
+
+    // 国产 ROM 检测：vivo/华为/荣耀/小米/红米/OPPO/realme/一加/中兴/魅族/鸿蒙
+    private static boolean isChinaRom() {
+        String b = (Build.BRAND == null ? "" : Build.BRAND).toLowerCase();
+        String m = (Build.MANUFACTURER == null ? "" : Build.MANUFACTURER).toLowerCase();
+        String[] marks = { "vivo", "huawei", "honor", "xiaomi", "redmi", "oppo", "realme", "oneplus", "meizu", "zte", "iqoo", "nubia" };
+        for (String k : marks) {
+            if (b.indexOf(k) >= 0 || m.indexOf(k) >= 0) return true;
+        }
+        return false;
     }
 
     @PluginMethod()
@@ -225,6 +257,8 @@ public class CalendarLocalPlugin extends Plugin {
         JSObject ret = new JSObject();
         ret.put("count", count);
         ret.put("method", method);
+        ret.put("brand", deviceBrand());
+        ret.put("isChinaRom", isChinaRom());
         if (lastError != null) ret.put("lastError", lastError);
         call.resolve(ret);
     }

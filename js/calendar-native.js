@@ -3,6 +3,23 @@ window.NativeCalendar = (function () {
     return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
   }
 
+  // 缓存设备品牌信息（plugin 返回的 brand/manufacturer/isChinaRom）
+  let deviceInfoCache = null;
+  async function getDeviceInfo() {
+    const plugin = nativePlugin();
+    if (!plugin || !plugin.getDeviceInfo) return { brand: 'unknown', isChinaRom: false };
+    if (deviceInfoCache) return deviceInfoCache;
+    try {
+      const r = await plugin.getDeviceInfo();
+      deviceInfoCache = { brand: r.brand || 'unknown', manufacturer: r.manufacturer || '', isChinaRom: !!r.isChinaRom };
+    } catch (e) { deviceInfoCache = { brand: 'unknown', isChinaRom: false }; }
+    return deviceInfoCache;
+  }
+
+  // LOCAL 类方法（即同步到了 LOCAL 账户日历），在国产 ROM 下系统日历 App 默认不可见
+  // 此时主动 fallback 到 webcal 链接，避免误导用户
+  function isLocalMethod(m) { return m === 'ours' || m === 'local'; }
+
   function nativePlugin() {
     try {
       if (!isNative()) return null;
@@ -131,6 +148,9 @@ window.NativeCalendar = (function () {
     const plugin = nativePlugin();
     const st = (typeof Store !== 'undefined' && Store.get) ? Store.get() : { cal: {} };
     const backendUrl = (st.cal && st.cal.backendUrl) || '';
+    const deviceInfo = await getDeviceInfo();
+    const isChinaRom = !!deviceInfo.isChinaRom;
+    const brandLabel = deviceInfo.brand || '';
 
     if (plugin) {
       try {
@@ -141,18 +161,38 @@ window.NativeCalendar = (function () {
         }
         const res = await plugin.sync({ events: events, reminders: reminders });
         const cnt = (res && typeof res.count === 'number') ? res.count : 0;
-        if (window.Store) Store.update((s) => { s.cal = s.cal || {}; s.cal.local = { authorized: true, syncedCount: cnt, lastAt: Date.now(), method: res && res.method }; });
-        if (cnt > 0) {
-          const whereMap = { ours: '（小朱工作台日历）', local: '（本机 LOCAL 日历，部分国产系统不显示）' };
-          const where = whereMap[(res && res.method) || ''] || '';
-          return { ok: true, count: cnt, method: res && res.method, where: where };
+        const method = res && res.method;
+
+        // 国产 ROM + 写入到 LOCAL 账户日历 → 系统日历 App 看不见，必须走 webcal
+        if (cnt > 0 && isChinaRom && isLocalMethod(method)) {
+          if (window.Store) Store.update((s) => { s.cal = s.cal || {}; s.cal.local = { authorized: true, syncedCount: cnt, lastAt: Date.now(), method: method, hiddenOnRom: true }; });
+          if (backendUrl) {
+            const fb = fallbackCopyWebcal(backendUrl);
+            return {
+              ok: true, count: cnt, method: method, fallback: 'webcal', webcal: fb.webcal, httpUrl: fb.httpUrl, copied: fb.copied,
+              hint: '检测到 ' + brandLabel + '（国产 ROM），写入到 LOCAL 账户的日程在系统日历 App 默认不可见。已自动复制订阅链接，请到日历 App 粘贴订阅。',
+            };
+          }
+          const fb = fallbackDownload(events, reminders);
+          return {
+            ok: true, count: cnt, method: method, fallback: 'ics',
+            hint: '检测到 ' + brandLabel + '（国产 ROM），写入到 LOCAL 账户的日程在系统日历 App 默认不可见。已下载 .ics。',
+          };
         }
-        // 写入 0 条 → 优先 webcal 链接（前提是后端地址已配）
+
+        // 写入成功（非国产 ROM 或非 LOCAL 账户）
+        if (cnt > 0) {
+          if (window.Store) Store.update((s) => { s.cal = s.cal || {}; s.cal.local = { authorized: true, syncedCount: cnt, lastAt: Date.now(), method: method }; });
+          const whereMap = { ours: '（小朱工作台日历）', local: '（本机 LOCAL 日历）' };
+          const where = (method && whereMap[method]) ? whereMap[method] : '';
+          return { ok: true, count: cnt, method: method, where: where, brand: brandLabel, isChinaRom: isChinaRom };
+        }
+
+        // 写入 0 条 → fallback
         if (backendUrl) {
           const fb = fallbackCopyWebcal(backendUrl);
           return { ok: true, count: events.length, fallback: 'webcal', webcal: fb.webcal, httpUrl: fb.httpUrl, copied: fb.copied, lastError: (res && res.lastError) || 'unknown' };
         }
-        // 没配后端 → 下载 .ics 备用
         const fb = fallbackDownload(events, reminders);
         return { ok: true, count: events.length, fallback: 'ics', lastError: (res && res.lastError) || 'unknown' };
       } catch (e) {
@@ -165,7 +205,7 @@ window.NativeCalendar = (function () {
         return { ok: false, reason: 'exception', error: errorText(e), fallback: 'ics' };
       }
     }
-    // 浏览器环境：复制 webcal（若已配后端）或下载 .ics
+    // 浏览器环境
     if (backendUrl) {
       const fb = fallbackCopyWebcal(backendUrl);
       return { ok: true, count: events.length, fallback: 'webcal', webcal: fb.webcal, httpUrl: fb.httpUrl, copied: fb.copied };
