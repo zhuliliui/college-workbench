@@ -120,29 +120,32 @@ Pages.ddl = function () {
   // 微信推送
   const push = s.push;
 
-  // ====== 顶部统一「提醒」面板（平铺：微信推送 / 日历订阅 / 本地日历）======
+  // ====== 顶部统一「日历订阅」面板（tab：微信推送 / 日历订阅 / 本地日历）======
   // 总开关：是否启用 DDL 上传云端（只要 backendUrl 配了就生效，不再依赖 subscribed）
   const cloudOn = !!cal.backendUrl;
   const reminderHtml = `
   <div class="card" style="margin-top:16px">
   <div class="card-head">
-  <div class="title"><img class="ic" src="assets/icons/hk-37.png" alt=""/>🔔 提醒设置</div>
+  <div class="title"><img class="ic" src="assets/icons/hk-37.png" alt=""/>日历订阅</div>
   <div class="spacer"></div>
   <span class="tag ${(push.enabled || cloudOn || localAuthorized) ? 'success' : 'muted'}">
   ${push.enabled ? '微信推送' : ''}${push.enabled && (cloudOn || localAuthorized) ? ' · ' : ''}${cloudOn ? '日历订阅' : ''}${(push.enabled || cloudOn) && localAuthorized ? ' · ' : ''}${localAuthorized ? '本地日历' : ''}${(!push.enabled && !cloudOn && !localAuthorized) ? '未配置' : ''}
   </span>
   <button class="collapse-btn" title="折叠">▾</button></div>
   <div class="card-body">
+  <div class="muted-text mb8">统一管理三类提醒：微信推送 / 手机日历订阅 / 本地日历写入。点下方按钮分别配置。</div>
+  <div class="grid grid-3" style="gap:8px">
+  <button class="btn btn-soft btn-sm" data-act="reminder-tab" data-tab="push">💬 微信推送</button>
+  <button class="btn btn-soft btn-sm" data-act="reminder-tab" data-tab="cal">📅 日历订阅</button>
+  <button class="btn btn-soft btn-sm" data-act="reminder-tab" data-tab="local">📲 本地日历</button>
+  </div>
 
   <!-- 微信推送（Server酱，完全免费） -->
-  <div style="margin-bottom:18px">
-  <div style="font-weight:800;font-size:15px;color:var(--primary-deep);margin-bottom:6px">💬 微信推送（完全免费 · Server酱）</div>
-  <div class="muted-text mb8">通过 Server酱 推送到微信，无需后端、无需付费（仅 DDL 任务会推送）。</div>
+  <div data-pane="push" style="display:none;margin-top:12px">
   <div class="field"><label>SendKey（推送密钥）</label>
   <input class="input" id="pushToken" value="${UI.esc(push.token || '')}" placeholder="SCT 开头，Server酱官网获取"/></div>
   <div class="field"><label>后端地址（选填，关页面后自动推送）</label>
   <input class="input" id="pushBackend" value="${UI.esc(push.backendUrl || '')}" placeholder="留空 = 打开页面时推送；填写 = 关页面也能推送（需运行 server.js）"/></div>
-  <div class="muted-text" style="font-size:12px;margin:6px 0">填写后即使关闭网页，后端也会每 30 分钟自动扫描并推送 DDL 提醒到微信。需运行 server.js。</div>
   <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700;margin:8px 0">
   <input type="checkbox" id="pushEnableToggle" ${push.enabled ? 'checked' : ''}/> 开启微信推送
   </label>
@@ -154,14 +157,10 @@ Pages.ddl = function () {
   </div>
   </div>
 
-  <hr style="border:none;border-top:1px dashed var(--border-soft);margin:16px 0"/>
-
   <!-- 手机日历订阅 + 云端同步 -->
-  <div style="margin-bottom:18px">
-  <div style="font-weight:800;font-size:15px;color:var(--primary-deep);margin-bottom:6px">📅 手机日历订阅（DDL 自动进日历）</div>
+  <div data-pane="cal" style="display:none;margin-top:12px">
   <div class="field"><label>后端地址</label>
   <input class="input" id="calUrl" value="${UI.esc(cal.backendUrl || '')}" placeholder="如 https://cw-backup-production.up.railway.app"/></div>
-  <div class="muted-text mb8" style="font-size:12px">部署 server.js 后填入地址，可生成可订阅日历链接。DDL 自动进手机日历并到期提醒。无后端也可在「学业 DDL」页下载 .ics 导入。</div>
   <div class="field"><label>固定客户端 ID（多设备共用同一日历，留空则本机自动生成）</label>
   <input class="input" id="calFixedId" value="${UI.esc(cal.clientId || '')}" placeholder="如 my-workbench（两设备填相同即共享日历与跨设备 DDL）"/></div>
   <div class="field"><label>提前提醒时间</label>
@@ -179,11 +178,8 @@ Pages.ddl = function () {
   </div>
   </div>
 
-  <hr style="border:none;border-top:1px dashed var(--border-soft);margin:16px 0"/>
-
   <!-- 本地日历（一键写入系统日历） -->
-  <div>
-  <div style="font-weight:800;font-size:15px;color:var(--primary-deep);margin-bottom:6px">📲 本地日历（一键写入系统日历）</div>
+  <div data-pane="local" style="display:none;margin-top:12px">
   ${nativeOn
   ? `<div class="flex-wrap gap8 mb8">
   <button class="btn btn-sm" data-act="cal-local-sync">${localAuthorized ? '重新同步到系统日历' : '一键写入系统日历'}</button>
@@ -191,7 +187,7 @@ Pages.ddl = function () {
   </div>
   <div class="muted-text">${localStatusText}</div>
   <div class="muted-text mt8" style="font-size:12px">💡 vivo/华为/小米/鸿蒙等国产系统的日历 App 默认不显示 LOCAL 账户日历（这属于系统行为，无法绕过）。遇到这种情况时，会自动把 webcal 订阅链接复制到剪贴板——到系统日历 App 「通过链接订阅」粘贴即可，更稳定。</div>`
-  : `<div class="muted-text" style="color:var(--text-faint)">浏览器环境请使用上方「下载 .ics」导入。</div>`}
+  : `<div class="muted-text" style="color:var(--text-faint)">浏览器环境请使用「下载 .ics」导入。</div>`}
   </div>
 
   </div>
@@ -265,6 +261,16 @@ Pages.ddl = function () {
   if (push.enabled) syncPush();
   checkReminders();
   scheduleReminders();
+
+  // 日历订阅面板 tab 切换
+  c.querySelectorAll('[data-act="reminder-tab"]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const tab = btn.dataset.tab;
+      c.querySelectorAll('[data-pane]').forEach((p) => p.style.display = 'none');
+      const pane = c.querySelector('[data-pane="' + tab + '"]');
+      if (pane) pane.style.display = '';
+    });
+  });
 
   window.PageHandler = (e) => {
   const b = e.target.closest('[data-act]'); if (!b) return;
