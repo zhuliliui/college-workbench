@@ -919,9 +919,8 @@ window.Pages = window.Pages || {};
   picks.forEach((a) => {
   const art = normalizeArticle(a);
   const title = (a.title || '').trim();
-  const body50 = (art.text || '').slice(0, 50);
-  // 查重优先按正文前 50 字（标题被用户改成「英文+中文」混合后仍识别为同一篇），标题相同兜底
-  const i = l.findIndex((x) => !x.offline && ((x.text || '').slice(0, 50) === body50 || (x.title || '').trim() === title));
+  // 查重：英文部分相同即视为同一篇（正文中英对照/排版乱/标题被改成英文+中文都不影响）
+  const i = l.findIndex((x) => sameArticle(x, art));
   if (i >= 0) {
   const prev = l[i];
   const keepTitle = (prev.title || '').trim();
@@ -962,19 +961,22 @@ window.Pages = window.Pages || {};
   if (eng.lastAutoDate === today) return;
   const seed = (typeof window !== 'undefined' && window.REALNEWS_SEED) || [];
   if (!seed.length) { Store.update((s) => { s.english.lastAutoDate = today; }); return; }
-  const have = new Set((eng.articles || []).map((a) => (a.title || '').trim()));
+  const have = new Set((eng.articles || []).filter((x) => !x.offline).map((a) => enFp(a.text, 60) || enFp(a.title, 40)));
   const sorted = seed.slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
   const picks = [];
-  for (const a of sorted) { if (picks.length >= 2) break; if (!have.has((a.title || '').trim())) picks.push(a); }
+  for (const a of sorted) {
+  if (picks.length >= 2) break;
+  const fp = enFp(a.text, 60) || enFp(a.title, 40);
+  if (fp && !have.has(fp)) picks.push(a); // 按英文指纹判断是否已存在（标题/正文被改成中英混合也算已存在）
+  }
   if (!picks.length) { Store.update((s) => { s.english.lastAutoDate = today; }); return; } // 池内文章已全部入库
   Store.update((s) => {
   const l = s.english.articles || (s.english.articles = []);
   picks.forEach((a) => {
   const art = normalizeArticle(a);
   const title = (a.title || '').trim();
-  const body50 = (art.text || '').slice(0, 50);
-  // 查重优先按正文前 50 字（标题被用户改成「英文+中文」混合后仍识别为同一篇），标题相同兜底
-  const i = l.findIndex((x) => !x.offline && ((x.text || '').slice(0, 50) === body50 || (x.title || '').trim() === title));
+  // 查重：英文部分相同即视为同一篇（正文中英对照/排版乱/标题被改成英文+中文都不影响）
+  const i = l.findIndex((x) => sameArticle(x, art));
   if (i >= 0) {
   const prev = l[i];
   const keepTitle = (prev.title || '').trim();
@@ -1003,6 +1005,20 @@ window.Pages = window.Pages || {};
   // ---------- 我的外刊：载入保存 + 已读/未读 ----------
   // 以「标题 + 正文前 50 字」做去重 key，保证同一篇文章多次载入只存一条且 read 状态稳定
   function getLibKey(a) { return (a && a.title ? a.title : '') + '|||' + ((a && a.text ? a.text : '').slice(0, 50)); }
+  // 英文指纹：剔除中文/标点/空白后取前 n 个英文字母。
+  // 用途：同一篇文章无论正文排版（纯英文 / 中英对照 / 爬取乱格式）如何，英文部分不变 → 指纹相同 → 视为同一篇。
+  // 这样用户把标题或正文改成「英文+中文」后，实时外刊再爬回同篇也能正确查重，不重复导入。
+  function enFp(s, n) { return String(s || '').replace(/[^\x00-\x7F]/g, ' ').replace(/[^A-Za-z]+/g, '').toLowerCase().slice(0, n || 60); }
+  // 统一查重：英文正文指纹相同 → 同一篇；否则标题英文指纹相同 → 同一篇；再否则标题原文相同 → 同一篇
+  function sameArticle(x, art) {
+  if (!x || !art) return false;
+  if (x.offline) return false;
+  const f1 = enFp(x.text, 60), f2 = enFp(art.text, 60);
+  if (f1 && f2 && f1 === f2) return true;
+  const t1 = enFp(x.title, 40), t2 = enFp(art.title, 40);
+  if (t1 && t2 && t1 === t2) return true;
+  return (x.title || '').trim() === (art.title || '').trim();
+  }
   // 按「过滤后的用户文章数组」取下标对应的文章，避免 data-lib / data-edit 的索引与 english.articles 完整数组错位（内置 offline 文章不计入用户库）
   function libArticleAt(idx) {
   const lib = (Store.get().english.articles || []).filter((a) => !a.offline);
@@ -1014,12 +1030,9 @@ window.Pages = window.Pages || {};
   Store.update((s) => {
   const lib = s.english.articles || (s.english.articles = []);
   const key = getLibKey(art);
-  const body50 = (art.text || '').slice(0, 50);
   let found = lib.find((x) => getLibKey(x) === key);
-  // 查重优先按正文前 50 字（标题被用户改成「英文+中文」混合后仍能识别为同一篇）
-  if (!found) found = lib.find((x) => !x.offline && (x.text || '').slice(0, 50) === body50);
-  // 标题相同兜底（正文为空时）
-  if (!found) found = lib.find((x) => !x.offline && (x.title || '').trim() === (art.title || '').trim());
+  // 查重：英文部分相同即视为同一篇（正文中英对照/排版乱/标题被改成英文+中文都不影响）
+  if (!found) found = lib.find((x) => sameArticle(x, art));
   if (found) {
   const keepTitle = (found.title || '').trim();
   Object.assign(found, { source: art.source, text: art.text, translation: art.translation, lang: art.lang, offline: art.offline, date: art.date, link: art.link, tailCn: art.tailCn, ts: Date.now() });
@@ -1482,9 +1495,8 @@ window.Pages = window.Pages || {};
   const title = (a.title || '').trim();
   if (!title) return;
   const art = normalizeArticle(a);
-  const body50 = (art.text || '').slice(0, 50);
-  // 查重优先按正文前 50 字（标题被用户改成「英文+中文」混合后仍识别为同一篇），标题相同兜底
-  const i = lib.findIndex((x) => !x.offline && ((x.text || '').slice(0, 50) === body50 || (x.title || '').trim() === title));
+  // 查重：英文部分相同即视为同一篇（正文中英对照/排版乱/标题被改成英文+中文都不影响）
+  const i = lib.findIndex((x) => sameArticle(x, art));
   if (i >= 0) {
   const prev = lib[i];
   const keepTitle = (prev.title || '').trim();
@@ -1921,10 +1933,10 @@ window.Pages = window.Pages || {};
   }
   });
   } else {
-  // 查重提示（仅新建）：标题相同视为重复，upsertArticle 会更新已有而不新增
+  // 查重提示（仅新建）：英文部分相同视为重复，upsertArticle 会更新已有而不新增
   let dupHint = '';
-  const existed = (Store.get().english.articles || []).some((a) => !a.offline && (a.title || '').trim() === title);
-  if (existed) dupHint = '（已存在同名《' + title + '》，已更新内容，未新增重复）';
+  const existed = (Store.get().english.articles || []).some((a) => !a.offline && sameArticle(a, Object.assign({ title, text: core.text || '', translation: core.translation }, core)));
+  if (existed) dupHint = '（已存在同文《' + title + '》，已更新内容，未新增重复）';
   const readState = false;
   upsertArticle(Object.assign({ source: 'pasted', date: todayStr(), link: '', offline: false }, core), readState);
   UI.toast('已导入文章' + dupHint, 'ok');
