@@ -280,19 +280,27 @@ function renderFocusPlan(s) {
   const planTasks = s.tasks.filter(isToday);
   const tempTasks = s.discipline.tempTasks || [];
   const items = s.discipline.items || [];
+  const doneN = planTasks.filter((t) => t.done).length;
 
-  const planHtml = planTasks.length ? planTasks.map((t) => `
-    <div class="fp-item ${t.done ? 'done' : ''}">
-      <button class="fp-check" data-act="f-done-plan" data-id="${t.id}" aria-label="完成">${t.done ? '<img class="ic" src="assets/icons/hk-38.png" alt=""/>' : ''}</button>
-      <div class="fp-body">
-        <div class="fp-name">${UI.esc(t.name)}</div>
-        <div class="fp-tags">${t.category ? `<span class="fp-tag tag-orange">${UI.esc(t.category)}</span>` : ''}${t.due ? `<span class="fp-tag tag-soft">${fmtTime(D.parseLDT(t.due))}</span>` : ''}</div>
+  // 今日任务卡（仿图1：名称 + 状态/类型标签 + 截止 + 开始/完成/修改三按钮）
+  const planHtml = planTasks.length ? planTasks.map((t) => {
+  const st = t.done ? '已完成' : '待开始';
+  const dueTxt = t.due ? `截止 ${D.fmtDate(D.parseLDT(t.due))}` : '';
+  return `
+    <div class="fp-card ${t.done ? 'done' : ''}">
+      <div class="fp-card-top">
+        <span class="fp-state ${t.done ? 'st-done' : 'st-todo'}">${st}</span>
+        <span class="fp-type">今日应该</span>
+        <b class="fp-name">${UI.esc(t.name)}</b>
       </div>
-      <div class="fp-ops">
-        <button class="btn btn-soft btn-icon" data-act="f-start-plan" data-id="${t.id}" title="开始"><img class="ic" src="assets/icons/hk-09.png" alt=""/></button>
-        <button class="btn btn-soft btn-icon" data-act="f-edit-plan" data-id="${t.id}" title="修改"><img class="ic" src="assets/icons/hk-32.png" alt=""/></button>
+      <div class="fp-card-meta">${dueTxt}${dueTxt && t.category ? ' · ' : ''}${t.category ? UI.esc(t.category) : ''}</div>
+      <div class="fp-card-ops">
+        <button class="fp-op fp-op-start" data-act="f-start-plan" data-id="${t.id}">开始</button>
+        <button class="fp-op fp-op-done" data-act="f-done-plan" data-id="${t.id}">${t.done ? '取消' : '完成'}</button>
+        <button class="fp-op fp-op-edit" data-act="f-edit-plan" data-id="${t.id}">修改</button>
       </div>
-    </div>`).join('') : `<div class="empty soft"><div class="t">今天还没有学习计划任务</div></div>`;
+    </div>`;
+  }).join('') : `<div class="empty soft"><div class="t">今天还没有学习计划任务</div></div>`;
 
   const tempHtml = tempTasks.length ? tempTasks.map((t) => `
     <div class="fp-item ${t.done ? 'done' : ''}">
@@ -300,7 +308,7 @@ function renderFocusPlan(s) {
       <div class="fp-body"><div class="fp-name">${UI.esc(t.name)}</div></div>
       <div class="fp-ops">
         <button class="btn btn-soft btn-icon" data-act="f-start-temp" data-id="${t.id}" title="开始"><img class="ic" src="assets/icons/hk-09.png" alt=""/></button>
-        <button class="btn btn-soft btn-icon" data-act="f-del-temp" data-id="${t.id}" title="删除"><img class="ic" src="assets/icons/hk-18.png" alt=""/></button>
+        <button class="btn btn-soft btn-icon" data-act="f-del-temp" data-id="${t.id}" title="删除" onclick="window.cwTempDel&&cwTempDel(this.dataset.id)"><img class="ic" src="assets/icons/hk-18.png" alt=""/></button>
       </div>
     </div>`).join('') : `<div class="muted-text">还没有临时任务</div>`;
 
@@ -322,19 +330,43 @@ function renderFocusPlan(s) {
     <div class="card-head">
       <div class="title"><img class="ic" src="assets/icons/hk-38.png" alt=""/>今日执行</div>
       <div class="spacer"></div>
+      <span class="focus-run-badge ${_focusTimer.running ? 'on' : ''}">进行中 ${_focusTimer.running ? 1 : 0}</span>
       <button class="collapse-btn" title="折叠">▾</button>
     </div>
     <div class="card-body">
-      <div class="fp-section">学习复习计划 · 今日</div>
+      <div class="fp-hint">整合今日候选、到期任务与当前进行中，开始/结束会自动生成专注记录和日程时间块。</div>
+      <div class="fp-section">今日需要完成的任务</div>
+      <div class="fp-summary">今日 ${planTasks.length} 项 · 待完成 ${planTasks.length - doneN} 项 · 已完成 ${doneN} 项</div>
       <div class="fp-list">${planHtml}</div>
       <div class="fp-section mt12">临时任务</div>
-      <div class="fp-add-line"><input class="input" id="fTempInput" placeholder="快速添加临时任务"/><button class="btn btn-sm" data-act="f-add-temp">新增</button></div>
+      <div class="fp-add-line">
+        <input class="input" id="fTempInput" placeholder="临时任务，如：修改实验图" autocomplete="off" onkeydown="if(event.key==='Enter'){window.cwTempAdd&&cwTempAdd()}"/>
+        <button class="btn fp-add-btn" data-act="f-add-temp" onclick="window.cwTempAdd&&cwTempAdd()">新增临时任务</button>
+      </div>
       <div class="fp-list">${tempHtml}</div>
       <div class="fp-section mt12">打卡项目</div>
       <div class="fp-list">${checkinHtml}</div>
     </div>
   </div>`;
 }
+// 新增临时任务（inline onclick 兜底：不依赖任何 JS 事件绑定/委托，APK WebView 下最可靠）
+window.cwTempAdd = function () {
+  try {
+  const inp = UI.$('#fTempInput');
+  const name = inp ? inp.value.trim() : '';
+  if (!name) { UI.toast('请输入临时任务', 'warn'); return; }
+  Store.update((s) => { s.discipline.tempTasks.push({ id: Store.uid(), name, done: false, doneAt: null }); });
+  Pages.checkin();
+  } catch (e) { console.warn('[cwTempAdd]', e); }
+};
+// 删除临时任务（inline onclick 兜底）
+window.cwTempDel = function (id) {
+  try {
+  if (!id) return;
+  Store.update((s) => { s.discipline.tempTasks = (s.discipline.tempTasks || []).filter((x) => x.id !== id); });
+  Pages.checkin();
+  } catch (e) { console.warn('[cwTempDel]', e); }
+};
 
 function renderFocusTimer(s) {
   const items = s.discipline.items || [];
