@@ -38,11 +38,7 @@ Pages.discipline = function () {
   // 月度统计
   const selMonth = (UI.$('#statMonth') && UI.$('#statMonth').value) || mk;
   const daysInMonth = (() => { const [y, m] = selMonth.split('-').map(Number); return new Date(y, m, 0).getDate(); })();
-  const elapsed = (() => {
-  const now = new Date(); const [y, m] = selMonth.split('-').map(Number);
-  if (y < now.getFullYear() || (y === now.getFullYear() && m < now.getMonth() + 1)) return daysInMonth;
-  return now.getDate();
-  })();
+  const elapsed = daysInMonth; // 基数用本月总天数（如 8 月 = 31 天），不取已过天数
   const statHtml = items.length ? items.map((it) => {
   const cnt = Object.keys(it.records).filter((dt) => dt.slice(0, 7) === selMonth).length;
   const pct = Math.round((cnt / elapsed) * 100);

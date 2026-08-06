@@ -980,7 +980,7 @@ table.tbl tr:hover td { background: var(--surface-2); }
 }
 
 /* ---------- 专注打卡界面（严格仿截图 + KT猫图标） ---------- */
-.focus-layout { display: grid; grid-template-columns: 1fr 360px; gap: 16px; align-items: start; }
+.focus-layout { display: grid; grid-template-columns: 1fr 420px; gap: 16px; align-items: start; }
 .focus-main-col, .focus-side-col { display: flex; flex-direction: column; gap: 16px; }
 .focus-side-col { position: sticky; top: 70px; align-self: start; }
 

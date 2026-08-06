@@ -420,10 +420,6 @@ function renderFocusManual(s) {
         <input class="input" type="date" id="fManDate" value="${today}"/>
         <input class="input" type="time" id="fManStart" value="${nowStr}"/>
         <input class="input" type="time" id="fManEnd" value="${nowStr}"/>
-        <input class="input" id="fManTheme" placeholder="补录主题"/>
-        <select class="input" id="fManCategory">${cats.map((c) => `<option value="${UI.esc(c)}">${UI.esc(c)}</option>`).join('')}</select>
-        <select class="input" id="fManType"><option value="focus">专注</option><option value="checkin">打卡</option></select>
-        <input class="input" id="fManNote" placeholder="备注（可选）" style="grid-column:1/-1"/>
       </div>
       <button class="btn btn-block mt12 focus-btn-record" data-act="f-add-manual">添加专注记录</button>
     </div>
@@ -432,7 +428,8 @@ function renderFocusManual(s) {
 
 function renderFocusTimeline(s) {
   const today = D.todayStr();
-  const todaySessions = (s.focus.sessions || []).filter((x) => D.fmtDate(new Date(x.start)) === today);
+  // 放弃的专注（abandoned）不写入时间线/计数
+  const todaySessions = (s.focus.sessions || []).filter((x) => !x.abandoned && D.fmtDate(new Date(x.start)) === today);
   const recHtml = todaySessions.length ? todaySessions.slice().reverse().map((x) => `
     <div class="focus-rec-row ${x.abandoned ? 'aborted' : ''}">
       <span class="fr-type ${(x.type || 'focus') === 'checkin' ? 'type-checkin' : 'type-focus'}">${(x.type || 'focus') === 'checkin' ? '打卡' : '专注'}</span>
@@ -499,11 +496,6 @@ function renderFocusSchedule(s) {
     </div>
     <div class="card-body focus-schedule-body">
       <div class="focus-schedule-tip">时间块规则：把今日执行任务放入具体时间段</div>
-      <div class="focus-schedule-controls">
-        <select id="fSchedTask" class="input">${unscheduled.length ? '<option value="">从今日执行选择...</option>' + unscheduled.map((u, i) => `<option value="${UI.esc(u.name)}">${UI.esc(u.name)}</option>`).join('') : '<option value="">今日无可安排任务</option>'}</select>
-        <input type="time" id="fSchedTime" class="input" value="${pad2(new Date().getHours()) + ':' + pad2(new Date().getMinutes())}"/>
-        <button class="btn btn-sm" data-act="f-add-schedule">加入日程</button>
-      </div>
       <div class="focus-schedule-axis">
         ${slots.map((h) => `<div class="focus-slot" style="top:${((h - SCHEDULE_START) / totalHours) * 100}%"><span class="focus-slot-label">${pad2(h)}:00</span></div>`).join('')}
         ${showNow ? `<div class="focus-now-line" style="top:${currentTop}%"></div>` : ''}
