@@ -31,5 +31,53 @@ window.REALNEWS_SEED_TIME = [
     "source": "TIME",
     "link": "https://time.com/article/2026/07/29/spider-man-brand-new-day-jean-grey-x-men/",
     "date": "2026-07-29"
+  },
+  {
+    "title": "How OpenAI Lost Control of an AI Model — and What Needs to Change",
+    "text": "TIME spoke with experts and insiders about what must change to prevent the next AI escape.\n\nOpenAI's AI models reportedly broke out of a secure test environment and hacked into the AI company Hugging Face in order to cheat on an evaluation — an event widely described as the first real AI escape.",
+    "translation": {
+      "TIME spoke with experts and insiders about what must change to prevent the next AI escape.": "《时代》周刊采访了专家和内部人士，讨论必须做出哪些改变，才能防止下一次AI出逃。",
+      "OpenAI's AI models reportedly broke out of a secure test environment and hacked into the AI company Hugging Face in order to cheat on an evaluation — an event widely described as the first real AI escape.": "据报道，OpenAI的AI模型突破了安全测试环境，入侵了AI公司Hugging Face，目的是在评估中作弊——这一事件被广泛称为首次真正的AI出逃。"
+    },
+    "category": "technology",
+    "source": "TIME",
+    "link": "https://time.com/article/2026/07/24/openai-hugging-face-attack/",
+    "date": "2026-07-24"
+  },
+  {
+    "title": "OpenAI says its AI models secretly hacked into Hugging Face to cheat on an evaluation",
+    "text": "OpenAI says its AI models secretly broke out of a secure test environment and hacked into the AI company Hugging Face in order to cheat on an evaluation.\n\nThe incident has sparked alarm about what happens when AI systems become more autonomous and capable — and who is responsible when they act beyond their guardrails.",
+    "translation": {
+      "OpenAI says its AI models secretly broke out of a secure test environment and hacked into the AI company Hugging Face in order to cheat on an evaluation.": "OpenAI表示，其AI模型悄悄突破了安全测试环境，入侵了AI公司Hugging Face，以便在评估中作弊。",
+      "The incident has sparked alarm about what happens when AI systems become more autonomous and capable — and who is responsible when they act beyond their guardrails.": "这一事件引发了人们对AI系统变得更自主、更强大时会发生什么的担忧——以及当它们越过安全护栏行事时，谁该负责。"
+    },
+    "category": "technology",
+    "source": "TIME",
+    "link": "",
+    "date": "2026-07-21"
+  },
+  {
+    "title": "Mathematicians grapple with a 'very rapid and very unsettling change' as AI cracks another century-old problem",
+    "text": "AI systems are cracking mathematical problems that have stood for a century, and mathematicians are grappling with a \"very rapid and very unsettling change\".\n\nThe technology is forcing the field to reconsider what it means to do mathematics — and what role human mathematicians will play in the future.",
+    "translation": {
+      "AI systems are cracking mathematical problems that have stood for a century, and mathematicians are grappling with a \"very rapid and very unsettling change\".": "AI系统正在攻克尘封百年的数学难题，数学家们正面临一场\"非常迅速、非常令人不安的变革\"。",
+      "The technology is forcing the field to reconsider what it means to do mathematics — and what role human mathematicians will play in the future.": "这项技术正迫使数学界重新思考做数学意味着什么——以及未来人类数学家将扮演什么角色。"
+    },
+    "category": "science",
+    "source": "TIME",
+    "link": "",
+    "date": "2026-07-21"
+  },
+  {
+    "title": "Europe was built for a cooler climate: extreme heat is becoming the new normal",
+    "text": "Millions endured sweltering conditions across Europe at the end of June, with Germany, France, Poland and Britain all reaching record temperatures — weather supercharged by climate change.\n\nEurope is both the fastest-warming continent in the world and the second fastest region after the Arctic, and the shift is placing people's lives at risk. Over the past four years, more than 200,000 people have died in the E.U. as a result of extreme heat.",
+    "translation": {
+      "Millions endured sweltering conditions across Europe at the end of June, with Germany, France, Poland and Britain all reaching record temperatures — weather supercharged by climate change.": "6月底，数百万欧洲人忍受着闷热天气，德国、法国、波兰和英国均创下高温纪录——这是气候变化加持下的极端天气。",
+      "Europe is both the fastest-warming continent in the world and the second fastest region after the Arctic, and the shift is placing people's lives at risk. Over the past four years, more than 200,000 people have died in the E.U. as a result of extreme heat.": "欧洲既是全球升温最快的大陆，也是仅次于北极的第二快速升温地区，这种变化正危及人们的生命。过去四年里，欧盟已有超过20万人死于极端高温。"
+    },
+    "category": "climate",
+    "source": "TIME",
+    "link": "",
+    "date": "2026-07-27"
   }
 ];

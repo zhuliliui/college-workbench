@@ -170,5 +170,53 @@ window.REALNEWS_SEED_GUARDIAN = [
     "source": "The Guardian",
     "link": "https://www.theguardian.com/technology/2026/jul/31/ai-labels-to-be-compulsory-on-authentic-looking-content-under-eu-rules",
     "date": "2026-07-31"
+  },
+  {
+    "title": "Children who open social media accounts aged 11-12 score worse in school tests",
+    "text": "Children who open social media accounts at the start of secondary school appear to perform worse in tests than those who delay, with researchers suspecting that the constant checking for updates is a major distraction for many students.\n\nPupils who opened their first social media account aged 11 to 12 scored lower in mathematics and reading tests than those who waited a few years, with scores at age 16 differing between the groups by the equivalent of about six months of learning, the study found.",
+    "translation": {
+      "Children who open social media accounts at the start of secondary school appear to perform worse in tests than those who delay, with researchers suspecting that the constant checking for updates is a major distraction for many students.": "在中学开始时开通社交媒体账号的孩子，考试成绩似乎比推迟开通的孩子更差；研究人员怀疑，频繁刷新动态对许多学生来说是一种严重的分心。",
+      "Pupils who opened their first social media account aged 11 to 12 scored lower in mathematics and reading tests than those who waited a few years, with scores at age 16 differing between the groups by the equivalent of about six months of learning, the study found.": "研究发现，11至12岁就开通第一个社交媒体账号的学生，数学和阅读成绩低于晚几年再开通的学生；两组人到16岁时成绩相差约相当于半年的学习量。"
+    },
+    "category": "social",
+    "source": "The Guardian",
+    "link": "https://www.theguardian.com/science/2026/aug/03/children-using-social-media-younger-age-worse-school-tests",
+    "date": "2026-08-03"
+  },
+  {
+    "title": "Artists, writers and scientists urge UK government to save Jodrell Bank Observatory",
+    "text": "More than 100 artists, writers and scientists have called for the UK government to save the \"world's clearest eyes on the sky\", after funding for the network of radio telescopes at Jodrell Bank Observatory was slashed.\n\nNew Order, the Canadian astronaut Chris Hadfield and the poet laureate, Simon Armitage, are among those calling on the new prime minister to save the deep space observatory which includes the Grade I-listed Lovell telescope, prized by astronomers who study galaxies, star formation and planets beyond the solar system.",
+    "translation": {
+      "More than 100 artists, writers and scientists have called for the UK government to save the \"world's clearest eyes on the sky\", after funding for the network of radio telescopes at Jodrell Bank Observatory was slashed.": "在焦德雷尔班克天文台的射电望远镜网络经费被大幅削减后，超过100位艺术家、作家和科学家呼吁英国政府拯救这个\"世界上最清晰的天眼\"。",
+      "New Order, the Canadian astronaut Chris Hadfield and the poet laureate, Simon Armitage, are among those calling on the new prime minister to save the deep space observatory which includes the Grade I-listed Lovell telescope, prized by astronomers who study galaxies, star formation and planets beyond the solar system.": "乐队New Order、加拿大宇航员克里斯·哈德菲尔德和桂冠诗人西蒙·阿米蒂奇等人都呼吁新首相拯救这座深空天文台。这里包含一级保护的洛弗尔望远镜，深受研究星系、恒星形成和太阳系外行星的天文学家的珍视。"
+    },
+    "category": "space",
+    "source": "The Guardian",
+    "link": "https://www.theguardian.com/science/2026/aug/03/jodrell-bank-observatory-artists-writers-scientists-letter",
+    "date": "2026-08-02"
+  },
+  {
+    "title": "When you kill it, it doesn't die: the jellyfish that has cracked the secret of immortality",
+    "text": "Immortality is generally considered the realm of the gods or science fiction, a fantasy that's actively pursued by tech entrepreneurs in macabre experiments that include injecting \"young blood\", cryopreservation, or resurrection in an AI afterlife.\n\nBut one ethereal, thimble-shaped jellyfish has already cracked the code. Turritopsis dohrnii has the ability to turn back into a baby jellyfish and grow up all over again.",
+    "translation": {
+      "Immortality is generally considered the realm of the gods or science fiction, a fantasy that's actively pursued by tech entrepreneurs in macabre experiments that include injecting \"young blood\", cryopreservation, or resurrection in an AI afterlife.": "永生通常被视为神明或科幻小说的领域，是一种科技企业家们狂热追逐的幻想——他们的实验包括注射\"年轻血液\"、人体冷冻，或是在AI来世中复活。",
+      "But one ethereal, thimble-shaped jellyfish has already cracked the code. Turritopsis dohrnii has the ability to turn back into a baby jellyfish and grow up all over again.": "但一种空灵小巧、形如顶针的水母已经破解了这个密码。灯塔水母（Turritopsis dohrnii）能够变回幼体水母，然后重新长大。"
+    },
+    "category": "science",
+    "source": "The Guardian",
+    "link": "https://www.theguardian.com/environment/2026/aug/04/when-you-kill-it-it-doesnt-die-the-jellyfish-that-has-cracked-the-secret-of-immortality",
+    "date": "2026-08-04"
+  },
+  {
+    "title": "Google Earth briefly let users overlay AI-generated images on real places",
+    "text": "A new feature briefly allowed Google Earth users to overlay AI-generated images on locations of their choosing.\n\nThis week we'll be discussing a regrettable decision by Google Earth, the dramatic fall of the \"Nostradamus of AI\", and what happens when AI agents go rogue.",
+    "translation": {
+      "A new feature briefly allowed Google Earth users to overlay AI-generated images on locations of their choosing.": "一个新功能曾短暂允许Google Earth用户在他们选择的任意地点上叠加AI生成的图像。",
+      "This week we'll be discussing a regrettable decision by Google Earth, the dramatic fall of the \"Nostradamus of AI\", and what happens when AI agents go rogue.": "本周我们将讨论Google Earth一个令人遗憾的决定、\"AI界的诺查丹玛斯\"的戏剧性陨落，以及AI智能体失控时会发生什么。"
+    },
+    "category": "technology",
+    "source": "The Guardian",
+    "link": "https://www.theguardian.com/global/2026/aug/03/google-earth-satellite-images",
+    "date": "2026-08-03"
   }
 ];

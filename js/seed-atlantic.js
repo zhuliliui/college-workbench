@@ -65,5 +65,53 @@ window.REALNEWS_SEED_ATLANTIC = [
     "source": "The Atlantic",
     "link": "https://www.theatlantic.com/magazine/archive/2024/04/why-animals-play-evolution/677477/",
     "date": "2024-04-01"
+  },
+  {
+    "title": "Google Just Ruined One of Its Most Important Tools",
+    "text": "Google Earth was a boon for researchers — and then came the deepfakes.\n\nA new feature briefly allowed users to overlay AI-generated images on locations of their choosing, raising fresh questions about how much of what we see online can still be trusted.",
+    "translation": {
+      "Google Earth was a boon for researchers — and then came the deepfakes.": "Google地球曾是研究者的福音——然后深度伪造（deepfakes）来了。",
+      "A new feature briefly allowed users to overlay AI-generated images on locations of their choosing, raising fresh questions about how much of what we see online can still be trusted.": "一个新功能曾短暂允许用户在他们选择的任意地点上叠加AI生成的图像，这引发了新的疑问：我们在网上看到的内容还有多少可信。"
+    },
+    "category": "technology",
+    "source": "The Atlantic",
+    "link": "",
+    "date": "2026-07-31"
+  },
+  {
+    "title": "Generative AI Is an Engineering Disaster: A shockingly inefficient trillion-dollar project",
+    "text": "Generative AI has become a trillion-dollar project — and, by the standards of traditional engineering, a shockingly inefficient one.\n\nAs the costs of computing, electricity and data keep climbing, critics are asking whether the industry can deliver returns that justify the enormous resources it consumes.",
+    "translation": {
+      "Generative AI has become a trillion-dollar project — and, by the standards of traditional engineering, a shockingly inefficient one.": "生成式AI已经成为一个万亿美元级的项目——而按传统工程标准衡量，它低效得惊人。",
+      "As the costs of computing, electricity and data keep climbing, critics are asking whether the industry can deliver returns that justify the enormous resources it consumes.": "随着算力、电力和数据成本不断攀升，批评者开始质疑：这个行业能否带来足以匹配其巨大资源消耗的回报。"
+    },
+    "category": "technology",
+    "source": "The Atlantic",
+    "link": "",
+    "date": "2026-07-14"
+  },
+  {
+    "title": "Why Would Meta Download So Much Porn?",
+    "text": "Filings from a recent lawsuit allege that the tech company accessed — and distributed — copyrighted adult films, blueprints for 3-D-printable handguns, celebrity deepfakes, and more.\n\nThe case has become a window into the sprawling, largely unexamined data pipelines that feed modern AI training.",
+    "translation": {
+      "Filings from a recent lawsuit allege that the tech company accessed — and distributed — copyrighted adult films, blueprints for 3-D-printable handguns, celebrity deepfakes, and more.": "最近一起诉讼的文件指控这家科技公司获取并传播了受版权保护的成人影片、可3D打印枪支的图纸、名人深度伪造等内容。",
+      "The case has become a window into the sprawling, largely unexamined data pipelines that feed modern AI training.": "这起案件成为一扇窗，让人们得以窥见为现代AI训练供料的庞大而大多未经审查的数据管道。"
+    },
+    "category": "technology",
+    "source": "The Atlantic",
+    "link": "",
+    "date": "2026-07-24"
+  },
+  {
+    "title": "The Return of the Monarch",
+    "text": "After years of decline, butterfly populations are rising — for now.\n\nMonarch numbers have rebounded thanks to a combination of favorable weather and conservation efforts, but scientists warn the recovery remains fragile in the face of habitat loss and climate change.",
+    "translation": {
+      "After years of decline, butterfly populations are rising — for now.": "经过多年的减少，蝴蝶种群数量正在回升——至少目前如此。",
+      "Monarch numbers have rebounded thanks to a combination of favorable weather and conservation efforts, but scientists warn the recovery remains fragile in the face of habitat loss and climate change.": "得益于有利天气和保护工作的共同作用，黑脉金斑蝶的数量已经回升，但科学家警告说，面对栖息地丧失和气候变化，这种恢复仍然十分脆弱。"
+    },
+    "category": "science",
+    "source": "The Atlantic",
+    "link": "",
+    "date": "2026-07-28"
   }
 ];

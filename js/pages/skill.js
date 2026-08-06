@@ -43,6 +43,19 @@ Pages.skill = function () {
     { title: 'CrewAI 多智能体协作框架实战：组建会分工的 AI 团队', tags: ['CrewAI','多智能体','协作','Agent'], url: 'https://github.com/crewAIInc/crewAI' },
     { title: 'LangGraph：用图状态机构建可控、可循环的 Agent 工作流', tags: ['LangGraph','Agent','工作流','状态机'], url: 'https://github.com/langchain-ai/langgraph' },
     { title: 'RAG 检索增强生成实战：向量库 +  embeddings 搭建知识问答', tags: ['RAG','向量库','Embedding','LLM应用'], url: 'https://github.com/langchain-ai/langchain' },
+    // ---- 2026.5-8 最新热门：MCP 规模化落地 / 多智能体 / Agent 记忆 ----
+    { title: '2026 实战：Serverless + 百炼 + MCP 30 分钟搭一个会“干活”的 AI 智能体', tags: ['MCP','Serverless','百炼','智能体'], url: 'https://opc.csdn.net/6a55d60b10ee7a33f28d50d0.html' },
+    { title: '智能体互联网时代：用 MCP 协议从零构建多工具协作 AI Agent 实战指南', tags: ['MCP','多工具协作','Agent','实战'], url: 'https://cloud.tencent.com/developer/article/2703526' },
+    { title: '超详细 MCP + DeepSeek 打造 AI Agent 智能体：stdio/sse 双协议 + OAuth2 安全认证', tags: ['MCP','DeepSeek','智能体','OAuth2'], url: 'https://www.sanjieke.cn/course/detail/sjk/8009752' },
+    { title: 'AI Agents 101：什么是 AI Agent？构建者的心智模型（含可直接运行的 Python 示例）', tags: ['AIAgent','入门','Python','心智模型'], url: 'https://www.aibuilderclub.io/blog/tag/ai-agents' },
+    { title: 'AI Agents 记忆篇：in-context / 外部文件 / 向量数据库三种跨会话记忆模式', tags: ['Agent记忆','向量库','跨会话','教程'], url: 'https://www.aibuilderclub.io/blog/tag/ai-agents' },
+    { title: 'The Complete AI Agents Guide (2026)：agent 循环、raw API vs 框架、多智能体与 MCP 全景', tags: ['AIAgent','指南','LangChain','CrewAI'], url: 'https://www.aibuilderclub.io/blog/tag/ai-agents' },
+    { title: 'MCP 101：从零构建第一个 MCP Server 并让 Claude 调用任何 API（分步教程）', tags: ['MCP','Claude','Server','入门'], url: 'https://www.aibuilderclub.io/blog/tag/ai-agents' },
+    { title: '用 Python 从零构建 AI Agent：60 行工具循环替代框架（Anthropic SDK）', tags: ['Python','AnthropicSDK','从零构建','Agent'], url: 'https://www.aibuilderclub.io/blog/tag/ai-agents' },
+    { title: 'LangChain vs CrewAI vs Raw API (2026)：三个方案构建生产级 Agent 的诚实对比', tags: ['LangChain','CrewAI','对比','生产级'], url: 'https://www.aibuilderclub.io/blog/tag/ai-agents' },
+    { title: 'Multi-Agent System Python 教程：Coordinator + Worker 架构 200 行实现', tags: ['多智能体','协调者','Python','架构'], url: 'https://www.aibuilderclub.io/blog/tag/ai-agents' },
+    { title: 'Gemini 3 + LangChain：流式、多模态、工具调用、上下文缓存打造 AI Agent', tags: ['Gemini3','LangChain','多模态','Agent'], url: 'https://kgptalkie.com/tutorials/generative-ai' },
+    { title: '构建个人 AI 员工团队：7 个 Agent 覆盖首席参谋/研究员/文案/数据分析', tags: ['Agent','生产力','自动化','个人助理'], url: 'https://www.aibuilderclub.io/blog/tag/ai-agents' },
   ];
 
   // 远程种子（可持续更新，不必重打包）：优先拉取，失败/超时静默回落内置种子

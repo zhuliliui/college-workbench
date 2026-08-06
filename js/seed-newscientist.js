@@ -83,5 +83,53 @@ window.REALNEWS_SEED_NEWSCIENTIST = [
     "source": "New Scientist",
     "link": "https://www.newscientist.com/article/2582621-thousands-of-people-in-china-have-had-banned-alzheimers-surgery/",
     "date": "2026-07-31"
+  },
+  {
+    "title": "China has approved the world's first invasive brain-computer chip — here's what's next",
+    "text": "China has approved the world's first invasive brain-computer chip, a landmark for the technology that has mostly been tested in clinical trials.\n\nThe country wants to become a global leader in brain implants, and strong government support is expected to help accelerate that process.",
+    "translation": {
+      "China has approved the world's first invasive brain-computer chip, a landmark for the technology that has mostly been tested in clinical trials.": "中国批准了全球首个侵入式脑机接口芯片，这对一项此前大多处于临床试验阶段的技术来说是一个里程碑。",
+      "The country wants to become a global leader in brain implants, and strong government support is expected to help accelerate that process.": "该国希望成为脑机植入领域的全球领导者，强有力的政府支持预计将加速这一进程。"
+    },
+    "category": "technology",
+    "source": "MIT Technology Review",
+    "link": "https://www.technologyreview.com/",
+    "date": "2026-08-01"
+  },
+  {
+    "title": "Anthropic found a hidden space where Claude puzzles over concepts",
+    "text": "A new technique has let Anthropic probe deeper than ever into the weird workings of an LLM.\n\nThe company has found a hidden internal space where Claude puzzles over concepts before answering, and is doubling down on AI for science.",
+    "translation": {
+      "A new technique has let Anthropic probe deeper than ever into the weird workings of an LLM.": "一项新技术让Anthropic比以往任何时候都更深入地探察了大语言模型（LLM）的奇妙内部机制。",
+      "The company has found a hidden internal space where Claude puzzles over concepts before answering, and is doubling down on AI for science.": "该公司发现了一个隐藏的内部空间，Claude在作答前会在其中对概念进行思考推演，同时Anthropic正加码押注AI助力科学。"
+    },
+    "category": "technology",
+    "source": "MIT Technology Review",
+    "link": "https://www.technologyreview.com/",
+    "date": "2026-07-31"
+  },
+  {
+    "title": "Google DeepMind is worried about what happens when millions of agents start to interact online",
+    "text": "Google DeepMind is calling for more scientists to study the risks of multi-agent systems.\n\nAs AI agents begin to buy, sell and negotiate with one another online, the firm warns that the emerging ecosystem could become unstable — or even dangerous — without careful research.",
+    "translation": {
+      "Google DeepMind is calling for more scientists to study the risks of multi-agent systems.": "谷歌DeepMind呼吁更多科学家研究多智能体系统的风险。",
+      "As AI agents begin to buy, sell and negotiate with one another online, the firm warns that the emerging ecosystem could become unstable — or even dangerous — without careful research.": "随着AI智能体开始在网络上互相买卖、协商，该公司警告说，如果不进行认真研究，这一新兴生态系统可能变得不稳定，甚至危险。"
+    },
+    "category": "technology",
+    "source": "MIT Technology Review",
+    "link": "https://www.technologyreview.com/",
+    "date": "2026-07-29"
+  },
+  {
+    "title": "A startup claims it broke through a bottleneck that's holding back LLMs",
+    "text": "Subquadratic has now shared more details about its new model, which it says breaks through a key bottleneck that has been holding back large language models.\n\nBut some researchers are still skeptical, noting that independent verification will be needed before the claims can be taken seriously.",
+    "translation": {
+      "Subquadratic has now shared more details about its new model, which it says breaks through a key bottleneck that has been holding back large language models.": "Subquadratic公司现已公布其新模型的更多细节，该公司称该模型突破了长期制约大语言模型的一个关键瓶颈。",
+      "But some researchers are still skeptical, noting that independent verification will be needed before the claims can be taken seriously.": "但一些研究人员仍持怀疑态度，指出这些说法在被认真对待之前，还需要独立验证。"
+    },
+    "category": "technology",
+    "source": "MIT Technology Review",
+    "link": "https://www.technologyreview.com/",
+    "date": "2026-07-28"
   }
 ];
