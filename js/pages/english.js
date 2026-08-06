@@ -87,7 +87,18 @@ window.Pages = window.Pages || {};
   function speak(text) {
   try {
   if (!text) return;
-  // 优先用 WebView 自带的 speechSynthesis（iOS / Chrome / 部分国产 ROM）
+  // 1) 原生 TTS（离线优先 · 走系统语音引擎：华为 HiVoice/vivo 自带引擎，无需网络/GMS）
+  const nat = (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.TextToSpeech);
+  if (nat && nat.speak) {
+  nat.speak({ text: text, lang: 'en-US', rate: 0.9 }).then(() => {}).catch(() => speakFallback(text));
+  return;
+  }
+  speakFallback(text);
+  } catch (e) { console.warn('[speak] failed', e); UI.toast('朗读失败', 'warn'); }
+  }
+  function speakFallback(text) {
+  try {
+  // 2) WebView 自带 speechSynthesis（iOS / Chrome / 部分国产 ROM）
   if ('speechSynthesis' in window) {
   const u = new SpeechSynthesisUtterance(text);
   u.lang = 'en-US'; u.rate = 0.9;
@@ -98,7 +109,7 @@ window.Pages = window.Pages || {};
   window.speechSynthesis.resume();
   return;
   }
-  // 兜底：走后端 TTS 接口（自托管 server.js / Railway 节点）
+  // 3) 兜底：走后端 TTS 接口（自托管 server.js / Railway 节点）
   const st = (Store && Store.get) ? Store.get() : {};
   const backendUrl = (st.cal && st.cal.backendUrl) || (typeof Store.readerBackend === 'function' ? Store.readerBackend() : '') || '';
   if (!backendUrl) { UI.toast('当前环境不支持语音朗读', 'warn'); return; }
@@ -107,7 +118,7 @@ window.Pages = window.Pages || {};
   .then((r) => r.ok ? r.blob() : Promise.reject(new Error('http ' + r.status)))
   .then((b) => { const u = URL.createObjectURL(b); const a = new Audio(u); a.onended = () => URL.revokeObjectURL(u); a.play().catch(() => UI.toast('朗读失败', 'warn')); })
   .catch(() => UI.toast('朗读失败，请检查后端是否可达', 'warn'));
-  } catch (e) { console.warn('[speak] failed', e); UI.toast('朗读失败', 'warn'); }
+  } catch (e) { console.warn('[speakFallback] failed', e); UI.toast('朗读失败', 'warn'); }
   }
   function newWordObj(w) {
   return { id: Store.uid(), word: w.word, phonetic: w.phonetic || '', pos: w.pos || '', cn: w.cn || '', phrases: w.phrases || '', syn: w.syn || '', mnemonic: w.mnemonic || '', box: 0, next: Date.now(), last: 0, reps: 0 };

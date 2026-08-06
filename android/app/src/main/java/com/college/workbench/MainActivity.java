@@ -8,6 +8,7 @@ public class MainActivity extends BridgeActivity {
     protected void onCreate(Bundle savedInstanceState) {
         // 注册类（Capacitor 6 的 registerPlugin 接收 Class，由 Bridge 实例化并转发权限回调）
         registerPlugin(CalendarLocalPlugin.class);
+        registerPlugin(TextToSpeechPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }
