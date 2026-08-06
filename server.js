@@ -800,6 +800,24 @@ const server = http.createServer(async (req, res) => {
   if (pathname.startsWith('/caldav')) { handleCalDAV(req, res, pathname, parsed); return; }
   if (pathname === '/health') { send(res, 200, JSON.stringify({ ok: true }), 'application/json'); return; }
 
+  // TTS 兜底（前端 WebView 无 speechSynthesis 时调用）。代理 Google translate_tts
+  // 走海外（Railway 节点不受 GFW 影响），返回 audio/mpeg 给前端用 <audio> 播放。
+  if (pathname === '/api/tts' && req.method === 'GET') {
+    const text = String(parsed.query.text || '').slice(0, 200);
+    const lang = String(parsed.query.lang || 'en').slice(0, 8).replace(/[^a-zA-Z-]/g, '') || 'en';
+    if (!text) { send(res, 400, JSON.stringify({ ok: false, error: 'text required' }), 'application/json'); return; }
+    try {
+      const u = 'https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=' + encodeURIComponent(lang) + '&q=' + encodeURIComponent(text);
+      const r = await fetch(u, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' } });
+      if (!r.ok) { send(res, 502, JSON.stringify({ ok: false, error: 'upstream ' + r.status }), 'application/json'); return; }
+      const ct = r.headers.get('content-type') || 'audio/mpeg';
+      const ab = await r.arrayBuffer();
+      res.writeHead(200, { 'Content-Type': ct, 'Cache-Control': 'public, max-age=3600', 'Access-Control-Allow-Origin': '*' });
+      res.end(Buffer.from(ab));
+    } catch (e) { send(res, 500, JSON.stringify({ ok: false, error: e.message }), 'application/json'); }
+    return;
+  }
+
   // 接收前端同步的 DDL 清单 + 提醒配置 + 推送配置
   if (pathname === '/api/ddl/register' && req.method === 'POST') {
     try {

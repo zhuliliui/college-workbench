@@ -86,16 +86,28 @@ window.Pages = window.Pages || {};
   // 与 iOS 的手势链断开问题；保留引用 + resume 兜底。
   function speak(text) {
   try {
-  if (!('speechSynthesis' in window)) { UI.toast('当前环境不支持语音朗读', 'warn'); return; }
   if (!text) return;
+  // 优先用 WebView 自带的 speechSynthesis（iOS / Chrome / 部分国产 ROM）
+  if ('speechSynthesis' in window) {
   const u = new SpeechSynthesisUtterance(text);
   u.lang = 'en-US'; u.rate = 0.9;
   const v = pickVoice(); if (v) u.voice = v;
   u.onend = () => {}; u.onerror = () => {};
-  _utter = u; // 持有引用，防止被 GC
+  _utter = u;
   window.speechSynthesis.speak(u);
   window.speechSynthesis.resume();
-  } catch (e) {}
+  return;
+  }
+  // 兜底：走后端 TTS 接口（自托管 server.js / Railway 节点）
+  const st = (Store && Store.get) ? Store.get() : {};
+  const backendUrl = (st.cal && st.cal.backendUrl) || (typeof Store.readerBackend === 'function' ? Store.readerBackend() : '') || '';
+  if (!backendUrl) { UI.toast('当前环境不支持语音朗读', 'warn'); return; }
+  UI.toast('朗读中…', 'ok');
+  fetch(backendUrl.replace(/\/$/, '') + '/api/tts?text=' + encodeURIComponent(text) + '&lang=en')
+  .then((r) => r.ok ? r.blob() : Promise.reject(new Error('http ' + r.status)))
+  .then((b) => { const u = URL.createObjectURL(b); const a = new Audio(u); a.onended = () => URL.revokeObjectURL(u); a.play().catch(() => UI.toast('朗读失败', 'warn')); })
+  .catch(() => UI.toast('朗读失败，请检查后端是否可达', 'warn'));
+  } catch (e) { console.warn('[speak] failed', e); UI.toast('朗读失败', 'warn'); }
   }
   function newWordObj(w) {
   return { id: Store.uid(), word: w.word, phonetic: w.phonetic || '', pos: w.pos || '', cn: w.cn || '', phrases: w.phrases || '', syn: w.syn || '', mnemonic: w.mnemonic || '', box: 0, next: Date.now(), last: 0, reps: 0 };
@@ -593,8 +605,10 @@ window.Pages = window.Pages || {};
   if (act === 'dictate-start') return startDictate();
   if (act === 'dictate-stop') return stopDictate();
   if (act === 'remember' || act === 'forget') {
+  try {
   Store.update((st) => {
   const x = st.english.words.find((y) => y.id === w0.id);
+  if (!x) return; // 兜底：词库找不到该词（极端情况）
   if (act === 'remember') x.box = Math.min(5, x.box + 1); else x.box = Math.max(0, x.box - 1);
   x.reps = (x.reps || 0) + 1; x.last = Date.now(); x.next = Date.now() + IV[x.box];
   });
@@ -603,11 +617,14 @@ window.Pages = window.Pages || {};
   recordStudy(w0.word);
   session.idx++; session.flipped = false;
   if (session.idx >= session.queue.length) { session = null; UI.toast('本轮复习完成 ', 'love'); }
-  renderFlash(body, bank);
   } else {
   // 没记住：不计入「已学」，原卡原地重来（不前进、不计奖励）
   session.flipped = false;
+  }
   renderFlash(body, bank);
+  } catch (err) {
+  console.error('[flash] remember/forget 失败', err);
+  UI.toast('操作失败，请重试', 'warn');
   }
   return;
   }

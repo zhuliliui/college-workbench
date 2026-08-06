@@ -32,6 +32,20 @@ Pages.checkin = function () {
     const act = b.dataset.act, id = b.dataset.id;
     if (act && act.indexOf('f-') === 0) return handleFocusAct(act, id, b);
   };
+
+  // 兜底：APK WebView 下事件委托偶发失效，直接绑一份 click + 回车提交
+  const _addBtn = c.querySelector('[data-act="f-add-temp"]');
+  if (_addBtn && !_addBtn._cwBound) {
+    _addBtn.addEventListener('click', (e) => { e.stopPropagation(); handleFocusAct('f-add-temp', '', _addBtn); });
+    _addBtn._cwBound = true;
+  }
+  const _tempInp = c.querySelector('#fTempInput');
+  if (_tempInp && !_tempInp._cwBound) {
+    _tempInp.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); handleFocusAct('f-add-temp', '', _addBtn || c.querySelector('[data-act="f-add-temp"]')); }
+    });
+    _tempInp._cwBound = true;
+  }
 };
 
 function pad2(n) { return String(n).padStart(2, '0'); }

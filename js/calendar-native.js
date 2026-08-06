@@ -94,13 +94,28 @@ window.NativeCalendar = (function () {
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
 
-  // fallback 1：复制 webcal 订阅链接到剪贴板（推荐给华为/vivo 等不支持 .ics 导入的日历 App）
-  function fallbackCopyWebcal(backendUrl) {
-    const url = backendUrl.replace(/\/$/, '') + '/api/ddl/calendar.ics?clientId=' + getClientId();
-    const webcal = 'webcal://' + url.replace(/^https?:\/\//, '');
-    let copied = false;
-    try { if (navigator.clipboard) { navigator.clipboard.writeText(webcal); copied = true; } } catch (e) {}
-    return { webcal: webcal, httpUrl: url, copied: copied, fallback: 'webcal' };
+// fallback 1：复制 webcal 订阅链接到剪贴板（推荐给华为/vivo 等不支持 .ics 导入的日历 App）
+  async function fallbackCopyWebcal(backendUrl) {
+  const url = backendUrl.replace(/\/$/, '') + '/api/ddl/calendar.ics?clientId=' + getClientId();
+  const webcal = 'webcal://' + url.replace(/^https?:\/\//, '');
+  let copied = false;
+  // 1) 优先 navigator.clipboard（HTTPS / 浏览器）
+  try { if (navigator.clipboard && navigator.clipboard.writeText) { await navigator.clipboard.writeText(webcal); copied = true; } } catch (e) {}
+  // 2) 兜底 Capacitor 原生剪贴板（安卓 WebView 经常 navigator.clipboard 不可用）
+  if (!copied) {
+  try {
+  const Clipboard = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Clipboard;
+  if (Clipboard && Clipboard.write) { await Clipboard.write({ string: webcal }); copied = true; }
+  } catch (e) {}
+  }
+  // 3) 最后兜底：document.execCommand（已废弃但部分 WebView 仍可用）
+  if (!copied) {
+  try {
+  const ta = document.createElement('textarea'); ta.value = webcal; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select(); copied = document.execCommand('copy'); ta.remove();
+  } catch (e) {}
+  }
+  return { webcal: webcal, httpUrl: url, copied: copied, fallback: 'webcal' };
   }
 
   // fallback 2：直接下载 .ics 文件（备用，部分日历 App 支持）
@@ -167,7 +182,7 @@ window.NativeCalendar = (function () {
         if (cnt > 0 && isChinaRom && isLocalMethod(method)) {
           if (window.Store) Store.update((s) => { s.cal = s.cal || {}; s.cal.local = { authorized: true, syncedCount: cnt, lastAt: Date.now(), method: method, hiddenOnRom: true }; });
           if (backendUrl) {
-            const fb = fallbackCopyWebcal(backendUrl);
+            const fb = await fallbackCopyWebcal(backendUrl);
             return {
               ok: true, count: cnt, method: method, fallback: 'webcal', webcal: fb.webcal, httpUrl: fb.httpUrl, copied: fb.copied,
               hint: '检测到 ' + brandLabel + '（国产 ROM），写入到 LOCAL 账户的日程在系统日历 App 默认不可见。已自动复制订阅链接，请到日历 App 粘贴订阅。',
@@ -190,7 +205,7 @@ window.NativeCalendar = (function () {
 
         // 写入 0 条 → fallback
         if (backendUrl) {
-          const fb = fallbackCopyWebcal(backendUrl);
+          const fb = await fallbackCopyWebcal(backendUrl);
           return { ok: true, count: events.length, fallback: 'webcal', webcal: fb.webcal, httpUrl: fb.httpUrl, copied: fb.copied, lastError: (res && res.lastError) || 'unknown' };
         }
         const fb = fallbackDownload(events, reminders);
@@ -198,7 +213,7 @@ window.NativeCalendar = (function () {
       } catch (e) {
         console.warn('[cal] 原生写入失败', e);
         if (backendUrl) {
-          const fb = fallbackCopyWebcal(backendUrl);
+          const fb = await fallbackCopyWebcal(backendUrl);
           return { ok: false, reason: 'exception', error: errorText(e), fallback: 'webcal', webcal: fb.webcal, httpUrl: fb.httpUrl, copied: fb.copied };
         }
         const fb = fallbackDownload(events, reminders);
@@ -207,7 +222,7 @@ window.NativeCalendar = (function () {
     }
     // 浏览器环境
     if (backendUrl) {
-      const fb = fallbackCopyWebcal(backendUrl);
+      const fb = await fallbackCopyWebcal(backendUrl);
       return { ok: true, count: events.length, fallback: 'webcal', webcal: fb.webcal, httpUrl: fb.httpUrl, copied: fb.copied };
     }
     const fb = fallbackDownload(events, reminders);
@@ -227,13 +242,13 @@ window.NativeCalendar = (function () {
     return count;
   }
 
-  // 仅复制 webcal 链接
-  function copyWebcal() {
-    const st = (typeof Store !== 'undefined' && Store.get) ? Store.get() : { cal: {} };
-    const backendUrl = (st.cal && st.cal.backendUrl) || '';
-    if (!backendUrl) return null;
-    const fb = fallbackCopyWebcal(backendUrl);
-    return fb;
+// 仅复制 webcal 链接
+  async function copyWebcal() {
+  const st = (typeof Store !== 'undefined' && Store.get) ? Store.get() : { cal: {} };
+  const backendUrl = (st.cal && st.cal.backendUrl) || '';
+  if (!backendUrl) return null;
+  const fb = await fallbackCopyWebcal(backendUrl);
+  return fb;
   }
 
   return { isNative: isNative, available: available, sync: sync, clearRecord: clearRecord, buildICS: buildICS, downloadICS: downloadICS, copyWebcal: copyWebcal };

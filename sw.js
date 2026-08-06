@@ -1,5 +1,5 @@
 /* 大学生AI万能工作台 - Service Worker（PWA 离线缓存） */
-const CACHE = 'cw-v92';
+const CACHE = 'cw-v93';
 const ICONS = Array.from({ length: 42 }, (_, i) => 'assets/icons/hk-' + String(i + 1).padStart(2, '0') + '.png');
 const ASSETS = [
   '.',
