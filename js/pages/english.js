@@ -919,9 +919,15 @@ window.Pages = window.Pages || {};
   picks.forEach((a) => {
   const art = normalizeArticle(a);
   const title = (a.title || '').trim();
-  const i = l.findIndex((x) => !x.offline && (x.title || '').trim() === title);
-  if (i >= 0) l[i] = Object.assign({}, art, { offline: false, read: !!l[i].read });
-  else l.unshift(Object.assign({ source: a.source || 'realnews', category: a.category || '', date: a.date || todayStr(), link: a.link || '', offline: false, read: false }, art));
+  const body50 = (art.text || '').slice(0, 50);
+  // 查重优先按正文前 50 字（标题被用户改成「英文+中文」混合后仍识别为同一篇），标题相同兜底
+  const i = l.findIndex((x) => !x.offline && ((x.text || '').slice(0, 50) === body50 || (x.title || '').trim() === title));
+  if (i >= 0) {
+  const prev = l[i];
+  const keepTitle = (prev.title || '').trim();
+  l[i] = Object.assign({}, art, { offline: false, read: !!prev.read });
+  if (keepTitle) l[i].title = prev.title; // 保留用户改过的标题
+  } else l.unshift(Object.assign({ source: a.source || 'realnews', category: a.category || '', date: a.date || todayStr(), link: a.link || '', offline: false, read: false }, art));
   });
   });
   return true;
@@ -966,9 +972,15 @@ window.Pages = window.Pages || {};
   picks.forEach((a) => {
   const art = normalizeArticle(a);
   const title = (a.title || '').trim();
-  const i = l.findIndex((x) => !x.offline && (x.title || '').trim() === title);
-  if (i >= 0) l[i] = Object.assign({}, art, { offline: false, read: !!l[i].read });
-  else l.unshift(Object.assign({ source: a.source || 'realnews', category: a.category || '', date: a.date || today, link: a.link || '', offline: false, read: false }, art));
+  const body50 = (art.text || '').slice(0, 50);
+  // 查重优先按正文前 50 字（标题被用户改成「英文+中文」混合后仍识别为同一篇），标题相同兜底
+  const i = l.findIndex((x) => !x.offline && ((x.text || '').slice(0, 50) === body50 || (x.title || '').trim() === title));
+  if (i >= 0) {
+  const prev = l[i];
+  const keepTitle = (prev.title || '').trim();
+  l[i] = Object.assign({}, art, { offline: false, read: !!l[i].read });
+  if (keepTitle) l[i].title = prev.title; // 保留用户改过的标题
+  } else l.unshift(Object.assign({ source: a.source || 'realnews', category: a.category || '', date: a.date || today, link: a.link || '', offline: false, read: false }, art));
   });
   s.english.lastAutoDate = today;
   });
@@ -1002,11 +1014,16 @@ window.Pages = window.Pages || {};
   Store.update((s) => {
   const lib = s.english.articles || (s.english.articles = []);
   const key = getLibKey(art);
+  const body50 = (art.text || '').slice(0, 50);
   let found = lib.find((x) => getLibKey(x) === key);
-  // 查重：标题相同（且非内置离线文章）视为同一篇，更新而非新增（标题不同才并存）
+  // 查重优先按正文前 50 字（标题被用户改成「英文+中文」混合后仍能识别为同一篇）
+  if (!found) found = lib.find((x) => !x.offline && (x.text || '').slice(0, 50) === body50);
+  // 标题相同兜底（正文为空时）
   if (!found) found = lib.find((x) => !x.offline && (x.title || '').trim() === (art.title || '').trim());
   if (found) {
-  Object.assign(found, { title: art.title, source: art.source, text: art.text, translation: art.translation, lang: art.lang, offline: art.offline, date: art.date, link: art.link, tailCn: art.tailCn, ts: Date.now() });
+  const keepTitle = (found.title || '').trim();
+  Object.assign(found, { source: art.source, text: art.text, translation: art.translation, lang: art.lang, offline: art.offline, date: art.date, link: art.link, tailCn: art.tailCn, ts: Date.now() });
+  if (!keepTitle) found.title = art.title; // 保留用户改过的标题，避免被覆盖
   if (read !== undefined) found.read = read; // 仅当显式传入时才覆盖 read（载入时保留旧状态）
   } else {
   lib.unshift(Object.assign({ read: read !== undefined ? read : false, ts: Date.now() }, art));
@@ -1465,8 +1482,16 @@ window.Pages = window.Pages || {};
   const title = (a.title || '').trim();
   if (!title) return;
   const art = normalizeArticle(a);
-  const i = lib.findIndex((x) => !x.offline && (x.title || '').trim() === title);
-  if (i >= 0) { lib[i] = Object.assign({}, art, { offline: false, read: !!lib[i].read }); updated++; }
+  const body50 = (art.text || '').slice(0, 50);
+  // 查重优先按正文前 50 字（标题被用户改成「英文+中文」混合后仍识别为同一篇），标题相同兜底
+  const i = lib.findIndex((x) => !x.offline && ((x.text || '').slice(0, 50) === body50 || (x.title || '').trim() === title));
+  if (i >= 0) {
+  const prev = lib[i];
+  const keepTitle = (prev.title || '').trim();
+  lib[i] = Object.assign({}, art, { offline: false, read: !!lib[i].read });
+  if (keepTitle) lib[i].title = prev.title; // 保留用户改过的标题
+  updated++;
+  }
   else { lib.push(Object.assign({ source: a.source || 'realnews', category: a.category || '', date: a.date || todayStr(), link: a.link || '', offline: false, read: false }, art)); added++; }
   });
   });
@@ -1485,6 +1510,10 @@ window.Pages = window.Pages || {};
   const bd = UI.$('#enBody'); if (bd) paintReader(bd);
   }
   function paintReader(body) {
+  // 重渲染后保持滚动位置：编辑/切模式/点目录后不跳回顶部
+  const _pvContent = document.getElementById('content');
+  const _pvToc = document.querySelector('.rd-toc');
+  const _pv = { c: _pvContent ? _pvContent.scrollTop : 0, t: _pvToc ? _pvToc.scrollTop : 0 };
   const modeBtn = (mode, label) => `<button class="btn btn-sm ${readerMode === mode ? '' : 'btn-soft'}" data-mode="${mode}">${label}</button>`;
   // 联网设置与「顶部提醒按钮」同步：统一以 cal.backendUrl 为唯一入口，旧版 english.readerBackend 兜底显示
   const _st = Store.get();
@@ -1611,6 +1640,11 @@ window.Pages = window.Pages || {};
   s.cal.subscribed = !!v;
   });
   UI.toast('已保存，并已同步到「提醒」设置', 'ok');
+  });
+  // 恢复滚动位置（wrap 重建 DOM 后）
+  requestAnimationFrame(() => {
+  if (_pv.c && _pvContent) _pvContent.scrollTop = _pv.c;
+  if (_pv.t) { const _t = document.querySelector('.rd-toc'); if (_t) _t.scrollTop = _pv.t; }
   });
   }
   // 通用导入/编辑弹窗：标题 + 英文中文交替（默认）或分栏/仅英/仅中；支持文件导入；编辑时预填并覆盖原条目
@@ -1875,22 +1909,34 @@ window.Pages = window.Pages || {};
   core = { title, text: enParas.join('\n\n'), translation: map, lang: undefined, tailCn };
   }
   }
-  // 编辑：先删除原条目，避免改标题后残留旧条目
+  // 编辑：原地更新原条目（保持左侧目录顺序不变），不再「删除+置顶新增」
   if (opts.isEdit && old) {
-  Store.update((s) => { const lib = s.english.articles || []; const i = lib.findIndex((x) => getLibKey(x) === getLibKey(old)); if (i >= 0) lib.splice(i, 1); });
+  Store.update((s) => {
+  const lib = s.english.articles || [];
+  const i = lib.findIndex((x) => getLibKey(x) === getLibKey(old));
+  if (i >= 0) {
+  const patch = { title: core.title, text: core.text, translation: core.translation || {}, lang: core.lang, tailCn: core.tailCn || '' };
+  if (core.chapters) patch.chapters = core.chapters;
+  Object.assign(lib[i], patch);
   }
+  });
+  } else {
   // 查重提示（仅新建）：标题相同视为重复，upsertArticle 会更新已有而不新增
   let dupHint = '';
-  if (!opts.isEdit) {
   const existed = (Store.get().english.articles || []).some((a) => !a.offline && (a.title || '').trim() === title);
   if (existed) dupHint = '（已存在同名《' + title + '》，已更新内容，未新增重复）';
+  const readState = false;
+  upsertArticle(Object.assign({ source: 'pasted', date: todayStr(), link: '', offline: false }, core), readState);
+  UI.toast('已导入文章' + dupHint, 'ok');
   }
-  const readState = (opts.isEdit && old) ? !!old.read : false;
-  upsertArticle(Object.assign({ source: 'pasted', date: todayStr(), link: '', offline: false }, core), opts.isEdit ? readState : undefined);
-  readerArticle = Object.assign({ read: readState }, core, { source: 'pasted', date: todayStr(), link: '', offline: false }); readerChapter = 0;
+  const readState2 = (opts.isEdit && old) ? !!old.read : false;
+  readerArticle = Object.assign({ read: readState2 }, core, { source: 'pasted', date: todayStr(), link: '', offline: false }); readerChapter = 0;
   Store.update((s) => { s.english.reader = readerArticle; });
-  UI.closeModal(); Pages.english();
-  UI.toast(opts.isEdit ? '已保存修改' : ('已导入文章' + dupHint), 'ok');
+  UI.closeModal();
+  // 局部重渲染（保留滚动位置），不整页跳顶
+  const bd = UI.$('#enBody');
+  if (bd) paintReader(bd); else Pages.english();
+  if (opts.isEdit) UI.toast('已保存修改', 'ok');
   } } ].filter(Boolean) });
   // openModal 返回 modal-mask DOM，在此挂载 radio 切换 + 文件选择事件（common.js 的 openModal 没有 onMount 回调）
   if (mask) {
