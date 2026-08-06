@@ -47,18 +47,19 @@ Pages.checkin = function () {
     if (act && act.indexOf('f-') === 0) return handleFocusAct(act, id, b);
   };
 
-  // 兜底：APK WebView 下事件委托偶发失效，直接绑一份 click + 回车提交
+// 兜底：APK WebView 下事件委托偶发失效，给所有 f-* 按钮直接绑一份 click（不走委托）
+  c.querySelectorAll('[data-act^="f-"]').forEach((btn) => {
+  if (btn._cwBound) return;
+  btn.addEventListener('click', (e) => { e.stopPropagation(); const a = btn.dataset.act; if (a && a.indexOf('f-') === 0) handleFocusAct(a, btn.dataset.id || '', btn); });
+  btn._cwBound = true;
+  });
   const _addBtn = c.querySelector('[data-act="f-add-temp"]');
-  if (_addBtn && !_addBtn._cwBound) {
-    _addBtn.addEventListener('click', (e) => { e.stopPropagation(); handleFocusAct('f-add-temp', '', _addBtn); });
-    _addBtn._cwBound = true;
-  }
   const _tempInp = c.querySelector('#fTempInput');
   if (_tempInp && !_tempInp._cwBound) {
-    _tempInp.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') { e.preventDefault(); handleFocusAct('f-add-temp', '', _addBtn || c.querySelector('[data-act="f-add-temp"]')); }
-    });
-    _tempInp._cwBound = true;
+  _tempInp.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); handleFocusAct('f-add-temp', '', _addBtn || c.querySelector('[data-act="f-add-temp"]')); }
+  });
+  _tempInp._cwBound = true;
   }
 };
 
@@ -116,8 +117,8 @@ function handleFocusAct(act, id, b) {
   const rerender = () => Pages.checkin();
 
   if (act === 'f-period') { _focusPeriod = b.dataset.p || 'week'; rerender(); return; }
-  if (act === 'f-review') { if (Pages.review) Pages.review(); else location.hash = '#/review'; return; }
-  if (act === 'f-open-study') { if (Pages.study) Pages.study(); else location.hash = '#/study'; return; }
+  if (act === 'f-review') { location.hash = '#/review'; return; }
+  if (act === 'f-open-study') { location.hash = '#/study'; return; }
 
   if (act === 'f-start') {
     const custom = UI.$('#fThemeCustom'); const sel = UI.$('#fTheme'); const cat = UI.$('#fCategory'); const note = UI.$('#fNote'); const type = UI.$('#fType');
