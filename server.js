@@ -413,19 +413,24 @@ setInterval(cronPush, 30 * 60 * 1000);
 setTimeout(cronPush, 10000);
 
 // ---------- 外刊阅读：服务端真实实时抓取（每日定时拉取最新外刊，中英对照，落盘持久化）----------
-// 抓取源：Guardian（社会/教育/科学/科技）、New Scientist、TIME、The Atlantic
-// 仅取 社会 / 教育 / 职场 / 大众科技 板块，避开硬核金融与地缘政治
+// 抓取源：考研/四六级题源聚焦 ——《卫报》社会·科技·科学·教育·文化·生活 + 《新科学家》+ 《大西洋月刊》(科学/科技分区) + TIME
+// 仅取 社会 / 教育 / 职场 / 大众科技 板块，避开硬核金融与地缘政治（EXCLUDE_KW 二次过滤）
+// 原版外网直连易 406/反爬：请求已用完整浏览器 UA 伪装（BROWSER_HEADERS）；若持续失败，请带本地代理启动（HTTP_PROXY）
+// 应急：内置 REALNEWS_SEED 离线题源库（36 篇）随时可用，不依赖海外源
 // 可通过环境变量覆盖：RSS_SOURCES（JSON 数组）、LLM_API_KEY/LLM_BASE_URL/LLM_MODEL（翻译，默认 DeepSeek 国内可直连）
 const FEEDS = (() => {
   try { if (process.env.RSS_SOURCES) return JSON.parse(process.env.RSS_SOURCES); } catch (e) {}
   return [
     { name: 'The Guardian', rss: 'https://www.theguardian.com/society/rss' },
-    { name: 'The Guardian', rss: 'https://www.theguardian.com/education/rss' },
     { name: 'The Guardian', rss: 'https://www.theguardian.com/science/rss' },
     { name: 'The Guardian', rss: 'https://www.theguardian.com/technology/rss' },
+    { name: 'The Guardian', rss: 'https://www.theguardian.com/education/rss' },
+    { name: 'The Guardian', rss: 'https://www.theguardian.com/culture/rss' },
+    { name: 'The Guardian', rss: 'https://www.theguardian.com/lifeandstyle/rss' },
     { name: 'New Scientist', rss: 'https://www.newscientist.com/feed/' },
+    { name: 'The Atlantic', rss: 'https://www.theatlantic.com/feed/science/' },
+    { name: 'The Atlantic', rss: 'https://www.theatlantic.com/feed/technology/' },
     { name: 'TIME', rss: 'https://time.com/feed/' },
-    { name: 'The Atlantic', rss: 'https://www.theatlantic.com/feed/all/' },
   ];
 })();
 // 排除词：命中任一即视为金融/地缘政治/硬新闻，跳过（中英对照阅读以社会·教育·职场·大众科技为主）
