@@ -6,16 +6,30 @@ const SCHEDULE_START = 6, SCHEDULE_END = 23;
 Pages.checkin = function () {
   const c = UI.$('#content');
   const s = Store.get();
+  const [__ps, __pe] = focusPeriodRange(_focusPeriod);
+  const periodDateText = _focusPeriod === 'day' ? __ps : _focusPeriod === 'week' ? `${__ps} ~ ${__pe}` : `${__ps.slice(0,7)}`;
   c.innerHTML = `
   <div class="welcome-banner focus-banner">
     <div class="welcome-text">
-      <div class="welcome-title"><img class="ic" src="assets/icons/hk-09.png" alt=""/> 专注打卡计时</div>
-      <div class="welcome-sub">今日计划 · 临时任务 · 打卡项 · 一键计时 · 时间线</div>
+      <div class="welcome-title"><img class="ic" src="assets/icons/hk-09.png" alt=""/> 主题统计</div>
+      <div class="welcome-sub">${UI.esc(periodDateText)}</div>
+    </div>
+    <div class="focus-banner-actions">
+      <div class="seg">
+        <button class="seg-btn ${_focusPeriod === 'day' ? 'on' : ''}" data-act="f-period" data-p="day">每日</button>
+        <button class="seg-btn ${_focusPeriod === 'week' ? 'on' : ''}" data-act="f-period" data-p="week">每周</button>
+        <button class="seg-btn ${_focusPeriod === 'month' ? 'on' : ''}" data-act="f-period" data-p="month">每月</button>
+      </div>
+      <button class="btn btn-review" data-act="f-review">复盘</button>
     </div>
   </div>
   ${renderFocusStats(s)}
   <div class="focus-layout">
     <div class="focus-main-col">
+      <div class="focus-optimize-hint">
+        <div class="foh-text">💡 <b>专注力越低，越需要明确目标</b>。先选一个今日必做任务，再开始计时。盲目开始 → 计时无意义。</div>
+        <button class="btn btn-soft btn-sm" data-act="f-open-study">查看优化项目</button>
+      </div>
       ${renderFocusPlan(s)}
       ${renderFocusTimer(s)}
       ${renderFocusManual(s)}
@@ -102,6 +116,8 @@ function handleFocusAct(act, id, b) {
   const rerender = () => Pages.checkin();
 
   if (act === 'f-period') { _focusPeriod = b.dataset.p || 'week'; rerender(); return; }
+  if (act === 'f-review') { if (Pages.review) Pages.review(); else location.hash = '#/review'; return; }
+  if (act === 'f-open-study') { if (Pages.study) Pages.study(); else location.hash = '#/study'; return; }
 
   if (act === 'f-start') {
     const custom = UI.$('#fThemeCustom'); const sel = UI.$('#fTheme'); const cat = UI.$('#fCategory'); const note = UI.$('#fNote'); const type = UI.$('#fType');
@@ -241,31 +257,18 @@ function renderFocusStats(s) {
   ];
 
   return `
-  <div class="card focus-stats-card">
-    <div class="card-head">
-      <div class="title"><img class="ic" src="assets/icons/hk-37.png" alt=""/>主题统计</div>
-      <div class="spacer"></div>
-      <span class="focus-period-label">${periodDateText}</span>
-      <div class="seg">
-        <button class="seg-btn ${_focusPeriod === 'day' ? 'on' : ''}" data-act="f-period" data-p="day">每日</button>
-        <button class="seg-btn ${_focusPeriod === 'week' ? 'on' : ''}" data-act="f-period" data-p="week">每周</button>
-        <button class="seg-btn ${_focusPeriod === 'month' ? 'on' : ''}" data-act="f-period" data-p="month">每月</button>
-      </div>
-      <button class="collapse-btn" title="折叠">▾</button>
-    </div>
-    <div class="card-body">
-      <div class="focus-stats-grid">
-        ${stats.map((st) => `
-          <div class="focus-stat-cell ${st.color}">
-            <div class="fsc-top">
-              <img class="ic-sm" src="assets/icons/${st.icon}.png" alt=""/>
-              <span class="fsc-label">${UI.esc(st.label)}</span>
-              ${st.plus ? `<button class="fsc-plus" data-act="f-counter" data-k="${st.plus}" title="+1">+</button>` : ''}
-            </div>
-            <div class="fsc-value">${st.value}</div>
+  <div class="focus-stats-card">
+    <div class="focus-stats-grid">
+      ${stats.map((st) => `
+        <div class="focus-stat-cell ${st.color}">
+          <div class="fsc-top">
+            <img class="ic-sm" src="assets/icons/${st.icon}.png" alt=""/>
+            <span class="fsc-label">${UI.esc(st.label)}</span>
+            ${st.plus ? `<button class="fsc-plus" data-act="f-counter" data-k="${st.plus}" title="+1">+</button>` : ''}
           </div>
-        `).join('')}
-      </div>
+          <div class="fsc-value">${st.value}</div>
+        </div>
+      `).join('')}
     </div>
   </div>`;
 }

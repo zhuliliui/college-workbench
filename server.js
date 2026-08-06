@@ -32,10 +32,18 @@ try {
       return undiciFetch(input, init);
     };
     console.log('[proxy] 已启用代理：' + proxyUrl);
+  } else {
+    console.warn('[proxy] 未设置 HTTP_PROXY/HTTPS_PROXY。若 RSS/外刊抓取全部失败，请带代理启动（例：HTTP_PROXY=http://127.0.0.1:7897 node server.js）');
   }
 } catch (e) { console.warn('[proxy] 代理初始化失败（忽略）：' + e.message); }
 
 const PORT = process.env.PORT || 3000;
+// 浏览器风格请求头：New Scientist/TIME/Atlantic 等外媒 RSS 对简单 User-Agent 返回 406/403
+const BROWSER_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+  'Accept': 'application/rss+xml, application/xml;q=0.9, text/xml;q=0.8, */*;q=0.5',
+  'Accept-Language': 'en-US,en;q=0.9',
+};
 const REG_FILE = path.join(__dirname, 'registrations.json');
 const REG_TTL = 30 * 24 * 60 * 60 * 1000; // 30 天未更新则清理
 
@@ -482,7 +490,7 @@ function parseRss(xml) {
   return items;
 }
 async function fetchRSS(url) {
-  const r = await fetch(url, { signal: AbortSignal.timeout(8000), headers: { 'User-Agent': 'Mozilla/5.0' } });
+  const r = await fetch(url, { signal: AbortSignal.timeout(10000), headers: BROWSER_HEADERS });
   if (!r.ok) throw new Error('HTTP ' + r.status);
   return await r.text();
 }
@@ -633,7 +641,7 @@ async function buildArticle(it) {
       let full = await (async () => {
         // 优先：直接抓取文章网页，从 JSON-LD articleBody / <article> 抽正文（不依赖第三方）
         try {
-          const html = await fetch(it.link, { signal: AbortSignal.timeout(9000), headers: { 'User-Agent': 'Mozilla/5.0' } }).then((x) => x.text());
+          const html = await fetch(it.link, { signal: AbortSignal.timeout(9000), headers: BROWSER_HEADERS }).then((x) => x.text());
           const ex = extractArticleFromHtml(html);
           if (ex && ex.length > text.length) return ex;
         } catch (e) {}
