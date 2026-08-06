@@ -121,10 +121,9 @@ function handleFocusAct(act, id, b) {
   if (act === 'f-open-study') { location.hash = '#/study'; return; }
 
   if (act === 'f-start') {
-    const custom = UI.$('#fThemeCustom'); const sel = UI.$('#fTheme'); const cat = UI.$('#fCategory'); const note = UI.$('#fNote'); const type = UI.$('#fType');
-    const theme = (custom && custom.value.trim()) || (sel && sel.value) || '专注';
-    const itemId = sel ? (sel.options[sel.selectedIndex].dataset.id || '') : '';
-    startFocusTimer(theme, cat ? cat.value : '', note ? note.value.trim() : '', itemId, type ? type.value : 'focus'); return;
+    const custom = UI.$('#fThemeCustom'); const note = UI.$('#fNote'); const type = UI.$('#fType');
+    const theme = (custom && custom.value.trim()) || '专注';
+    startFocusTimer(theme, '', note ? note.value.trim() : '', null, type ? type.value : 'focus'); return;
   }
   if (act === 'f-stop') { stopFocusTimer(false); return; }
   if (act === 'f-abort') { stopFocusTimer(true); return; }
@@ -349,14 +348,18 @@ function renderFocusPlan(s) {
     </div>
   </div>`;
 }
-// 新增临时任务（inline onclick 兜底：不依赖任何 JS 事件绑定/委托，APK WebView 下最可靠）
+// 新增临时任务（写入「本次主题」并自动开始计时；不依赖事件委托）
 window.cwTempAdd = function () {
   try {
   const inp = UI.$('#fTempInput');
   const name = inp ? inp.value.trim() : '';
-  if (!name) { UI.toast('请输入临时任务', 'warn'); return; }
-  Store.update((s) => { s.discipline.tempTasks.push({ id: Store.uid(), name, done: false, doneAt: null }); });
-  Pages.checkin();
+  if (!name) { UI.toast('请输入本次主题', 'warn'); return; }
+  // 写入"本次主题"输入框
+  const themeInp = UI.$('#fThemeCustom');
+  if (themeInp) themeInp.value = name;
+  // 自动开始计时（f-start 会读取 fThemeCustom.value）
+  handleFocusAct('f-start', '', null);
+  if (inp) inp.value = '';
   } catch (e) { console.warn('[cwTempAdd]', e); }
 };
 // 删除临时任务（inline onclick 兜底）
@@ -369,16 +372,7 @@ window.cwTempDel = function (id) {
 };
 
 function renderFocusTimer(s) {
-  const items = s.discipline.items || [];
-  const cats = s.focus.categories || ['学习', '科研', '阅读', '运动', '写作', '其他'];
   const running = _focusTimer.running;
-
-  const themeOps = [];
-  items.forEach((it) => { if (it.name) themeOps.push({ id: it.id, name: it.name }); });
-  const themeSel = `<select id="fTheme" class="input focus-theme-select">` +
-    (themeOps.length ? themeOps.map((o) => `<option value="${UI.esc(o.name)}" data-id="${UI.esc(o.id)}">${UI.esc(o.name)}</option>`).join('') : `<option value="">— 暂无打卡项 —</option>`) +
-    `</select>`;
-  const catSel = `<select id="fCategory" class="input focus-cat-select">${cats.map((c) => `<option value="${UI.esc(c)}">${UI.esc(c)}</option>`).join('')}</select>`;
   const typeSel = `<select id="fType" class="input focus-type-select"><option value="focus">专注模式</option><option value="checkin">打卡模式</option></select>`;
 
   const timerDisplay = running ? fmtClock(Date.now() - _focusTimer.startTs) : '00:00:00';
@@ -394,11 +388,9 @@ function renderFocusTimer(s) {
     <div class="card-body">
       <div class="focus-timer-center">
         <div class="focus-clock" id="fTimer">${timerDisplay}</div>
-        ${running ? `<div class="focus-running-theme">${UI.esc(_focusTimer.type === 'checkin' ? '打卡' : '专注')}：<b>${UI.esc(_focusTimer.theme)}</b>${_focusTimer.category ? ` · ${_focusTimer.category}` : ''}</div>` : `<div class="focus-clock-hint">开始一段专注 / 打卡计时</div>`}
-        <input class="input" id="fThemeCustom" placeholder="本次主题，可留空自动读取当前任务" style="max-width:420px"/>
+        ${running ? `<div class="focus-running-theme">${UI.esc(_focusTimer.type === 'checkin' ? '打卡' : '专注')}：<b>${UI.esc(_focusTimer.theme)}</b></div>` : `<div class="focus-clock-hint">开始一段专注 / 打卡计时</div>`}
+        <input class="input focus-theme-input" id="fThemeCustom" placeholder="本次主题，可留空自动读取当前任务" autocomplete="off" style="max-width:420px"/>
         <div class="focus-input-row">
-          ${themeSel}
-          ${catSel}
           ${typeSel}
         </div>
         <input class="input" id="fNote" placeholder="备注（可选）" style="max-width:420px"/>

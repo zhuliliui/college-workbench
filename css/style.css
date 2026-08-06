@@ -1029,6 +1029,7 @@ table.tbl tr:hover td { background: var(--surface-2); }
 .fp-op-edit { background: #eef1f5; color: #5a6b7c; }
 
 .focus-timer-center .input { width: 100%; max-width: 420px; }
+.focus-theme-input { margin-bottom: 14px !important; }
 .focus-type-select { max-width: 120px; }
 .focus-btn-record { background: var(--primary-deep); color: #fff; }
 
