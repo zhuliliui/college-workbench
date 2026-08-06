@@ -84,19 +84,19 @@ window.Pages = window.Pages || {};
   // 修复「闪卡发音没声音」的根因：必须持有 utterance 引用，否则部分浏览器会在朗读前
   // 将其垃圾回收 → 静默。直接 speak（不 cancel）可同时规避 Chromium 的 cancel/speak 竞态
   // 与 iOS 的手势链断开问题；保留引用 + resume 兜底。
-  function speak(text) {
+  function speak(text, silent) {
   try {
   if (!text) return;
   // 1) 原生 TTS（离线优先 · 走系统语音引擎：华为 HiVoice/vivo 自带引擎，无需网络/GMS）
   const nat = (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.TextToSpeech);
   if (nat && nat.speak) {
-  nat.speak({ text: text, lang: 'en-US', rate: 0.9 }).then(() => {}).catch(() => speakFallback(text));
+  nat.speak({ text: text, lang: 'en-US', rate: 0.9 }).then(() => {}).catch(() => speakFallback(text, silent));
   return;
   }
-  speakFallback(text);
-  } catch (e) { console.warn('[speak] failed', e); UI.toast('朗读失败', 'warn'); }
+  speakFallback(text, silent);
+  } catch (e) { console.warn('[speak] failed', e); if (!silent) UI.toast('朗读失败', 'warn'); }
   }
-  function speakFallback(text) {
+  function speakFallback(text, silent) {
   try {
   // 2) WebView 自带 speechSynthesis（iOS / Chrome / 部分国产 ROM）
   if ('speechSynthesis' in window) {
@@ -112,13 +112,13 @@ window.Pages = window.Pages || {};
   // 3) 兜底：走后端 TTS 接口（自托管 server.js / Railway 节点）
   const st = (Store && Store.get) ? Store.get() : {};
   const backendUrl = (st.cal && st.cal.backendUrl) || (typeof Store.readerBackend === 'function' ? Store.readerBackend() : '') || '';
-  if (!backendUrl) { UI.toast('当前环境不支持语音朗读', 'warn'); return; }
-  UI.toast('朗读中…', 'ok');
+  if (!backendUrl) { if (!silent) UI.toast('当前环境不支持语音朗读', 'warn'); return; }
+  if (!silent) UI.toast('朗读中…', 'ok');
   fetch(backendUrl.replace(/\/$/, '') + '/api/tts?text=' + encodeURIComponent(text) + '&lang=en')
   .then((r) => r.ok ? r.blob() : Promise.reject(new Error('http ' + r.status)))
-  .then((b) => { const u = URL.createObjectURL(b); const a = new Audio(u); a.onended = () => URL.revokeObjectURL(u); a.play().catch(() => UI.toast('朗读失败', 'warn')); })
-  .catch(() => UI.toast('朗读失败，请检查后端是否可达', 'warn'));
-  } catch (e) { console.warn('[speakFallback] failed', e); UI.toast('朗读失败', 'warn'); }
+  .then((b) => { const u = URL.createObjectURL(b); const a = new Audio(u); a.onended = () => URL.revokeObjectURL(u); a.play().catch(() => { if (!silent) UI.toast('朗读失败', 'warn'); }); })
+  .catch(() => { if (!silent) UI.toast('朗读失败，请检查后端是否可达', 'warn'); });
+  } catch (e) { console.warn('[speakFallback] failed', e); if (!silent) UI.toast('朗读失败', 'warn'); }
   }
   function newWordObj(w) {
   return { id: Store.uid(), word: w.word, phonetic: w.phonetic || '', pos: w.pos || '', cn: w.cn || '', phrases: w.phrases || '', syn: w.syn || '', mnemonic: w.mnemonic || '', box: 0, next: Date.now(), last: 0, reps: 0 };
@@ -598,6 +598,8 @@ window.Pages = window.Pages || {};
   </div>
   </div>` + dictateCardHtml(dList);
   const w = wrap(body, html);
+  // 自动发音：每张新卡显示后静默朗读单词（原生TTS/speechSynthesis 无提示，后端路径静默不弹 toast）
+  setTimeout(() => { try { speak(w0.word, true); } catch (e) {} }, 450);
   // 翻转：切换 .flipped 类（保留 DOM，触发 3D 翻转动画），并联动「记住/没记住」按钮显隐
   const flip = () => {
   session.flipped = !session.flipped;
@@ -1484,7 +1486,10 @@ window.Pages = window.Pages || {};
   }
   function paintReader(body) {
   const modeBtn = (mode, label) => `<button class="btn btn-sm ${readerMode === mode ? '' : 'btn-soft'}" data-mode="${mode}">${label}</button>`;
-  const backend = Store.get().english.readerBackend || '';
+  // 联网设置与「顶部提醒按钮」同步：统一以 cal.backendUrl 为唯一入口，旧版 english.readerBackend 兜底显示
+  const _st = Store.get();
+  const _rawBackend = (_st.english && _st.english.readerBackend) || '';
+  const backend = ((_st.cal && _st.cal.backendUrl) || (_rawBackend && _rawBackend !== 'https://cw-backup-production.up.railway.app' ? _rawBackend : '') || '');
   // 目录：内置精选 + 自建（已保存），统一列出；已读/未读筛选
   const readSet = Store.get().english.readSet || [];
   const lib = (Store.get().english.articles || []).filter((a) => !a.offline);
@@ -1598,7 +1603,15 @@ window.Pages = window.Pages || {};
   if (wd) showWordPop(wd, wd.dataset.w);
   });
   const bi = w.querySelector('#readerBackend');
-  if (bi) bi.addEventListener('change', () => { Store.update((s) => { s.english.readerBackend = (bi.value || '').trim(); }); UI.toast('已保存联网后端地址', 'ok'); });
+  if (bi) bi.addEventListener('change', () => {
+  const v = (bi.value || '').trim();
+  Store.update((s) => {
+  s.english = s.english || {}; s.english.readerBackend = v;
+  s.cal = s.cal || {}; s.cal.backendUrl = v; // 与顶部提醒按钮同步（唯一入口）
+  s.cal.subscribed = !!v;
+  });
+  UI.toast('已保存，并已同步到「提醒」设置', 'ok');
+  });
   }
   // 通用导入/编辑弹窗：标题 + 英文中文交替（默认）或分栏/仅英/仅中；支持文件导入；编辑时预填并覆盖原条目
   // 判断一段文字整体是不是中文段：中文字符占非空白字符一半以上即视为中文

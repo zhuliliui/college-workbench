@@ -239,6 +239,9 @@
   st.cal.clientId = cid;
   st.cal.reminders = reminders.length ? reminders : [1440, 720, 60];
   st.cal.subscribed = !!calBackend;
+  // 与「外刊阅读→联网设置」同步（唯一入口 = cal.backendUrl）
+  st.english = st.english || {};
+  st.english.readerBackend = calBackend;
   });
   if (pushEnabled) { if (window.syncPush) syncPush(); if (window.checkAndPushDirect) checkAndPushDirect(); }
   if (calBackend && window.syncDDLCloud) syncDDLCloud(false);

@@ -249,15 +249,15 @@
   // 解析联网后端地址：本地后端运行时优先走同源 /api（不依赖外部 Railway）
   const DEFAULT_RAILWAY_BACKEND = 'https://cw-backup-production.up.railway.app';
   function readerBackend() {
-    const raw = (get().english.readerBackend || '').replace(/\/$/, '');
-    // 「提醒→日历订阅」里填的后端（如自建隧道）同样可用于 AI 选题/外刊，自动打通
     const calUrl = ((get().cal && get().cal.backendUrl) || '').replace(/\/$/, '');
-    const candidate = raw || calUrl;
+    const raw = (get().english.readerBackend || '').replace(/\/$/, '');
+    // 「提醒→日历订阅」是统一入口（cal.backendUrl）优先；外刊页的历史设置（english.readerBackend）兜底
+    let candidate = calUrl || (raw && raw !== DEFAULT_RAILWAY_BACKEND ? raw : '');
     if (candidate && candidate !== DEFAULT_RAILWAY_BACKEND) return candidate;
     const loc = (typeof location !== 'undefined' && location) || {};
     const isLocalhost = /^localhost$|^127\.0\.0\.1$/i.test(loc.hostname || '');
     if (isLocalhost) return ''; // localhost 走同源 /api/...
-    return candidate;
+    return candidate || DEFAULT_RAILWAY_BACKEND;
   }
 
   // 技能学习数据结构兜底（topic/course 字段完整性）
