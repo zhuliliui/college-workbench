@@ -6,9 +6,17 @@
 window.Pages = window.Pages || {};
 // 模块级状态：AI 选题是否处于「已读热点」视图（必须在页面函数外，否则每次重渲染被重置）
 let _topicReadView = false;
+  // 持久化当前专题详情（刷新后保留在课程详情页，不退回到列表）
+  function saveSkillView() { try { if (window.__skillViewId) localStorage.setItem('cw_skill_view', window.__skillViewId); else localStorage.removeItem('cw_skill_view'); } catch (_) {} }
+
 Pages.skill = function () {
   const c = UI.$('#content');
-  window.__skillViewId = null; // 从导航进入时默认回到专题列表；页内下钻用 render() 保留状态
+  // 刷新后从 localStorage 恢复当前专题；从导航进入时若 viewId 失效则回到列表；页内操作（如保存课程）保留当前专题详情
+  (() => {
+    const topics = (Store.get().skill && Store.get().skill.topics) || [];
+    if (!window.__skillViewId) { try { window.__skillViewId = localStorage.getItem('cw_skill_view') || null; } catch (_) { window.__skillViewId = null; } }
+    if (!window.__skillViewId || !topics.find((t) => t.id === window.__skillViewId)) window.__skillViewId = null;
+  })();
 
   const getTopics = () => (Store.get().skill && Store.get().skill.topics) || [];
   const findTopic = (id) => getTopics().find((t) => t.id === id);
@@ -16,6 +24,9 @@ Pages.skill = function () {
 
   // 内置 AI 热门学习选题种子（来源：真实搜索整理，刷新时循环抽取）
   const AI_TOPIC_SEED = [
+    { title: 'Awesome-Hacking：黑客与安全研究资源大全（GitHub 精选）', tags: ['黑客','网络安全','资源集'], url: 'https://github.com/Hack-with-Github/Awesome-Hacking' },
+    { title: 'awesome-pentest：渗透测试工具与方法集合（GitHub 精选）', tags: ['渗透测试','网络安全','工具集'], url: 'https://github.com/enaqx/awesome-pentest' },
+    { title: 'Metasploit Framework：主流渗透测试 / 漏洞利用框架', tags: ['Metasploit','渗透','Exploit'], url: 'https://github.com/rapid7/metasploit-framework' },
     { title: '2025年AI智能体开发完全指南：10个GitHub顶级教程资源', tags: ['AI智能体','GitHub','入门到精通'], url: 'https://cloud.tencent.com.cn/developer/article/2557199' },
     { title: '微软官方 AI Agents for Beginners 入门课程', tags: ['微软','AIAgent','入门课程'], url: 'https://github.com/microsoft/ai-agents-for-beginners' },
     { title: 'Agent Engineering 实践指南：从零基础到生产级AI Agent', tags: ['Agent工程','Prompt','LangChain'], url: 'https://juejin.cn/post/7507283160617385993' },
@@ -56,6 +67,14 @@ Pages.skill = function () {
     { title: 'Multi-Agent System Python 教程：Coordinator + Worker 架构 200 行实现', tags: ['多智能体','协调者','Python','架构'], url: 'https://www.aibuilderclub.io/blog/tag/ai-agents' },
     { title: 'Gemini 3 + LangChain：流式、多模态、工具调用、上下文缓存打造 AI Agent', tags: ['Gemini3','LangChain','多模态','Agent'], url: 'https://kgptalkie.com/tutorials/generative-ai' },
     { title: '构建个人 AI 员工团队：7 个 Agent 覆盖首席参谋/研究员/文案/数据分析', tags: ['Agent','生产力','自动化','个人助理'], url: 'https://www.aibuilderclub.io/blog/tag/ai-agents' },
+    // ---- 爬虫 / 数据采集方向 ----
+    { title: 'Firecrawl：用 AI 把任意网页转成结构化数据（搜索/抓取 API）', tags: ['爬虫','数据采集','API','AI'], url: 'https://github.com/firecrawl/firecrawl' },
+    { title: 'Scrapy：Python 高性能网页爬虫与数据采集框架', tags: ['爬虫','Python','Scraping','框架'], url: 'https://github.com/scrapy/scrapy' },
+    { title: 'EasySpider：可视化无代码网页爬虫/采集器（小红书/抖音/B站）', tags: ['爬虫','无代码','可视化','采集'], url: 'https://github.com/NaiboWang/EasySpider' },
+    // ---- GitHub 全局热门（高 star / 趋势仓库，不限主题）----
+    { title: 'build-your-own-x：通过复刻经典项目掌握编程（GitHub 高星）', tags: ['GitHub热门','练手项目','全栈','教程'], url: 'https://github.com/codecrafters-io/build-your-own-x' },
+    { title: 'awesome：各类优质资源清单合集（GitHub 最高星仓库之一）', tags: ['GitHub热门','资源集','清单'], url: 'https://github.com/sindresorhus/awesome' },
+    { title: 'public-apis：免费公开 API 大合集（开发者的宝藏清单）', tags: ['GitHub热门','API','开发者','资源'], url: 'https://github.com/public-apis/public-apis' },
   ];
 
   // 远程种子（可持续更新，不必重打包）：优先拉取，失败/超时静默回落内置种子
@@ -100,10 +119,19 @@ Pages.skill = function () {
       if (!r.ok) return false;
       const j = await r.json().catch(() => null);
       if (!j || !Array.isArray(j.topics) || !j.topics.length) return false;
-      if (j.date && j.date !== today) return false; // 后端还没生成今日选题
+      // 降级加载：即使后端日期不是今天（例如本机后端未重启、UTC 差一天），也显示并标注实际日期，不直接丢弃
+      const loadedDate = j.date || today;
+      const seen = new Set();
+      const topics = [];
+      for (const t of j.topics) {
+        const k = (t.title || '').trim().toLowerCase();
+        if (!k || seen.has(k)) continue; // 后端两源（arXiv/HN）可能重复，前端再按标题去重保险
+        seen.add(k);
+        topics.push(t);
+      }
       Store.update((st) => {
-        st.skill.aiTopicsDate = today;
-        st.skill.dailyTopics = j.topics.map((t) => ({ id: Store.uid(), title: t.title, tags: (t.tags || []).slice(), url: t.url || '' }));
+        st.skill.aiTopicsDate = loadedDate;
+        st.skill.dailyTopics = topics.map((t) => ({ id: Store.uid(), title: t.title, tags: (t.tags || []).slice(), url: t.url || '' }));
         // 自动加入本地种子池（去重 + 上限 100），后端不可达时离线也能刷到最新热点
         const pool = (st.skill.topicPool || []).slice();
         st.skill.dailyTopics.forEach((f) => { if (!pool.some((p) => p.title === f.title)) pool.push(f); });
@@ -165,7 +193,64 @@ Pages.skill = function () {
   <div class="card-body">${listHtml}</div>
   </div>
   <div class="muted-text mt8"> 课程可关联到「学习复习计划」统一打卡。</div>
-  ${renderDailyTopics()}`;
+  ${renderDailyTopics()}
+  ${renderCnSources()}
+  ${renderEnSites()}`;
+  }
+
+  // ---------- 国内题源公众号推荐 ----------
+  // 不爬取公众号原文（反爬严+版权），仅展示公众号简介+微信搜索链接，
+  // 让用户去微信关注读原文；同时「外刊精选」种子已内置4篇官方权威双语素材（政府工作报告）
+  function renderCnSources() {
+  const items = [
+  { name: '外刊阅读类P2-5', desc: '精选 The Economist / Guardian 等外刊段落精读，题源贴合考研阅读', wx: 'weixin://search/' + encodeURIComponent('外刊阅读类P2-5') },
+  { name: '独霸海上的妖怪', desc: '原版外刊 / 考研真题源文章深度精读', wx: 'weixin://search/' + encodeURIComponent('独霸海上的妖怪') },
+  { name: 'LearnAndRecord', desc: '政府工作报告双语 + 经典演讲 / 散文精读（考研翻译/写作素材库）', wx: 'weixin://search/' + encodeURIComponent('LearnAndRecord') },
+  { name: '三言两语杂货社', desc: '短篇双语精读 + 词伙积累，适合碎片化学习', wx: 'weixin://search/' + encodeURIComponent('三言两语杂货社') },
+  { name: 'Soren双语精读笔记', desc: '外刊长文双语精读 + 写作句型拆解', wx: 'weixin://search/' + encodeURIComponent('Soren双语精读笔记') }
+  ];
+  const html = items.map((it) => `
+  <div class="cn-source-row">
+    <div class="cn-source-main">
+      <div class="cn-source-name">${UI.esc(it.name)}</div>
+      <div class="cn-source-desc">${UI.esc(it.desc)}</div>
+    </div>
+    <a class="btn btn-sm btn-soft" href="${it.wx}" target="_blank" rel="noopener">微信搜</a>
+  </div>`).join('');
+  return `
+  <div class="card cn-source-card mt16">
+    <div class="card-head">
+      <div class="title">📚 国内题源公众号推荐</div>
+      <div class="spacer"></div>
+      <span class="muted-text" style="font-size:11px">点击「微信搜」直达公众号</span>
+    </div>
+<div class="card-body">${html}
+    <div class="muted-text mt8" style="font-size:12px">提示：App 「外刊阅读」里已内置 4 篇《政府工作报告 2026》双语精华（人民日报权威译本），离线可读。</div>
+    </div>
+  </div>`;
+  }
+
+  // ---------- 免费英语学习网站推荐 ----------
+  // 直接打开浏览器即可学习；不爬内容（按用户要求仅做推荐入口）
+  function renderEnSites() {
+  const sites = [
+  { name: 'Breaking News English', url: 'https://breakingnewsenglish.com/', desc: '一个网站搞定所有水平（初级到高级），每篇文章带音频和 quiz，自学神器' },
+  { name: 'TIME for Kids', url: 'https://www.timeforkids.com/', desc: '《时代》周刊青少年版，话题有趣不枯燥，用词地道又简单' },
+  { name: 'The Guardian — Eyewitness', url: 'https://www.theguardian.com/eyewitness', desc: '每天一张震撼新闻图片 + 一段精炼英文描述，学习描述性语言的绝佳素材' }
+  ];
+  const html = sites.map((s) => '<div class="cn-source-row">'
+  + '<div class="cn-source-main">'
+  +   '<div class="cn-source-name">' + UI.esc(s.name) + '</div>'
+  +   '<div class="cn-source-desc">' + UI.esc(s.desc) + '</div>'
+  + '</div>'
+  + '<a class="btn btn-sm btn-soft" href="' + UI.esc(s.url) + '" target="_blank" rel="noopener">打开</a>'
+  + '</div>').join('');
+  return '<div class="card cn-source-card mt16">'
+  + '<div class="card-head"><div class="title">🌐 免费英语学习网站</div>'
+  + '<div class="spacer"></div>'
+  + '<span class="muted-text" style="font-size:11px">点击「打开」直达网站</span></div>'
+  + '<div class="card-body">' + html + '</div>'
+  + '</div>';
   }
 
   // ---------- 每日AI学习选题 ----------
@@ -173,6 +258,7 @@ Pages.skill = function () {
   function renderReadTopics() {
   const all = getDailyTopics();
   const readList = all.filter((x) => x.read);
+  const _topicDate = Store.get().skill.aiTopicsDate || '';
   const body = readList.length
   ? `<div class="list ddl-list">` + readList.map((x) => {
     const tags = (x.tags || []).map((tg) => '#' + UI.esc(tg)).join(' ');
@@ -181,6 +267,7 @@ Pages.skill = function () {
       <div class="name">${UI.esc(x.title || '')} <span class="tag muted">已读</span></div>
       ${tags ? `<div class="meta"><span>${tags}</span></div>` : ''}
       ${x.url ? `<div class="meta"><span>${UI.esc(x.url)}</span></div>` : ''}
+      ${_topicDate ? `<div class="meta ai-date-meta"><span>收录于 ${UI.esc(_topicDate)}</span></div>` : `<div class="meta ai-date-meta"><span>本地选题</span></div>`}
     </div>
     <div class="ops">
       ${x.url ? `<button class="btn btn-soft btn-icon" data-act="ai-link" data-tid="${x.id}" title="打开链接"><img class="ic" src="assets/icons/hk-29.png" alt=""/></button>` : ''}
@@ -205,6 +292,7 @@ Pages.skill = function () {
   if (_topicReadView) return renderReadTopics(); // 已读热点独立界面
   const all = getDailyTopics();
   const topics = all.filter((x) => !x.read); // 默认隐藏已读
+  const _topicDate = Store.get().skill.aiTopicsDate || ''; // 仅显示真实收录日期；无日期（本地种子/离线）不冒领"今天"
   let html;
   if (!topics.length) {
     html = all.length
@@ -224,6 +312,7 @@ Pages.skill = function () {
     <div class="ai-main">
       <div class="ai-title" contenteditable="true" data-field="title" data-tid="${x.id}">${UI.esc(x.title || '')}</div>
       <div class="ai-tags" contenteditable="true" data-field="tags" data-tid="${x.id}">${tags}</div>
+      ${_topicDate ? `<div class="ai-date">收录于 ${UI.esc(_topicDate)}</div>` : `<div class="ai-date ai-local">本地选题</div>`}
     </div>
     <div class="ai-ops">
       <button class="btn btn-soft btn-icon ai-link ${hasUrl ? '' : 'disabled'}" data-act="ai-link" data-tid="${x.id}" title="${hasUrl ? '打开链接' : '未设置链接'}"><img class="ic" src="assets/icons/hk-29.png" alt=""/></button>
@@ -321,8 +410,8 @@ Pages.skill = function () {
   if (!b) return;
   const act = b.dataset.act, id = b.dataset.id, tid = b.dataset.tid;
 
-  if (act === 'open') { window.__skillViewId = id; return render(); }
-  if (act === 'back') { window.__skillViewId = null; return render(); }
+  if (act === 'open') { window.__skillViewId = id; saveSkillView(); return render(); }
+  if (act === 'back') { window.__skillViewId = null; saveSkillView(); return render(); }
   if (act === 'add-topic') return openTopicModal();
   if (act === 'rename') return openTopicModal(id);
   if (act === 'del') return UI.confirm('删除该专题？其下课程也会一并删除。', () => {
@@ -334,7 +423,7 @@ Pages.skill = function () {
   }
   st.skill.topics = st.skill.topics.filter((x) => x.id !== id);
   });
-  if (window.__skillViewId === id) window.__skillViewId = null;
+  if (window.__skillViewId === id) { window.__skillViewId = null; saveSkillView(); }
   Pages.skill();
   });
   if (act === 'add-course') return openCourseModal(window.__skillViewId);
@@ -437,33 +526,48 @@ Pages.skill = function () {
     if (r.ok) {
       const j = await r.json().catch(() => null);
       if (j && Array.isArray(j.topics) && j.topics.length) {
+      const seen = new Set();
+      const topics = [];
+      for (const t of j.topics) {
+        const k = (t.title || '').trim().toLowerCase();
+        if (!k || seen.has(k)) continue;
+        seen.add(k);
+        topics.push(t);
+      }
       Store.update((st) => {
-        st.skill.aiTopicsDate = D.todayStr();
-        st.skill.dailyTopics = j.topics.map((t) => ({ id: Store.uid(), title: t.title, tags: (t.tags || []).slice(), url: t.url || '' }));
+        st.skill.aiTopicsDate = j.date || ''; // 真实后端日期；无日期不冒领"今天"
+        st.skill.dailyTopics = topics.map((t) => ({ id: Store.uid(), title: t.title, tags: (t.tags || []).slice(), url: t.url || '' }));
         // 自动加入本地种子池
         const pool = (st.skill.topicPool || []).slice();
         st.skill.dailyTopics.forEach((f) => { if (!pool.some((p) => p.title === f.title)) pool.push(f); });
         st.skill.topicPool = pool.slice(-100);
       });
-      UI.toast('已刷新：后端实时 AI 选题 ' + j.topics.length + ' 条', 'ok');
+      UI.toast('已刷新：后端实时 AI 选题 ' + topics.length + ' 条', 'ok');
       Pages.skill();
       return;
       }
     }
     } catch (e) { /* 后端失败则回退本地池/种子 */ }
   }
-  // 无后端或后端失败：优先本地热点池（历史爬到的），没有再用内置种子
+  // 无后端或后端失败：把「本地种子池(topicPool)」与「内置静态种子(TOPIC_SEED)」合并为同一个库再抽取
+  // 实时抓取的真实热点优先，内置种子补足；合并后写回 topicPool 持久化 → 从此只有一个库
   Store.update((st) => {
-    const pool = (st.skill.topicPool && st.skill.topicPool.length) ? st.skill.topicPool : TOPIC_SEED.slice();
+    const base = (st.skill.topicPool && st.skill.topicPool.length) ? st.skill.topicPool.slice() : [];
+    const pool = base.slice();
+    for (const s of TOPIC_SEED) {
+      if (!pool.some((p) => (p.title || '') === (s.title || ''))) pool.push(s);
+    }
     const idx = st.skill.topicSeedIndex || 0;
     const batch = 4;
     const next = [];
     for (let i = 0; i < batch; i++) {
-    const s = pool[(idx + i) % pool.length];
-    next.push({ id: Store.uid(), title: s.title, tags: s.tags.slice(), url: s.url });
+      const s = pool[(idx + i) % pool.length];
+      if (s) next.push({ id: Store.uid(), title: s.title, tags: s.tags.slice(), url: s.url });
     }
     st.skill.dailyTopics = next;
+    st.skill.aiTopicsDate = ''; // 本地种子非"收录"，清掉旧日期避免冒领真实日期
     st.skill.topicSeedIndex = (idx + batch) % pool.length;
+    st.skill.topicPool = pool.slice(-100); // 整合为同一个库并持久化（内置种子也并入）
   });
   UI.toast('已刷新 AI 学习选题', 'ok');
   Pages.skill();

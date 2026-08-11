@@ -66,7 +66,7 @@
         words: [],                // 唯一个人背诵词库
         articles: [],             // 外刊收藏
         reader: null,             // 当日外刊缓存 {date,title,source,text,link}
-        readerBackend: 'https://cw-backup-production.up.railway.app', // 联网后端（Railway 部署的 server.js：实时外刊 + 每日AI选题）
+        readerBackend: 'http://localhost:3000', // 联网后端（默认本地 server.js：实时外刊 + 每日AI选题）
         readerToday: null,         // 当日后端摘取的外刊缓存 {date, list:[...]}，每日刷新
         lastGroupDoneAt: null,
         daily: { date: '', learned: 0 }, // 每日已学单词数（满 20 词奖励 +1 元）
@@ -110,11 +110,14 @@
     // 兜底字段
     const base = blankState();
     for (const k in base) if (state[k] === undefined) state[k] = base[k];
-    // 深层兜底：push / cal 可能部分字段缺失
-    if (!state.push) state.push = base.push;
-    else state.push = Object.assign({}, base.push, state.push);
-    if (!state.cal) state.cal = base.cal;
-    else state.cal = Object.assign({}, base.cal, state.cal);
+    // 深层兜底：各模块可能部分字段缺失（如旧数据 discipline 无 tempTasks/counters、focus 无 categories）。
+    // 只补 undefined 子字段，避免用 Object.assign 展开破坏数组字段（sessions/items/words 等会变对象）。
+    for (const key of ['push', 'cal', 'discipline', 'focus', 'travel', 'finance', 'monthly']) {
+      if (!state[key]) { state[key] = base[key]; continue; }
+      for (const sub in base[key]) {
+        if (state[key][sub] === undefined) state[key][sub] = base[key][sub];
+      }
+    }
     normSkill(state);
   }
 
@@ -255,8 +258,15 @@
     let candidate = calUrl || (raw && raw !== DEFAULT_RAILWAY_BACKEND ? raw : '');
     if (candidate && candidate !== DEFAULT_RAILWAY_BACKEND) return candidate;
     const loc = (typeof location !== 'undefined' && location) || {};
-    const isLocalhost = /^localhost$|^127\.0\.0\.1$/i.test(loc.hostname || '');
-    if (isLocalhost) return ''; // localhost 走同源 /api/...
+    const h = loc.hostname || '';
+    const isLocalhost = /^localhost$|^127\.0\.0\.1$|^\[::1\]$/i.test(h);
+    // 局域网/私网 IP（10.x / 192.168.x / 172.16-31.x / 169.254.x / 0.0.0.0）：
+    // 此时前端由本机 server.js 同源托管，API 直接走相对路径 /api/...，无需再指向公网 Railway，
+    // 也避免了“本地后端已抓到 cn-daily，App 却去读 Railway 而看不到”的问题。
+    const isPrivate = /^10\./.test(h) || /^192\.168\./.test(h) || /^172\.(1[6-9]|2\d|3[01])\./.test(h) || /^169\.254\./.test(h) || h === '0.0.0.0';
+    // 同源后端：返回当前页面 origin（如 http://10.96.45.34:3000），调用方用 backend + '/api/...' 即可打到本机后端。
+    // 注意：必须返回真实 origin，不能返回 '' —— 所有调用方用 if(backend) 判断，'' 会被当成「无后端」而跳过拉取。
+    if (isLocalhost || isPrivate) return loc.origin || '';
     return candidate || DEFAULT_RAILWAY_BACKEND;
   }
 

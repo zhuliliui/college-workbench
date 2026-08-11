@@ -131,7 +131,16 @@ function handleFocusAct(act, id, b) {
   if (act === 'f-add-temp') {
     const inp = UI.$('#fTempInput'); const name = inp ? inp.value.trim() : '';
     if (!name) return UI.toast('请输入临时任务', 'warn');
-    Store.update((st) => { st.discipline.tempTasks.push({ id: Store.uid(), name, done: false, doneAt: null }); });
+    Store.update((st) => {
+      st.discipline.tempTasks = st.discipline.tempTasks || [];
+      st.discipline.tempTasks.push({ id: Store.uid(), name, done: false, doneAt: null });
+    });
+    // 自动写入本次主题并开始计时
+    const themeInp = UI.$('#fThemeCustom');
+    if (themeInp) themeInp.value = name;
+    const cat = UI.$('#fCategory'), type = UI.$('#fType');
+    startFocusTimer(name, cat ? cat.value : '', '', null, type ? type.value : 'focus');
+    if (inp) inp.value = '';
     rerender(); return;
   }
   if (act === 'f-done-temp') {
@@ -197,13 +206,12 @@ function handleFocusAct(act, id, b) {
     rerender(); return;
   }
   if (act === 'f-add-manual') {
-    const date = UI.val('#fManDate'); const start = UI.val('#fManStart'); const end = UI.val('#fManEnd');
-    const theme = UI.val('#fManTheme'); const category = UI.val('#fManCategory'); const note = UI.val('#fManNote'); const type = UI.val('#fManType');
+    const date = UI.val('#fManDate'); const start = UI.val('#fManStart'); const end = UI.val('#fManEnd'); const theme = UI.val('#fManTheme');
     if (!date || !start || !end || !theme) return UI.toast('请填写日期、起止时间和主题', 'warn');
     const startTs = new Date(date + 'T' + start).getTime();
     const endTs = new Date(date + 'T' + end).getTime();
     if (isNaN(startTs) || isNaN(endTs) || endTs <= startTs) return UI.toast('结束时间必须晚于开始时间', 'warn');
-    Store.update((st) => { st.focus.sessions.push({ id: Store.uid(), theme, category, note, start: startTs, end: endTs, dur: endTs - startTs, abandoned: false, type: type || 'focus' }); });
+    Store.update((st) => { st.focus.sessions.push({ id: Store.uid(), theme, category: '', note: '', start: startTs, end: endTs, dur: endTs - startTs, abandoned: false, type: 'focus' }); });
     rerender(); return;
   }
   if (act === 'f-del-session') {
@@ -307,7 +315,7 @@ function renderFocusPlan(s) {
       <div class="fp-body"><div class="fp-name">${UI.esc(t.name)}</div></div>
       <div class="fp-ops">
         <button class="btn btn-soft btn-icon" data-act="f-start-temp" data-id="${t.id}" title="开始"><img class="ic" src="assets/icons/hk-09.png" alt=""/></button>
-        <button class="btn btn-soft btn-icon" data-act="f-del-temp" data-id="${t.id}" title="删除" onclick="window.cwTempDel&&cwTempDel(this.dataset.id)"><img class="ic" src="assets/icons/hk-18.png" alt=""/></button>
+        <button class="btn btn-soft btn-icon" data-act="f-del-temp" data-id="${t.id}" title="删除"><img class="ic" src="assets/icons/hk-18.png" alt=""/></button>
       </div>
     </div>`).join('') : `<div class="muted-text">还没有临时任务</div>`;
 
@@ -339,8 +347,8 @@ function renderFocusPlan(s) {
       <div class="fp-list">${planHtml}</div>
       <div class="fp-section mt12">临时任务</div>
       <div class="fp-add-line">
-        <input class="input" id="fTempInput" placeholder="临时任务，如：修改实验图" autocomplete="off" onkeydown="if(event.key==='Enter'){window.cwTempAdd&&cwTempAdd()}"/>
-        <button class="btn fp-add-btn" data-act="f-add-temp" onclick="window.cwTempAdd&&cwTempAdd()">新增临时任务</button>
+        <input class="input" id="fTempInput" placeholder="临时任务，如：修改实验图" autocomplete="off"/>
+        <button class="btn fp-add-btn" data-act="f-add-temp">新增临时任务</button>
       </div>
       <div class="fp-list">${tempHtml}</div>
       <div class="fp-section mt12">打卡项目</div>
@@ -420,6 +428,7 @@ function renderFocusManual(s) {
         <input class="input" type="date" id="fManDate" value="${today}"/>
         <input class="input" type="time" id="fManStart" value="${nowStr}"/>
         <input class="input" type="time" id="fManEnd" value="${nowStr}"/>
+        <input class="input" id="fManTheme" placeholder="补录主题" style="grid-column:1/-1"/>
       </div>
       <button class="btn btn-block mt12 focus-btn-record" data-act="f-add-manual">添加专注记录</button>
     </div>

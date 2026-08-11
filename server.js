@@ -15,27 +15,69 @@ const os = require('os');
 
 // ---------- 代理支持（本机被墙时走本地代理抓外媒；Railway 等海外节点无此变量不受影响）----------
 // 注意：Node 内置 fetch()（undici）默认不读 HTTP_PROXY/HTTPS_PROXY，必须显式挂 dispatcher。
-// 用全局包装：设置了代理环境变量时，所有 fetch 自动走代理，且排除 localhost 自身请求。
+// 用全局包装：检测到代理时，所有外网 fetch 自动走代理，localhost 自身请求直连。
+//
+// 关键修复（2026-08-07）：
+//  1) 代理失败降级直连时，必须给直连「新建一个 AbortSignal」——旧代码复用已被超时取消的
+//     原 signal，导致直连瞬间被取消，表现为 The Guardian/Atlantic/TIME 频繁 timeout / 502。
+//  2) 代理返回 5xx（502/503/504，多为代理出口不稳）时，自动换直连重试一次。
+//  3) 未显式设置 HTTP_PROXY 时，自动读取 Windows 系统代理（Clash 开启「系统代理」即生效，
+//     无需手动 set 环境变量），解决“明明开了代理却没走”的问题。
+function detectWindowsProxy() {
+  if (process.platform !== 'win32') return '';
+  try {
+    const { execSync } = require('child_process');
+    const out = execSync('reg query "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" /v ProxyEnable /v ProxyServer', { encoding: 'utf8', timeout: 3000 });
+    let enabled = false, server = '';
+    for (const line of out.split('\n')) {
+      if (/ProxyEnable/i.test(line)) enabled = /0x1\b/i.test(line);
+      if (/ProxyServer/i.test(line)) { const p = line.trim().split(/\s+/); server = (p[p.length - 1] || '').trim(); }
+    }
+    if (enabled && server) {
+      if (server.includes('=')) {
+        const m = server.match(/https=([^\s;]+)/i) || server.match(/http=([^\s;]+)/i) || server.match(/([^\s;]+)/);
+        server = m ? m[1] : server;
+      }
+      if (!/^https?:\/\//i.test(server)) server = 'http://' + server;
+      return server;
+    }
+  } catch (e) {}
+  return '';
+}
 let proxyDispatcher = null;
+let proxyUrl = (process.env.HTTPS_PROXY || process.env.https_proxy || process.env.HTTP_PROXY || process.env.http_proxy || '').trim();
+if (!proxyUrl) proxyUrl = detectWindowsProxy();
 try {
-  const proxyUrl = process.env.HTTPS_PROXY || process.env.HTTP_PROXY || '';
   if (proxyUrl) {
     const undici = require('undici');
     proxyDispatcher = new undici.ProxyAgent(proxyUrl);
     const undiciFetch = undici.fetch;
     // 注意：Node 内置 globalThis.fetch 不认 dispatcher 参数，必须用 undici.fetch 才能走代理
+    const isLocal = (u) => /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\]|0\.0\.0\.0)/i.test(u);
+    const freshSignal = () => AbortSignal.timeout(15000); // 直连/重试用全新计时器，避免复用已取消的 signal
     globalThis.fetch = (input, init) => {
       const u = typeof input === 'string' ? input : (input && input.url) || '';
-      if (!/^https?:\/\/(localhost|127\.0\.0\.1|\[::1\]|0\.0\.0\.0)/i.test(u)) {
-        return undiciFetch(input, Object.assign({}, init, { dispatcher: proxyDispatcher }));
-      }
-      return undiciFetch(input, init);
+      if (isLocal(u) || !proxyDispatcher) return undiciFetch(input, init);
+      const proxyInit = Object.assign({}, init, { dispatcher: proxyDispatcher });
+      return undiciFetch(input, proxyInit).then((r) => {
+        // 4xx（含 406）是源站/反爬决定，不重试；5xx（502/503/504 多为代理出口不稳）换直连重试
+        if (r.ok || (r.status >= 400 && r.status < 500)) return r;
+        const directInit = Object.assign({}, init);
+        if (init && init.signal) delete directInit.signal;
+        directInit.signal = freshSignal();
+        return undiciFetch(input, directInit);
+      }, (err) => { // 代理连接失败/超时：直连重试
+        const directInit = Object.assign({}, init);
+        if (init && init.signal) delete directInit.signal;
+        directInit.signal = freshSignal();
+        return undiciFetch(input, directInit);
+      });
     };
-    console.log('[proxy] 已启用代理：' + proxyUrl);
+    console.log('[proxy] 已启用代理：' + proxyUrl + '（代理不可用时自动降级直连，5xx 自动重试）');
   } else {
-    console.warn('[proxy] 未设置 HTTP_PROXY/HTTPS_PROXY。若 RSS/外刊抓取全部失败，请带代理启动（例：HTTP_PROXY=http://127.0.0.1:7897 node server.js）');
+    console.warn('[proxy] 未检测到代理（也未设置 HTTP_PROXY）。外媒/外刊抓取可能被墙；开启 Clash 系统代理后重启，或用 HTTP_PROXY=http://127.0.0.1:7897 node server.js');
   }
-} catch (e) { console.warn('[proxy] 代理初始化失败（忽略）：' + e.message); }
+} catch (e) { console.warn('[proxy] 代理初始化失败（忽略，走直连）：' + e.message); }
 
 const PORT = process.env.PORT || 3000;
 // 浏览器风格请求头：New Scientist/TIME/Atlantic 等外媒 RSS 对简单 User-Agent 返回 406/403
@@ -427,10 +469,17 @@ const FEEDS = (() => {
     { name: 'The Guardian', rss: 'https://www.theguardian.com/education/rss' },
     { name: 'The Guardian', rss: 'https://www.theguardian.com/culture/rss' },
     { name: 'The Guardian', rss: 'https://www.theguardian.com/lifeandstyle/rss' },
-    { name: 'New Scientist', rss: 'https://www.newscientist.com/feed/' },
+    // New Scientist 源站 CDN（Varnish 边缘）对 Node/undici 的 TLS 指纹返回 406，换 UA/Accept 均无效；
+    // 改为经 Google News RSS 聚合（undici 可正常拉取），buildArticle 内对 news.google.com 链接走 jina 全文。
+    { name: 'New Scientist', rss: 'https://news.google.com/rss/search?q=site:newscientist.com&hl=en-US&gl=US&ceid=US:en' },
+    // Smithsonian 科普（undici 直连即可，无需特殊头，作为 New Scientist 的稳定补充）
+    { name: 'Smithsonian', rss: 'https://www.smithsonianmag.com/rss/science-nature/' },
     { name: 'The Atlantic', rss: 'https://www.theatlantic.com/feed/science/' },
     { name: 'The Atlantic', rss: 'https://www.theatlantic.com/feed/technology/' },
     { name: 'TIME', rss: 'https://time.com/feed/' },
+    // ---- 学生友好题源（2026-08 新增）：免费英语学习网站 ----
+    { name: 'TIME for Kids', rss: 'https://www.timeforkids.com/feed/' },
+    { name: 'Breaking News English', rss: 'https://breakingnewsenglish.com/rss.xml' },
   ];
 })();
 // 排除词：命中任一即视为金融/地缘政治/硬新闻，跳过（中英对照阅读以社会·教育·职场·大众科技为主）
@@ -440,7 +489,23 @@ function topicOk(text) {
   for (const kw of EXCLUDE_KW) if (t.includes(kw)) return false;
   return true;
 }
-function todayISO() { return new Date().toISOString().slice(0, 10); }
+// 本地日期 YYYY-MM-DD（与前端 D.todayStr() 一致，避免 UTC 时区差一天导致 AI 选题/外刊"今日"校验不匹配）
+function todayISO() { const d = new Date(); const p = (n) => String(n).padStart(2, '0'); return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()); }
+// 文章去重键：优先归一化链接（去 query/hash、小写），否则取英文标题指纹。用于入库前去重，避免重复灌。
+function articleKey(a) {
+  const link = (a && a.link || '').trim().toLowerCase().replace(/[?#].*$/, '');
+  if (link) return 'L:' + link;
+  const t = (a && a.title || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+  return 'T:' + t;
+}
+// 将新文章去重后并入库：已存在的（link/标题相同）跳过，仅真实新增置顶返回。返回新增篇数。
+function mergeArticles(fresh) {
+  if (!Array.isArray(fresh) || !fresh.length) return 0;
+  const existing = new Set((journal.articles || []).map(articleKey));
+  const add = fresh.filter((a) => { const k = articleKey(a); if (existing.has(k)) return false; existing.add(k); return true; });
+  if (add.length) journal.articles = add.concat(journal.articles || []);
+  return add.length;
+}
 const JOURNAL_FILE = path.join(__dirname, 'data', 'journal.json');
 // 去除 RSS 摘要常见的尾部噪声链接文字（"Continue reading..." / "Read more" / 末尾来源链接行），
 // 避免正文被截断片段污染。应用于新抓取与已落盘文章加载两处。
@@ -495,7 +560,7 @@ function parseRss(xml) {
   return items;
 }
 async function fetchRSS(url) {
-  const r = await fetch(url, { signal: AbortSignal.timeout(10000), headers: BROWSER_HEADERS });
+  const r = await fetch(url, { signal: AbortSignal.timeout(15000), headers: BROWSER_HEADERS });
   if (!r.ok) throw new Error('HTTP ' + r.status);
   return await r.text();
 }
@@ -644,6 +709,14 @@ async function buildArticle(it) {
   if (it.link) {
     try {
       let full = await (async () => {
+        // 聚合链接（Google News 等）：其页面不是原文，直接走 r.jina.ai 全文（jina 会跟随跳转抓取真实原文）
+        if (/news\.google\.com|r\.jina\.ai/i.test(it.link)) {
+          try {
+            const j = await fetch('https://r.jina.ai/' + it.link, { signal: AbortSignal.timeout(12000) }).then((x) => x.text());
+            if (j && j.length > 80 && !/<!DOCTYPE|<html|<head/i.test(j)) return j;
+          } catch (e) {}
+          return '';
+        }
         // 优先：直接抓取文章网页，从 JSON-LD articleBody / <article> 抽正文（不依赖第三方）
         try {
           const html = await fetch(it.link, { signal: AbortSignal.timeout(9000), headers: BROWSER_HEADERS }).then((x) => x.text());
@@ -706,27 +779,84 @@ async function fetchLatestArticles(count, force) {
   }
   return arts;
 }
-// 每日定时抓取：每天首次运行时拉取最新 5 篇外刊入库（落盘持久化，重启不丢），每篇标记 fetchDate=当日
+// 每日定时抓取：每天首次运行时拉取最新 5 篇外刊 + 3 篇国内双语入库（落盘持久化，重启不丢），每篇标记 fetchDate=当日
 function checkDailyFetch() {
   const today = todayISO();
   if (journal.lastDaily === today) return;
-  fetchLatestArticles(5, true).then((arts) => {
-    if (arts.length) { journal.articles = journal.articles.concat(arts); console.log('[reader] 今日实时入库', arts.length, '篇'); }
-    else console.log('[reader] 今日无新外刊可入库');
+  Promise.allSettled([fetchLatestArticles(5, true), fetchCnDailyArticles(3)]).then(([r1, r2]) => {
+    let n = 0;
+    if (r1.status === 'fulfilled') { const a = mergeArticles(r1.value || []); n += a; if (a) console.log('[reader] 今日实时入库', a, '篇'); else console.log('[reader] 外刊已是最新，无新增'); }
+    if (r2.status === 'fulfilled') { const a = mergeArticles(r2.value || []); n += a; if (a) console.log('[cn-daily] 国内双语入库', a, '篇'); else console.log('[cn-daily] 双语已是最新，无新增'); }
+    if (!n) console.log('[reader] 今日无新外刊可入库');
     journal.lastDaily = today; saveJournal();
   }).catch((e) => { console.warn('[reader] 每日抓取失败', e.message); journal.lastDaily = today; saveJournal(); });
+}
+
+// ---------- 国内双语自动爬取：中国日报双语新闻（language.chinadaily.com.cn，国内可达、HTML 非 SPA）----------
+// 列表页提取文章链接 -> 详情页提取英文段落 + 中文译文段落 -> 中英配对入库
+const CN_DAILY_LIST = 'https://language.chinadaily.com.cn/';
+async function fetchCnDailyArticles(max) {
+  const out = [];
+  try {
+    const html = await fetch(CN_DAILY_LIST, { signal: AbortSignal.timeout(12000), headers: BROWSER_HEADERS }).then((r) => r.text());
+    const links = [];
+    const re = /href="(\/\/language\.chinadaily\.com\.cn\/a\/\d{6}\/\d{2}\/[^"]+\.html)"/g;
+    let m;
+    while ((m = re.exec(html)) && links.length < 15) if (!links.includes(m[1])) links.push(m[1]);
+    if (!links.length) { console.warn('[cn-daily] 列表页未找到文章链接'); return out; }
+    for (const l of links) {
+      if (out.length >= max) break;
+      try { const art = await buildCnDailyArticle('https:' + l); if (art) out.push(art); }
+      catch (e) { console.warn('[cn-daily] 构建失败', e.message); }
+    }
+  } catch (e) { console.warn('[cn-daily] 列表抓取失败', e.message); }
+  return out;
+}
+async function buildCnDailyArticle(url) {
+  const html = await fetch(url, { signal: AbortSignal.timeout(12000), headers: BROWSER_HEADERS }).then((r) => r.text());
+  const tMatch = html.match(/<title>([^<]+)<\/title>/);
+  let title = tMatch ? tMatch[1].replace(/_中国日报网.*|_China Daily.*/g, '').trim() : '';
+  const h1 = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/);
+  if (h1) { const h = h1[1].replace(/<[^>]+>/g, '').trim(); if (h) title = h; }
+  if (!title) return null;
+  const ps = html.match(/<p[^>]*>[\s\S]*?<\/p>/g) || [];
+  const enParas = [], cnParas = [];
+  for (const p of ps) {
+    const t = p.replace(/<[^>]+>/g, '').replace(/&nbsp;|&amp;/g, ' ').trim();
+    if (t.length < 40) continue;
+    if (/[\u4e00-\u9fa5]{4,}/.test(t)) cnParas.push(t);
+    else if (/[a-zA-Z]{3,}/.test(t)) enParas.push(t);
+  }
+  if (!enParas.length) return null;
+  const text = enParas.join('\n\n');
+  const map = {};
+  if (cnParas.length) {
+    if (cnParas.length >= Math.floor(enParas.length * 0.5)) {
+      const n = Math.min(enParas.length, cnParas.length);
+      for (let i = 0; i < n; i++) map[enParas[i]] = cnParas[i];
+    } else {
+      map[enParas[0]] = cnParas.join('\n\n'); // 译文集中在尾部
+    }
+  }
+  const date = todayISO();
+  return { title, source: '中国日报双语新闻', link: url, date, fetchDate: date, category: 'chinadaily',
+    text, translation: map, chapters: [{ label: '全文', en: text, paras: enParas.map((p) => ({ en: p, cn: map[p] || '' })) }] };
 }
 setInterval(checkDailyFetch, 60 * 60 * 1000);
 setTimeout(checkDailyFetch, 5000);
 
 // ---------- 每日 AI 学习选题：后端实时抓取真实热门 AI 话题 ----------
-// 数据源（均免费、无需密钥，Railway 海外节点可直接访问）：
-//   1) arXiv 最新 AI / CL / LG 论文（真实、当下的 AI 研究选题）
-//   2) Hacker News 热门故事（按 AI 关键词过滤，偏实战 / 产品）
+// 数据源优先级（均免费、无需密钥；本地后端走代理可访问 GitHub）：
+//   1) GitHub 搜索热门仓库（用户偏好方向：vibe coding / agent / skill(MCP) / 黑客 / 网络安全），按 star 排序取真实项目
+//   2) Hacker News 热门故事（按 AI 关键词过滤，偏实战 / 产品）—— GitHub 不足时补充
+//   3) arXiv 最新 AI 论文 —— 仍不足时补充
 // 每日首次启动抓取并落盘 data/ai-topics.json（含 date）；同日刷新不重复抓；GET /api/ai/topics?refresh=1 强制重抓。
-// 两个源都失败则回退内置种子，保证永不返回空列表。
+// 全部失败则回退内置种子，保证永不返回空列表。
 const AI_TOPICS_FILE = path.join(__dirname, 'data', 'ai-topics.json');
 const AI_TOPICS_SEED = [
+  { title: 'Awesome-Hacking：黑客与安全研究资源大全（GitHub 精选）', tags: ['黑客', '网络安全', '资源集'], url: 'https://github.com/Hack-with-Github/Awesome-Hacking' },
+  { title: 'awesome-pentest：渗透测试工具与方法集合（GitHub 精选）', tags: ['渗透测试', '网络安全', '工具集'], url: 'https://github.com/enaqx/awesome-pentest' },
+  { title: 'Metasploit Framework：主流渗透测试 / 漏洞利用框架', tags: ['Metasploit', '渗透', 'Exploit'], url: 'https://github.com/rapid7/metasploit-framework' },
   { title: 'Vibe Coding：用自然语言让 AI 自动写程序（2025 热门范式）', tags: ['VibeCoding', 'AI编程'], url: 'https://github.com/filipecalegario/awesome-vibe-coding' },
   { title: 'Model Context Protocol (MCP)：让 AI 连接外部工具与数据', tags: ['MCP', '协议', 'Agent'], url: 'https://modelcontextprotocol.io' },
   { title: 'Context Engineering：用 CLAUDE.md 给 AI 编程助手完整上下文', tags: ['ContextEngineering', '提示词', '工程化'], url: 'https://github.com/coleam00/context-engineering-intro' },
@@ -739,6 +869,11 @@ const AI_TOPICS_SEED = [
   { title: 'Agents Engineering Mastery：企业级 AI 智能体工程实践', tags: ['Agent工程', 'MCP', 'AutoGen'], url: 'https://github.com/ed-donner/agents' },
   { title: 'Claude Code 设置与命令集：把规格驱动开发带入 Vibe Coding', tags: ['ClaudeCode', '规格驱动', 'Agent'], url: 'https://github.com/feiskyer/claude-code-settings' },
   { title: 'Made With ML：生产级机器学习系统工程', tags: ['MLOps', 'Ray', '生产部署'], url: 'https://github.com/GokuMohandas/Made-With-ML' },
+  { title: 'Firecrawl：用 AI 把任意网页转成结构化数据（搜索/抓取 API）', tags: ['爬虫', '数据采集', 'API'], url: 'https://github.com/firecrawl/firecrawl' },
+  { title: 'Scrapy：Python 高性能网页爬虫与数据采集框架', tags: ['爬虫', 'Python', 'Scraping'], url: 'https://github.com/scrapy/scrapy' },
+  { title: 'MediaCrawler：小红书/抖音/B站多平台内容爬虫（含评论）', tags: ['爬虫', '社交媒体', '数据采集'], url: 'https://github.com/NaiboWang/EasySpider' },
+  { title: 'build-your-own-x：通过复刻经典项目掌握编程（GitHub 高星）', tags: ['GitHub热门', '练手项目', '全栈'], url: 'https://github.com/codecrafters-io/build-your-own-x' },
+  { title: 'awesome：各类优质资源清单合集（GitHub 最高星仓库之一）', tags: ['GitHub热门', '资源集', '清单'], url: 'https://github.com/sindresorhus/awesome' },
 ];
 function loadAITopics() {
   try { const j = JSON.parse(fs.readFileSync(AI_TOPICS_FILE, 'utf8')); return { date: j.date || '', topics: Array.isArray(j.topics) ? j.topics : [] }; }
@@ -752,6 +887,35 @@ async function fetchText(url, ms) {
   const r = await fetch(url, { signal: AbortSignal.timeout(ms || 9000), headers: { 'User-Agent': 'Mozilla/5.0' } });
   if (!r.ok) throw new Error('HTTP ' + r.status);
   return await r.text();
+}
+// GitHub 搜索热门仓库：按用户偏好方向取真实项目（vibe coding / agent / skill(MCP) / 黑客 / 网络安全 / 爬虫 / GitHub全局热门）
+// 返回「分桶」结果（每个方向一桶），由 buildAITopics 轮转混合，保证 6 类主题都出现
+async function fetchGitHubTopics() {
+  const queries = [
+    { q: 'vibe+coding', spec: ['VibeCoding', 'AI编程'] },
+    { q: 'ai+agent+framework', spec: ['Agent', 'AI框架'] },
+    { q: 'mcp+server', spec: ['MCP', 'Skill', '工具连接'] },
+    { q: 'cybersecurity+pentest+stars:%3E500', spec: ['网络安全', '黑客', '渗透'] },
+    { q: 'crawler+OR+web+scraping+stars:%3E200', spec: ['爬虫', '数据采集', 'Scraping'] },
+    { q: 'created:%3E2025-06-01+stars:%3E2000', spec: ['GitHub热门', '高星仓库', '趋势'] },
+  ];
+  const buckets = [];
+  await Promise.all(queries.map(async (spec) => {
+    const items = [];
+    try {
+      const u = 'https://api.github.com/search/repositories?q=' + spec.q + '&sort=stars&order=desc&per_page=12';
+      const json = JSON.parse(await fetchText(u, 12000));
+      for (const it of (json.items || [])) {
+        const key = (it.full_name || '').toLowerCase();
+        const desc = (it.description || '').replace(/\s+/g, ' ').trim();
+        const title = desc ? (it.full_name + ' — ' + (desc.length > 90 ? desc.slice(0, 90) + '…' : desc)) : it.full_name;
+        const tags = ['GitHub'].concat((it.topics || []).slice(0, 3)).concat(spec.spec);
+        items.push({ _k: key, title, url: it.html_url || '', tags: [...new Set(tags)].slice(0, 5) });
+      }
+    } catch (e) { /* 单查询失败忽略，其他查询继续 */ }
+    buckets.push(items);
+  }));
+  return buckets;
 }
 async function fetchArxivTopics() {
   const url = 'http://export.arxiv.org/api/query?search_query=cat:cs.AI+OR+cat:cs.CL+OR+cat:cs.LG&sortBy=submittedDate&sortOrder=descending&max_results=20';
@@ -787,14 +951,35 @@ async function buildAITopics() {
   const collected = [];
   const seen = new Set();
   const pushUnique = (arr) => { for (const x of (arr || [])) { const k = (x.title || '').toLowerCase().trim(); if (k && !seen.has(k)) { seen.add(k); collected.push(x); } } };
-  const results = await Promise.allSettled([fetchArxivTopics(), fetchHNTopics()]);
-  results.forEach((r) => { if (r.status === 'fulfilled') pushUnique(r.value); });
+  // 1) 优先 GitHub 真实热门仓库（vibe coding / agent / skill(MCP) / 黑客安全 / 爬虫 / GitHub全局热门）
+  //    6 个方向分桶后「轮转取样」，每桶 2 条 → 12 条均衡覆盖各类主题，不被高星仓库淹没
+  const ghBuckets = await fetchGitHubTopics().catch(() => []);
+  const perBucket = 2;
+  for (let round = 0; round < perBucket; round++) {
+    for (const bucket of ghBuckets) {
+      const it = bucket[round];
+      if (!it || seen.has(it._k)) continue;
+      seen.add(it._k);
+      const { _k, ...rest } = it;
+      collected.push(rest);
+    }
+  }
+  // 2) GitHub 不足时补充 Hacker News 热点（仍按 AI 关键词过滤）
+  if (collected.length < 8) {
+    const hn = await fetchHNTopics().catch(() => []);
+    pushUnique(hn);
+  }
+  // 3) 仍不足时补充 arXiv 最新论文
+  if (collected.length < 8) {
+    const ax = await fetchArxivTopics().catch(() => []);
+    pushUnique(ax);
+  }
   let topics = collected.slice(0, 12);
   if (!topics.length) topics = AI_TOPICS_SEED.slice(0, 12); // 全部失败则回退内置种子
   const obj = { date: todayISO(), topics, generatedAt: Date.now() };
   aiTopics = obj;
   saveAITopics(obj);
-  console.log('[ai-topics] 今日选题生成', topics.length, '条（来源：', results.map((r) => r.status === 'fulfilled' ? 'OK' : 'FAIL').join('/'), '）');
+  console.log('[ai-topics] 今日选题生成', topics.length, '条（GitHub 命中', collected.length, '条）');
   return obj;
 }
 function checkDailyAITopics() {
@@ -906,19 +1091,30 @@ const server = http.createServer(async (req, res) => {
     send(res, 200, JSON.stringify(aiTopics), 'application/json');
     return;
   }
-  // 手动触发立即抓取 2 篇入库（「实时外刊」按钮的强制刷新）
+  // 手动触发立即抓取入库（「实时外刊」按钮的强制刷新）：外刊 2 篇 + 国内双语 2 篇
   if (pathname === '/api/reader/fetch' && req.method === 'POST') {
     try {
-      const arr = await fetchLatestArticles(2, true);
-      let added = 0;
-      if (arr.length) {
-        const seen = new Set(arr.map((a) => a.link || a.title));
-        const before = (journal.articles || []).length;
-        journal.articles = arr.concat((journal.articles || []).filter((a) => !seen.has(a.link || a.title)));
-        added = journal.articles.length - before;
+      const [r1, r2] = await Promise.allSettled([fetchLatestArticles(2, true), fetchCnDailyArticles(2)]);
+      const arts = [];
+      if (r1.status === 'fulfilled') arts.push.apply(arts, r1.value || []);
+      if (r2.status === 'fulfilled') arts.push.apply(arts, r2.value || []);
+      let added = 0, cnAdded = 0;
+      if (arts.length) {
+        const existing = new Set((journal.articles || []).map(articleKey));
+        const add = arts.filter((a) => {
+          const k = articleKey(a);
+          if (existing.has(k)) return false;
+          if ((a.source || '').includes('中国日报')) cnAdded++;
+          existing.add(k);
+          return true;
+        });
+        if (add.length) journal.articles = add.concat(journal.articles || []);
+        added = add.length;
         journal.lastDaily = todayISO(); saveJournal();
+        if (cnAdded > 0) console.log('[cn-daily] 实时双语入库', cnAdded, '篇');
+        else console.log('[cn-daily] 双语已是最新，无新增');
       }
-      send(res, 200, JSON.stringify({ ok: true, added: added, articles: arr }), 'application/json');
+      send(res, 200, JSON.stringify({ ok: true, added: added, articles: arts }), 'application/json');
     } catch (e) { send(res, 500, JSON.stringify({ ok: false, error: e.message }), 'application/json'); }
     return;
   }
@@ -969,8 +1165,8 @@ function getLanIps() {
       const ip = ni.address;
       const priv = /^10\.|^172\.(1[6-9]|2[0-9]|3[01])\.|^192\.168\./.test(ip);
       if (!priv) continue; // 跳过公网/异常地址（如 2.0.0.1）
-      const virt = /^192\.168\.(56|122|99|187|211|137|0)\./.test(ip);
-      out.push({ ip: ip, virt: virt });
+      const virt = /^192\.168\.(56|122|99|187|211|137|0)\./.test(ip) || /vEthernet|VirtualBox|VMware|Hyper-V|WSL|Loopback/i.test(name);
+      out.push({ ip: ip, virt: virt, name: name });
     }
   }
   return out;
@@ -986,8 +1182,10 @@ server.listen(PORT, () => {
     console.log('');
     console.log('📱 手机/局域网访问地址（手机须与电脑连同一 WiFi，把下面地址填到 App 的「后端地址」）：');
     (real.length ? real : lan).forEach(function (x, i) {
-      console.log('   http://' + x.ip + ':' + PORT + (x.virt ? '   (虚拟网卡，一般不用)' : (i === 0 ? '   <-- 推荐' : '')));
+      const kind = x.virt ? '虚拟网卡' : (/WLAN|Wi-?Fi|Wireless|无线/i.test(x.name) ? 'WiFi' : '以太网');
+      console.log('   http://' + x.ip + ':' + PORT + '   [' + kind + ']' + (x.virt ? '（一般不用）' : (i === 0 ? '   <-- 推荐' : '')));
     });
+    console.log('   💡 若手机连不上：① 确认手机与电脑连同一 WiFi；② 电脑 IP 变化后需把 App 地址改成上面最新 IP；③ 代理开关不影响局域网访问。');
   } else {
     console.log('（未检测到局域网 IP，手机请填电脑的 IPv4 地址 + :3000）');
   }

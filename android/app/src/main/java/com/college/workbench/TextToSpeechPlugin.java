@@ -9,6 +9,7 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -61,6 +62,8 @@ public class TextToSpeechPlugin extends Plugin {
 
     private void init() {
         try {
+            // 优先指定英文表现最好的引擎（Google TTS > 讯飞 > 百度 > 微软），未安装时回退系统默认
+            final String engine = pickEngine();
             tts = new TextToSpeech(getContext(), new TextToSpeech.OnInitListener() {
                 @Override
                 public void onInit(int status) {
@@ -83,10 +86,29 @@ public class TextToSpeechPlugin extends Plugin {
                         doSpeak(c, c.getString("text"), c.getString("lang"), c.getDouble("rate", 1.0));
                     }
                 }
-            });
+            }, engine);
         } catch (Exception e) {
             failAll("tts-exception");
         }
+    }
+
+    // 从系统已安装引擎中挑选英文最佳的；返回 null 用系统默认
+    private String pickEngine() {
+        try {
+            TextToSpeech probe = new TextToSpeech(getContext(), new TextToSpeech.OnInitListener() {
+                @Override public void onInit(int status) {}
+            });
+            List<TextToSpeech.EngineInfo> engines = probe.getEngines();
+            try { probe.shutdown(); } catch (Exception ignore) {}
+            if (engines == null || engines.isEmpty()) return null;
+            String[] preferred = { "com.google.android.tts", "com.iflytek.tts", "com.iflytek.tts.hd", "com.baidu.tts", "com.microsoft.tts" };
+            for (String p : preferred) {
+                for (TextToSpeech.EngineInfo e : engines) {
+                    if (p.equals(e.packageName)) return p;
+                }
+            }
+        } catch (Exception ignore) {}
+        return null;
     }
 
     private Locale pickLocale() {

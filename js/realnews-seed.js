@@ -6,7 +6,8 @@
   (typeof window.REALNEWS_SEED_GUARDIAN !== 'undefined' ? window.REALNEWS_SEED_GUARDIAN : []),
   (typeof window.REALNEWS_SEED_NEWSCIENTIST !== 'undefined' ? window.REALNEWS_SEED_NEWSCIENTIST : []),
   (typeof window.REALNEWS_SEED_TIME !== 'undefined' ? window.REALNEWS_SEED_TIME : []),
-  (typeof window.REALNEWS_SEED_ATLANTIC !== 'undefined' ? window.REALNEWS_SEED_ATLANTIC : [])
+  (typeof window.REALNEWS_SEED_ATLANTIC !== 'undefined' ? window.REALNEWS_SEED_ATLANTIC : []),
+  (typeof window.REALNEWS_SEED_CN !== 'undefined' ? window.REALNEWS_SEED_CN : [])
   ];
   var all = [];
   parts.forEach(function (p) { if (Array.isArray(p)) all = all.concat(p); });

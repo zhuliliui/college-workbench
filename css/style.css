@@ -394,6 +394,27 @@ img.ic { width: 20px; height: 20px; object-fit: contain; vertical-align: middle;
 .flash-extra { font-size: 13.5px; color: var(--text-soft); margin-top: 10px; text-align: left; background: rgba(255,255,255,.6); padding: 12px 14px; border-radius: 12px; width: 100%; box-sizing: border-box; }
 .flash-extra b { color: var(--primary-deep); }
 
+/* 闪卡「今日新学 / 复习」切换栏 */
+.flash-mode-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0 6px;
+  flex-wrap: wrap;
+}
+.flash-mode-bar .tag-mini {
+  display: inline-block;
+  min-width: 20px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(167, 196, 171, .35);
+  color: var(--primary-deep);
+  border-radius: 10px;
+  padding: 1px 6px;
+  margin-left: 2px;
+}
+
 /* ============ 外刊阅读 ============ */
 .reader { font-size: 16px; line-height: 1.85; color: #443f55; }
 .reader p { margin: 0 0 16px; }
@@ -818,6 +839,12 @@ table.tbl tr:hover td { background: var(--surface-2); }
 }
 .ai-tags:hover { border-color: var(--primary); background: #fff; }
 .ai-tags:empty::before { content: '#标签'; color: var(--text-faint); }
+.ai-date {
+  margin-top: 6px; padding: 0 6px;
+  font-size: 11.5px; color: var(--text-faint); line-height: 1.4;
+}
+.ai-date.ai-local { color: var(--text-faint); font-style: italic; opacity: .8; }
+.ai-date-meta { font-size: 11.5px; color: var(--text-faint); }
 .ai-ops { display: flex; gap: 6px; flex: 0 0 auto; }
 .ai-link.disabled { opacity: .4; pointer-events: none; }
 .btn-refresh { background: var(--primary-tint); color: var(--primary-deep); border-color: var(--primary); }
@@ -1030,6 +1057,13 @@ table.tbl tr:hover td { background: var(--surface-2); }
 
 .focus-timer-center .input { width: 100%; max-width: 420px; }
 .focus-theme-input { margin-bottom: 14px !important; }
+
+/* 国内题源公众号推荐面板 */
+.cn-source-card .cn-source-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px dashed var(--line); }
+.cn-source-card .cn-source-row:last-of-type { border-bottom: 0; }
+.cn-source-main { flex: 1; min-width: 0; }
+.cn-source-name { font-size: 14px; font-weight: 700; color: var(--text); }
+.cn-source-desc { font-size: 12px; color: var(--text-soft); margin-top: 2px; line-height: 1.5; }
 .focus-type-select { max-width: 120px; }
 .focus-btn-record { background: var(--primary-deep); color: #fff; }
 
@@ -1064,4 +1098,606 @@ table.tbl tr:hover td { background: var(--surface-2); }
 @media (max-width: 720px) {
   .focus-stats-grid { grid-template-columns: repeat(2, 1fr); }
   .focus-schedule-axis { height: 420px; }
+}
+
+/* ============ Hello Kitty 图标可爱动画优化 ============ */
+
+/* 导航图标悬停弹跳效果 */
+.nav-item:hover img.emoji,
+.nav-item:hover .emoji img {
+  animation: kt-bounce 0.5s ease;
+}
+.bn-item:hover img.e {
+  animation: kt-bounce 0.5s ease;
+}
+.quick-chip:hover img.e {
+  animation: kt-bounce 0.4s ease;
+}
+
+@keyframes kt-bounce {
+  0%, 100% { transform: translateY(0); }
+  30% { transform: translateY(-4px); }
+  50% { transform: translateY(-2px); }
+  70% { transform: translateY(-3px); }
+}
+
+/* 统计卡片图标呼吸效果 */
+.stat-card:hover .stat-icon img {
+  animation: kt-breath 2s ease-in-out infinite;
+}
+
+@keyframes kt-breath {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+/* 空状态图标轻轻摇摆 */
+.empty img.emoji {
+  animation: kt-sway 3s ease-in-out infinite;
+}
+
+@keyframes kt-sway {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+}
+
+/* 存钱罐图标金币闪烁效果 */
+.stat-piggy,
+.welcome-piggy,
+.piggy-mini-icon {
+  animation: kt-shine 3s ease-in-out infinite;
+}
+
+@keyframes kt-shine {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.1) saturate(1.1); }
+}
+
+/* 卡片标题图标微动画 */
+.card-head .title .ic {
+  transition: transform 0.3s ease;
+}
+.card:hover .card-head .title .ic {
+  transform: scale(1.1) rotate(-5deg);
+}
+
+/* 按钮图标点击反馈 */
+.btn:active img.ic,
+.btn:active img.e {
+  transform: scale(0.9);
+}
+
+/* 底部导航选中图标高亮 */
+.bn-item.active img.e {
+  filter: drop-shadow(0 0 4px rgba(167, 196, 171, 0.5));
+  animation: kt-pulse 2s ease-in-out infinite;
+}
+
+@keyframes kt-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+/* 快速入口图标优化 */
+.quick-chip img.e {
+  transition: transform 0.2s ease;
+}
+
+/* 折叠按钮图标旋转 */
+.collapse-btn {
+  transition: transform 0.3s ease;
+}
+.collapse-btn:hover {
+  transform: scale(1.2);
+}
+
+/* 确保所有 Hello Kitty 图标圆角统一 */
+img.ic, img.emoji, img.e, .stat-icon img {
+  border-radius: 8px;
+}
+
+/* ---------- 听力阅读 ---------- */
+.ls-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+.ls-card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+.ls-card:hover {
+  border-color: var(--primary);
+  box-shadow: 0 4px 12px rgba(167, 196, 171, 0.2);
+  transform: translateY(-2px);
+}
+.ls-card-title {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text-primary);
+  margin-bottom: 10px;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.ls-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.ls-meta-item {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+.tag-level-A1 { background: #dcfce7; color: #166534; }
+.tag-level-A2 { background: #bbf7d0; color: #15803d; }
+.tag-level-B1 { background: #fef3c7; color: #92400e; }
+.tag-level-B2 { background: #fde68a; color: #b45309; }
+.tag-level-C1 { background: #fee2e2; color: #991b1b; }
+.tag-level-C2 { background: #fecaca; color: #b91c1c; }
+.ls-try-btn {
+  width: 100%;
+  margin-top: 4px;
+}
+.ls-layout-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.ls-toggle-label {
+  font-size: 13px;
+  color: var(--text-faint);
+}
+.ls-group {
+  margin-top: 16px;
+}
+.ls-group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--border);
+}
+.ls-group-title {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--primary-deep);
+}
+.ls-group-sub {
+  margin-top: 10px;
+}
+.ls-group-sub-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 6px;
+}
+.ls-group-sub-title {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--primary);
+  background: var(--primary-soft, #ecfdf5);
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+.ls-card-level {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 6px;
+}
+.ls-card-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border);
+  font-size: 12px;
+  color: var(--text-faint);
+  flex-wrap: wrap;
+}
+.ls-card-footer .ls-try-btn {
+  margin-left: auto;
+  background: var(--primary-soft, #ecfdf5);
+  color: var(--primary-deep);
+  border: 1px solid var(--primary);
+  border-radius: 16px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  width: auto;
+}
+.ls-card-footer .ls-try-btn:hover {
+  background: var(--primary);
+  color: white;
+}
+
+/* 听力详情页 */
+.ls-link-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 8px 0;
+  margin-top: 4px;
+  font-size: 13px;
+}
+.ls-link-label {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+.ls-link-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  color: var(--text-primary);
+  font-size: 13px;
+}
+.ls-link-item input {
+  accent-color: var(--primary);
+}
+.ls-detail {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 160px);
+  min-height: 500px;
+}
+.ls-detail-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.ls-detail-title {
+  flex: 1;
+  font-weight: 700;
+  font-size: 16px;
+  text-align: center;
+  color: var(--text-primary);
+}
+.ls-detail-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+.ls-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.ls-toolbar-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.ls-select-sm {
+  width: auto;
+  min-width: 80px;
+  padding: 4px 8px;
+  font-size: 13px;
+  height: auto;
+}
+.ls-mode-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+/* 听力训练设置弹窗 */
+.ls-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+/* 朗读语音设置弹窗 */
+.voice-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.voice-group {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--primary-deep);
+  margin: 8px 0 2px;
+}
+.voice-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all .15s;
+}
+.voice-row:hover { border-color: var(--primary); }
+.voice-row.on {
+  border-color: var(--primary);
+  background: var(--primary-soft, #ecfdf5);
+  box-shadow: 0 0 0 2px rgba(167, 196, 171, .25);
+}
+.voice-row .v-name {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.voice-row .v-lang {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+.ls-set-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+.ls-set-row > label:first-child {
+  min-width: 110px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+.ls-set-stepper {
+  display: inline-flex;
+  align-items: center;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.ls-set-stepper button {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  background: transparent;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--primary-deep);
+  cursor: pointer;
+}
+.ls-set-stepper button:hover {
+  background: var(--primary-soft, #ecfdf5);
+}
+.ls-set-stepper input {
+  width: 70px;
+  border: 0;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  text-align: center;
+  font-size: 14px;
+  padding: 4px 0;
+  background: transparent;
+  outline: none;
+}
+.ls-set-check,
+.ls-set-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.ls-set-hint {
+  font-size: 12px;
+  color: var(--text-faint);
+  flex-basis: 100%;
+  margin-left: 120px;
+  margin-top: 2px;
+}
+.ls-progress {
+  font-size: 13px;
+  color: var(--text-faint);
+}
+
+/* 句子列表 */
+.ls-sentences {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 0;
+}
+.ls-sent-item {
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  background: var(--surface-1);
+  border-radius: 12px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.ls-sent-item:hover {
+  border-color: var(--primary-light);
+}
+.ls-sent-active {
+  border-color: var(--primary) !important;
+  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+  box-shadow: 0 2px 8px rgba(167, 196, 171, 0.25);
+}
+.ls-sent-en {
+  font-size: 15px;
+  line-height: 1.8;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+.ls-sent-cn {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+
+/* 听写区域 */
+.ls-dictate {
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.ls-dictate-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ls-dictate-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+.ls-dict-correct {
+  color: #16a34a;
+  font-weight: 600;
+}
+.ls-dict-wrong {
+  color: #dc2626;
+  text-decoration: line-through;
+  font-weight: 600;
+}
+
+/* 播放器 */
+.ls-player {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--surface-1);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  margin-top: 10px;
+  flex-shrink: 0;
+}
+.ls-player .btn {
+  font-size: 13px;
+  padding: 5px 10px;
+  line-height: 1.4;
+}
+.ls-player-btn {
+  min-width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  padding: 0;
+}
+.ls-play-btn {
+  background: var(--primary);
+  color: white;
+  min-width: 46px;
+  height: 36px;
+  border-radius: 18px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.ls-play-btn:hover {
+  background: var(--primary-deep);
+}
+.ls-player-progress {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+/* 单词本弹窗 */
+.ls-word-list {
+  max-height: 360px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px;
+  background: var(--surface-1);
+}
+.ls-word-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-radius: 8px;
+  margin-bottom: 4px;
+  transition: background 0.2s;
+}
+.ls-word-item:hover {
+  background: var(--surface-2);
+}
+.ls-word-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ls-word-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  font-family: monospace;
+}
+.ls-word-cn {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.ls-word-actions {
+  display: flex;
+  gap: 6px;
+}
+.btn-xs {
+  padding: 2px 8px;
+  font-size: 11px;
+  height: auto;
+  line-height: 1.6;
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+  .ls-grid {
+    grid-template-columns: 1fr;
+  }
+  /* 手机端：详情页取消固定高度，整页可滚，避免句子区被挤压看不到内容 */
+  .ls-detail {
+    height: auto;
+    min-height: 0;
+  }
+  .ls-sentences {
+    flex: none;
+    overflow-y: visible;
+    max-height: none;
+  }
+  .ls-detail-toolbar {
+    gap: 6px;
+  }
+  .ls-toolbar-label {
+    font-size: 12px;
+  }
+  .ls-select-sm {
+    min-width: 65px;
+    font-size: 12px;
+  }
 }
