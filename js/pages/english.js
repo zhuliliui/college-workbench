@@ -14,6 +14,8 @@ window.Pages = window.Pages || {};
   let dictateSrc = 'new';
   // 默写播放状态：playing=播放中，timer=定时器，idx=当前词下标，list=本次播放快照
   let dictate = { playing: false, timer: null, idx: 0, list: [] };
+  // 原生 TTS 引擎检测结果缓存（{google, available, engineCount}），无引擎时引导去系统设置
+  let _ttsEngine = null;
   let popClose = null;
   const IV = [10 * 60e3, 24 * 3600e3, 2 * 24 * 3600e3, 4 * 24 * 3600e3, 7 * 24 * 3600e3, 15 * 24 * 3600e3];
 
@@ -693,16 +695,17 @@ window.Pages = window.Pages || {};
   </div>
   </div>` + dictateCardHtml(dList, dueWords());
   const w = wrap(body, html);
-  // 原生环境：异步检测 TTS 引擎状态，反映在「发音」按钮上（Google 引擎 → 绿色对勾，无引擎 → 灰色提示）
+  // 原生环境：异步检测 TTS 引擎状态，反映在「发音」按钮上（Google 引擎 → 绿色对勾，无引擎 → ✗ 可跳系统设置）
   try {
   const nat = (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.TextToSpeech);
   if (nat && nat.checkEngines) {
   nat.checkEngines().then((r) => {
+  _ttsEngine = r || null;
   const btn = w.querySelector('#flashSpeakBtn');
   if (!btn) return;
   if (r && r.google) { btn.textContent = '发音 ✓ Google'; btn.classList.add('btn-success'); btn.title = 'Google 语音引擎可用'; }
-  else if (r && r.available) { btn.title = '系统语音引擎可用'; }
-  else { btn.textContent = '发音 ✗'; btn.title = '未检测到系统语音引擎，请装 TTS 引擎'; }
+  else if (r && r.available) { btn.textContent = '发音 ✓'; btn.title = '系统语音引擎可用'; }
+  else { btn.textContent = '发音 ✗'; btn.title = '未检测到语音引擎，点此打开系统 TTS 设置'; }
   }).catch(() => {});
   }
   } catch (e) {}
@@ -721,7 +724,19 @@ window.Pages = window.Pages || {};
   if (spk) { speak(spk.dataset.spk); return; }
   const b = e.target.closest('[data-act]'); if (b) {
   const act = b.dataset.act;
-  if (act === 'speak') return speak(w0.word);
+  if (act === 'speak') {
+  // 原生环境且确认无引擎：引导打开系统 TTS 设置（有引擎/未知则正常朗读）
+  if (_ttsEngine && _ttsEngine.available === false) {
+  const nat = (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.TextToSpeech);
+  if (nat && nat.openTTSSettings) {
+  nat.openTTSSettings().then(() => UI.toast('已打开系统语音设置，请安装/切换 TTS 引擎', 'ok')).catch(() => UI.toast('无法打开系统语音设置', 'warn'));
+  } else {
+  UI.toast('当前环境无语音引擎，请到系统「文本转语音」设置安装', 'warn');
+  }
+  return;
+  }
+  return speak(w0.word);
+  }
   if (act === 'flip') return flip();
   if (act === 'dictate-start') return startDictate();
   if (act === 'dictate-stop') return stopDictate();

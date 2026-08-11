@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
 import com.getcapacitor.JSObject;
@@ -74,6 +75,26 @@ public class TextToSpeechPlugin extends Plugin {
         ret.put("available", initialized || tts != null);
         ret.put("engineCount", countTTSEngines());
         call.resolve(ret);
+    }
+
+    // 打开系统「文本转语音 (TTS)」设置页（无引擎时引导用户去安装/切换引擎/下载语音）
+    @PluginMethod()
+    public void openTTSSettings(PluginCall call) {
+        try {
+            Intent intent = new Intent("com.android.settings.TTS_SETTINGS");
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(intent);
+            call.resolve();
+        } catch (Exception e1) {
+            try {
+                Intent intent2 = new Intent(Settings.ACTION_TEXT_TO_SPEECH_SETTINGS);
+                intent2.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                getContext().startActivity(intent2);
+                call.resolve();
+            } catch (Exception e2) {
+                call.reject("open-tts-settings-failed");
+            }
+        }
     }
 
     // 用 ACTION_CHECK_TTS_DATA 直接查询系统已注册的 TTS 引擎（比 getEngines 在部分 ROM 上可靠）
