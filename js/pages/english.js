@@ -682,7 +682,7 @@ window.Pages = window.Pages || {};
   </div>
   </div>
   <div class="flex-wrap gap8 mt16" style="justify-content:center">
-  <button class="btn btn-soft btn-sm" data-act="speak">发音</button>
+  <button class="btn btn-soft btn-sm" data-act="speak" id="flashSpeakBtn">发音</button>
   <button class="btn btn-sm" data-act="flip">${session.flipped ? ' 隐藏' : ' 翻转'}</button>
   </div>
   <div class="flex-wrap gap8 mt8" style="justify-content:center;display:${session.flipped ? 'flex' : 'none'}" id="flashActions">
@@ -693,6 +693,19 @@ window.Pages = window.Pages || {};
   </div>
   </div>` + dictateCardHtml(dList, dueWords());
   const w = wrap(body, html);
+  // 原生环境：异步检测 TTS 引擎状态，反映在「发音」按钮上（Google 引擎 → 绿色对勾，无引擎 → 灰色提示）
+  try {
+  const nat = (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.TextToSpeech);
+  if (nat && nat.checkEngines) {
+  nat.checkEngines().then((r) => {
+  const btn = w.querySelector('#flashSpeakBtn');
+  if (!btn) return;
+  if (r && r.google) { btn.textContent = '发音 ✓ Google'; btn.classList.add('btn-success'); btn.title = 'Google 语音引擎可用'; }
+  else if (r && r.available) { btn.title = '系统语音引擎可用'; }
+  else { btn.textContent = '发音 ✗'; btn.title = '未检测到系统语音引擎，请装 TTS 引擎'; }
+  }).catch(() => {});
+  }
+  } catch (e) {}
   // 自动发音：每张新卡显示后静默朗读单词（原生TTS/speechSynthesis 无提示，后端路径静默不弹 toast）
   setTimeout(() => { try { speak(w0.word, true); } catch (e) {} }, 450);
   // 翻转：切换 .flipped 类（保留 DOM，触发 3D 翻转动画），并联动「记住/没记住」按钮显隐

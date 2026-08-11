@@ -1,5 +1,9 @@
 package com.college.workbench;
 
+import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.os.Bundle;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
@@ -9,6 +13,7 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -57,14 +62,57 @@ public class TextToSpeechPlugin extends Plugin {
     public void isSupported(PluginCall call) {
         JSObject ret = new JSObject();
         ret.put("available", initialized);
+        ret.put("google", isGoogleTTSInstalled(getContext()));
         call.resolve(ret);
+    }
+
+    // 检测引擎状态（供前端诊断）：google=是否安装了 Google TTS，engineCount=系统已注册引擎数
+    @PluginMethod()
+    public void checkEngines(PluginCall call) {
+        JSObject ret = new JSObject();
+        ret.put("google", isGoogleTTSInstalled(getContext()));
+        ret.put("available", initialized || tts != null);
+        ret.put("engineCount", countTTSEngines());
+        call.resolve(ret);
+    }
+
+    // 用 ACTION_CHECK_TTS_DATA 直接查询系统已注册的 TTS 引擎（比 getEngines 在部分 ROM 上可靠）
+    private boolean isGoogleTTSInstalled(Context context) {
+        try {
+            Intent checkIntent = new Intent();
+            checkIntent.setAction(TextToSpeech.Engine.ACTION_CHECK_TTS_DATA);
+            PackageManager pm = context.getPackageManager();
+            List<ResolveInfo> resolveInfos = pm.queryIntentActivities(checkIntent, PackageManager.MATCH_DEFAULT_ONLY);
+            if (resolveInfos == null) return false;
+            for (ResolveInfo info : resolveInfos) {
+                if (info.activityInfo != null && info.activityInfo.packageName != null
+                        && info.activityInfo.packageName.contains("com.google.android.tts")) {
+                    return true;
+                }
+            }
+        } catch (Exception ignore) {}
+        return false;
+    }
+
+    private int countTTSEngines() {
+        try {
+            Intent checkIntent = new Intent();
+            checkIntent.setAction(TextToSpeech.Engine.ACTION_CHECK_TTS_DATA);
+            PackageManager pm = getContext().getPackageManager();
+            List<ResolveInfo> resolveInfos = pm.queryIntentActivities(checkIntent, PackageManager.MATCH_DEFAULT_ONLY);
+            return resolveInfos == null ? 0 : resolveInfos.size();
+        } catch (Exception ignore) {}
+        return 0;
     }
 
     private void init() {
         try {
-            // 优先 Google TTS 引擎（英文音质最佳）：直接以包名构造，若引擎未安装/不可用，
-            // onInit 会失败，走 listener 里的回退逻辑改用系统默认引擎。
-            tts = new TextToSpeech(getContext(), listener, "com.google.android.tts");
+            // 检测到 Google TTS 已安装才指定引擎（英文音质最佳）；否则直接用系统默认
+            if (isGoogleTTSInstalled(getContext())) {
+                tts = new TextToSpeech(getContext(), listener, "com.google.android.tts");
+            } else {
+                tts = new TextToSpeech(getContext(), listener);
+            }
         } catch (Exception e) {
             try {
                 tts = new TextToSpeech(getContext(), listener);
