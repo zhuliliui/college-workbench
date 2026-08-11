@@ -9,7 +9,6 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Locale;
 
 /**
@@ -21,6 +20,7 @@ import java.util.Locale;
 public class TextToSpeechPlugin extends Plugin {
     private TextToSpeech tts = null;
     private boolean initialized = false;
+    private boolean engineRetry = false; // 指定引擎失败后已回退系统默认
     private final LinkedList<PluginCall> pending = new LinkedList<>();
 
     @PluginMethod()
@@ -62,54 +62,53 @@ public class TextToSpeechPlugin extends Plugin {
 
     private void init() {
         try {
-            // 优先指定英文表现最好的引擎（Google TTS > 讯飞 > 百度 > 微软），未安装时回退系统默认
-            final String engine = pickEngine();
-            tts = new TextToSpeech(getContext(), new TextToSpeech.OnInitListener() {
-                @Override
-                public void onInit(int status) {
-                    if (status != TextToSpeech.SUCCESS) {
-                        failAll("tts-init-failed");
-                        return;
-                    }
-                    try {
-                        tts.setLanguage(pickLocale());
-                        tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
-                            @Override public void onStart(String u) {}
-                            @Override public void onDone(String u) {}
-                            @Override public void onError(String u) {}
-                        });
-                    } catch (Exception ignore) {}
-                    initialized = true;
-                    LinkedList<PluginCall> q = new LinkedList<>(pending);
-                    pending.clear();
-                    for (PluginCall c : q) {
-                        doSpeak(c, c.getString("text"), c.getString("lang"), c.getDouble("rate", 1.0));
-                    }
-                }
-            }, engine);
+            // 优先 Google TTS 引擎（英文音质最佳）：直接以包名构造，若引擎未安装/不可用，
+            // onInit 会失败，走 listener 里的回退逻辑改用系统默认引擎。
+            tts = new TextToSpeech(getContext(), listener, "com.google.android.tts");
         } catch (Exception e) {
-            failAll("tts-exception");
+            try {
+                tts = new TextToSpeech(getContext(), listener);
+            } catch (Exception e2) {
+                failAll("tts-exception");
+            }
         }
     }
 
-    // 从系统已安装引擎中挑选英文最佳的；返回 null 用系统默认
-    private String pickEngine() {
-        try {
-            TextToSpeech probe = new TextToSpeech(getContext(), new TextToSpeech.OnInitListener() {
-                @Override public void onInit(int status) {}
-            });
-            List<TextToSpeech.EngineInfo> engines = probe.getEngines();
-            try { probe.shutdown(); } catch (Exception ignore) {}
-            if (engines == null || engines.isEmpty()) return null;
-            String[] preferred = { "com.google.android.tts", "com.iflytek.tts", "com.iflytek.tts.hd", "com.baidu.tts", "com.microsoft.tts" };
-            for (String p : preferred) {
-                for (TextToSpeech.EngineInfo e : engines) {
-                    if (p.equals(e.packageName)) return p;
+    private final TextToSpeech.OnInitListener listener = new TextToSpeech.OnInitListener() {
+        @Override
+        public void onInit(int status) {
+            if (status != TextToSpeech.SUCCESS) {
+                // 指定引擎不可用（Google TTS 未安装/未识别）→ 回退系统默认引擎一次
+                if (!engineRetry) {
+                    engineRetry = true;
+                    try { if (tts != null) tts.shutdown(); } catch (Exception ignore) {}
+                    try {
+                        tts = new TextToSpeech(getContext(), this);
+                    } catch (Exception e) {
+                        failAll("tts-exception");
+                        return;
+                    }
+                    return;
                 }
+                failAll("tts-init-failed");
+                return;
             }
-        } catch (Exception ignore) {}
-        return null;
-    }
+            try {
+                tts.setLanguage(pickLocale());
+                tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
+                    @Override public void onStart(String u) {}
+                    @Override public void onDone(String u) {}
+                    @Override public void onError(String u) {}
+                });
+            } catch (Exception ignore) {}
+            initialized = true;
+            LinkedList<PluginCall> q = new LinkedList<>(pending);
+            pending.clear();
+            for (PluginCall c : q) {
+                doSpeak(c, c.getString("text"), c.getString("lang"), c.getDouble("rate", 1.0));
+            }
+        }
+    };
 
     private Locale pickLocale() {
         Locale[] candidates = { Locale.US, Locale.UK, Locale.ENGLISH, Locale.getDefault() };
