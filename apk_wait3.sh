@@ -2,7 +2,7 @@
 cd /d/buddycode/college-workbench
 TOK=$(git remote get-url github | sed -E 's#https://[^:]+:([^@]+)@.*#\1#')
 API="https://api.github.com/repos/zhuliliui/college-workbench"
-RUN="31505538917"
+RUN="31505900841"
 echo "[wait] run=$RUN"
 for i in $(seq 1 45); do
   sleep 20

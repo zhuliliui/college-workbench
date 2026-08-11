@@ -5,7 +5,6 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.os.Bundle;
-import android.provider.Settings;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
 import com.getcapacitor.JSObject;
@@ -80,14 +79,15 @@ public class TextToSpeechPlugin extends Plugin {
     // 打开系统「文本转语音 (TTS)」设置页（无引擎时引导用户去安装/切换引擎/下载语音）
     @PluginMethod()
     public void openTTSSettings(PluginCall call) {
+        // 用字符串 action（不用 Settings 常量，规避部分编译环境符号缺失）
         try {
-            Intent intent = new Intent("com.android.settings.TTS_SETTINGS");
+            Intent intent = new Intent("android.settings.TTS_SETTINGS");
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             getContext().startActivity(intent);
             call.resolve();
         } catch (Exception e1) {
             try {
-                Intent intent2 = new Intent(Settings.ACTION_TEXT_TO_SPEECH_SETTINGS);
+                Intent intent2 = new Intent("com.android.settings.TTS_SETTINGS");
                 intent2.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 getContext().startActivity(intent2);
                 call.resolve();
