@@ -2232,11 +2232,25 @@ window.Pages = window.Pages || {};
   </div>
   </div>
   <div class="card">
-  <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-29.png" alt=""/>词库备份</div>
-  <div class="spacer"></div><button class="collapse-btn" title="折叠">▾</button></div>
+  <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-39.png" alt=""/>导入听力</div>
+  <div class="spacer"></div><span class="tag" id="lsImpCount"></span><button class="collapse-btn" title="折叠">▾</button></div>
   <div class="card-body">
-  <div class="muted-text" style="margin-bottom:10px">英语单词已纳入全局数据，可使用顶部「导出 / 导入」按钮统一备份。</div>
-  <button class="btn btn-soft btn-sm" data-act="export-en"> 仅导出单词 JSON</button>
+  <div class="muted-text" style="margin-bottom:10px">粘贴听力原文与译文（<b>每两行一组：第 1 行英文、第 2 行中文</b>），导入后加入「听力阅读」的「自定义」分组，可用 TTS 逐句朗读 + 听写练习。</div>
+  <div class="row">
+  <div class="field"><label>标题</label><input class="input" id="lsImpTitle" placeholder="如：CNN 新闻 2026-08-17"/></div>
+  <div class="field"><label>等级</label>
+  <select class="input" id="lsImpLevel">
+  <option value="A2">A2</option><option value="B1" selected>B1</option><option value="B2">B2</option>
+  <option value="C1">C1</option><option value="C2">C2</option><option value="A1">A1</option>
+  </select>
+  </div>
+  </div>
+  <textarea class="textarea" id="lsImpText" placeholder="英文句子 1&#10;中文翻译 1&#10;英文句子 2&#10;中文翻译 2&#10;..." style="min-height:150px;margin-bottom:10px"></textarea>
+  <div class="flex-wrap gap8">
+  <button class="btn btn-sm" data-act="ls-import"> 导入听力</button>
+  <button class="btn btn-soft btn-sm" data-act="ls-import-preview"> 解析预览</button>
+  </div>
+  <div id="lsImpPreview" class="muted-text mt12"></div>
   </div>
   </div>
   <div class="card">
@@ -2253,12 +2267,53 @@ window.Pages = window.Pages || {};
   const w = wrap(body, html);
   const kc = w.querySelector('#kaoyanCount');
   if (kc) kc.textContent = window.KAOYAN_SEED ? ('内置 ' + window.KAOYAN_SEED.length + ' 条') : '（词库文件未加载）';
+  const lc = w.querySelector('#lsImpCount');
+  if (lc) lc.textContent = '已导入 ' + ((Store.get().english.customListenings || []).length) + ' 篇';
+  // 解析粘贴文本 → 句子对（每两行一组：英文 / 中文）
+  const parseLsPairs = () => {
+  const text = (UI.$('#lsImpText') ? UI.$('#lsImpText').value : '');
+  const lines = String(text || '').split('\n').map((s) => s.trim()).filter(Boolean);
+  const pairs = [];
+  for (let i = 0; i + 1 < lines.length; i += 2) pairs.push({ en: lines[i], cn: lines[i + 1] });
+  return pairs;
+  };
   w.addEventListener('click', (e) => {
   const b = e.target.closest('[data-act]'); if (!b) return;
   if (b.dataset.act === 'parse-pdf') return doParsePdf();
   if (b.dataset.act === 'paste-text') return pasteText();
-  if (b.dataset.act === 'export-en') { download('word-bank.json', JSON.stringify(Store.get().english.words, null, 2)); UI.toast('已导出单词', 'ok'); }
   if (b.dataset.act === 'load-kaoyan') return loadKaoyan();
+  if (b.dataset.act === 'ls-import-preview') {
+  const pairs = parseLsPairs();
+  const pv = w.querySelector('#lsImpPreview');
+  if (pv) pv.innerHTML = pairs.length
+  ? '解析到 <b>' + pairs.length + '</b> 句对：<br/>' + pairs.slice(0, 3).map((p) => `「${UI.esc(p.en)}」→「${UI.esc(p.cn)}」`).join('<br/>') + (pairs.length > 3 ? '<br/>…' : '')
+  : '未解析到句子对（请按每两行一组：英文 + 中文）';
+  return;
+  }
+  if (b.dataset.act === 'ls-import') {
+  const title = (UI.$('#lsImpTitle') ? UI.$('#lsImpTitle').value : '').trim();
+  const level = UI.$('#lsImpLevel') ? UI.$('#lsImpLevel').value : 'B1';
+  if (!title) return UI.toast('请输入标题', 'warn');
+  const pairs = parseLsPairs();
+  if (!pairs.length) return UI.toast('未解析到句子对（每两行一组：英文 + 中文）', 'warn');
+  const enText = pairs.map((p) => p.en).join(' ');
+  const wordCount = enText.split(/\s+/).filter(Boolean).length;
+  const minutes = Math.max(1, Math.round(wordCount / 130)); // 正常语速约 130 词/分
+  Store.update((st) => {
+  st.english.customListenings = st.english.customListenings || [];
+  st.english.customListenings.push({
+  id: Store.uid(), title, source: '自定义', level,
+  wordCount, sentenceCount: pairs.length,
+  duration: minutes + ' 分钟',
+  sentences: pairs,
+  });
+  });
+  UI.toast('已导入听力「' + title + '」' + pairs.length + ' 句', 'ok');
+  curTab = 'listening';
+  localStorage.setItem('cw_en_tab', 'listening');
+  Pages.english();
+  return;
+  }
   });
   }
   // 载入《考研词汇闪过》内置离线条目到个人词库（去重）
@@ -5573,9 +5628,10 @@ window.Pages = window.Pages || {};
   }
 
   function renderLsList(body) {
-    const articles = LS_ARTICLES;
+    const customs = (Store.get().english && Store.get().english.customListenings) || [];
+    const articles = LS_ARTICLES.concat(customs);
     // 按 source 分组（顺序固定），组内按 level 分组（A1→C2）
-    const SOURCE_ORDER = ['四级真题', '六级真题', '考研真题', '博客', '新闻'];
+    const SOURCE_ORDER = ['四级真题', '六级真题', '考研真题', '博客', '新闻', '自定义'];
     const LEVEL_ORDER = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
     const groups = [];
     for (const src of SOURCE_ORDER) {
@@ -5598,8 +5654,10 @@ window.Pages = window.Pages || {};
             '<div class="ls-grid">' +
             s.items.map((a) => {
               const idx = articles.indexOf(a);
+              const isCustom = !!a.id; // 自定义听力有 id
               return '<div class="ls-card" data-lsid="' + idx + '">' +
                 '<div class="ls-card-level tag-level-' + a.level + '">' + a.level + '</div>' +
+                (isCustom ? '<button class="ls-del-custom" data-act="ls-del-custom" data-id="' + a.id + '" title="删除">×</button>' : '') +
                 '<div class="ls-card-title">' + a.title + '</div>' +
                 '<div class="ls-card-footer">' +
                   '<span class="ls-meta-item">📖 ' + a.wordCount + ' 词</span>' +
@@ -5617,10 +5675,20 @@ window.Pages = window.Pages || {};
     const html = '<div class="card"><div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-39.png" alt=""/>听力阅读</div><div class="spacer"></div><span class="tag">共 ' + articles.length + ' 篇</span></div><div class="card-body">' + groupsHtml + '</div></div>';
     const w = wrap(body, html);
     w.addEventListener('click', (e) => {
+      const del = e.target.closest('[data-act="ls-del-custom"]');
+      if (del) {
+        e.stopPropagation();
+        const id = del.dataset.id;
+        UI.confirm('删除这篇自定义听力？', () => {
+          Store.update((st) => { st.english.customListenings = (st.english.customListenings || []).filter((x) => x.id !== id); });
+          Pages.english();
+        });
+        return;
+      }
       const card = e.target.closest('[data-lsid]');
       if (card) {
         const idx = parseInt(card.dataset.lsid);
-        listeningCur = LS_ARTICLES[idx];
+        listeningCur = articles[idx];
         listeningIdx = 0;
         listeningPlaying = false;
         listeningView = 'detail';

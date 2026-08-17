@@ -19,6 +19,8 @@
       // 学业 DDL
       ddls: [],
       issues: [],
+      // 考试倒计时（首页临近DDL显示；默认内置考研/四六级，可自行调整）
+      exams: [],
       // 手机日历订阅（DDL 自动进日历并到期提醒）
       cal: { backendUrl: '', clientId: '', subscribed: false, reminders: [1440, 720, 60], local: { authorized: false, calendarId: '', syncedCount: 0, lastAt: 0 } },
       // 微信推送（通过 Server酱 推送到微信，仅 DDL 任务会触发推送）
@@ -70,6 +72,7 @@
         readerToday: null,         // 当日后端摘取的外刊缓存 {date, list:[...]}，每日刷新
         lastGroupDoneAt: null,
         daily: { date: '', learned: 0 }, // 每日已学单词数（满 20 词奖励 +1 元）
+        customListenings: [],   // 听力导入·自建听力 [{id,title,source:'自定义',level,wordCount,sentenceCount,duration,sentences:[{en,cn}]}]
       },
       // 技能学习（独立模块，不接入虚拟存钱罐）
       skill: {
@@ -78,6 +81,9 @@
         aiTopicsDate: '',          // 已从后端加载当日选题的日期（同日不重复覆盖用户编辑）
         topicSeedIndex: 0,        // 内置热门话题种子读取位置
         topicPool: [],            // 后端爬到的热点累积池（自动去重，离线回退首选）
+        researchTopics: [],       // 调研汇报练习·自建词条 [{id,name,en}]
+        researchSettings: { phase1Min: 5, phase2Min: 5 }, // 调研两阶段计时：整理(phase1)/汇报(phase2)，单位分钟
+        aiKeywords: '',           // 每日AI选题·用户筛选关键词（逗号分隔）
       },
       // 云端同步配置（默认码云 Gitee 私有仓库备份，国内直连免代理；亦可切 GitHub）
       cloud: {
@@ -112,7 +118,7 @@
     for (const k in base) if (state[k] === undefined) state[k] = base[k];
     // 深层兜底：各模块可能部分字段缺失（如旧数据 discipline 无 tempTasks/counters、focus 无 categories）。
     // 只补 undefined 子字段，避免用 Object.assign 展开破坏数组字段（sessions/items/words 等会变对象）。
-    for (const key of ['push', 'cal', 'discipline', 'focus', 'travel', 'finance', 'monthly']) {
+    for (const key of ['push', 'cal', 'discipline', 'focus', 'travel', 'finance', 'monthly', 'english']) {
       if (!state[key]) { state[key] = base[key]; continue; }
       for (const sub in base[key]) {
         if (state[key][sub] === undefined) state[key][sub] = base[key][sub];
@@ -275,6 +281,11 @@
     if (!st.skill || !Array.isArray(st.skill.topics)) { st.skill = { topics: [], dailyTopics: [], topicSeedIndex: 0, topicPool: [] }; return; }
     if (!Array.isArray(st.skill.dailyTopics)) st.skill.dailyTopics = [];
     if (!Array.isArray(st.skill.topicPool)) st.skill.topicPool = []; // 后端爬到的热点累积池（离线可用）
+    if (!Array.isArray(st.skill.researchTopics)) st.skill.researchTopics = []; // 调研汇报练习·自建词条
+    if (typeof st.skill.aiKeywords !== 'string') st.skill.aiKeywords = ''; // AI选题筛选关键词
+    if (!st.skill.researchSettings) st.skill.researchSettings = { phase1Min: 5, phase2Min: 5 };
+    if (typeof st.skill.researchSettings.phase1Min !== 'number' || st.skill.researchSettings.phase1Min < 1) st.skill.researchSettings.phase1Min = 5;
+    if (typeof st.skill.researchSettings.phase2Min !== 'number' || st.skill.researchSettings.phase2Min < 1) st.skill.researchSettings.phase2Min = 5;
     if (typeof st.skill.topicSeedIndex !== 'number') st.skill.topicSeedIndex = 0;
     st.skill.topics.forEach((t) => {
       if (!t.id) t.id = uid();

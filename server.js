@@ -1088,7 +1088,18 @@ const server = http.createServer(async (req, res) => {
       catch (e) { /* 抓取失败则回退已缓存的当日选题 */ }
     }
     if (!aiTopics.topics.length) { try { await buildAITopics(); } catch (e) {} }
-    send(res, 200, JSON.stringify(aiTopics), 'application/json');
+    // 用户筛选关键词（逗号分隔）：标题/标签包含任一即保留；无匹配回退全部
+    const kwRaw = parsed.query.keywords || '';
+    const kws = kwRaw.split(/[,，;；\s]+/).map((s) => s.trim().toLowerCase()).filter(Boolean);
+    let payload = aiTopics;
+    if (kws.length && aiTopics.topics && aiTopics.topics.length) {
+      const hit = aiTopics.topics.filter((t) => {
+        const text = ((t.title || '') + ' ' + ((t.tags || []).join(' '))).toLowerCase();
+        return kws.some((k) => text.includes(k));
+      });
+      if (hit.length) payload = Object.assign({}, aiTopics, { topics: hit });
+    }
+    send(res, 200, JSON.stringify(payload), 'application/json');
     return;
   }
   // 手动触发立即抓取入库（「实时外刊」按钮的强制刷新）：外刊 2 篇 + 国内双语 2 篇

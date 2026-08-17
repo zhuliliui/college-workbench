@@ -659,6 +659,123 @@ table.tbl tr:hover td { background: var(--surface-2); }
 .quick-chip .e { font-size: 16px; }
 .quick-chip img.e { width: 18px; height: 18px; object-fit: contain; }
 
+/* 考试倒计时（首页临近DDL） */
+.exam-countdown {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  background: var(--primary-soft, #eef5ef);
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+/* ============ 关键词演讲挑战（首页） ============ */
+.kc-pick-card {
+  border: 2px dashed var(--primary, #a7c4ab);
+  border-radius: 16px;
+  padding: 16px 14px;
+  margin-top: 12px;
+  background: linear-gradient(135deg, rgba(167, 196, 171, .10), rgba(255, 255, 255, .5));
+}
+.kc-name-wrap { text-align: center; min-height: 56px; display: flex; align-items: center; justify-content: center; }
+.kc-name {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1.25;
+  letter-spacing: 1px;
+  max-width: 100%;
+  word-break: break-all;
+  transition: color .12s, transform .12s;
+}
+.kc-name.long { font-size: 21px; }
+.kc-ops {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+.kc-tabs {
+  display: flex;
+  gap: 4px;
+  margin-top: 14px;
+  background: var(--surface-2, #f3f5f4);
+  padding: 3px;
+  border-radius: 9px;
+}
+.kc-tab {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 7px 4px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.kc-tab.on {
+  background: var(--surface-1, #fff);
+  color: var(--primary-deep);
+  box-shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+.kc-tab:not(.on):hover { color: var(--text-primary); }
+.kc-timer-card {
+  background: var(--surface-1, #fff);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 14px 12px;
+  text-align: center;
+  margin-top: 10px;
+}
+.kc-phase-title {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--text-primary);
+  margin-bottom: 10px;
+}
+.kc-timer-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+.kc-min-sel { max-width: 66px; padding: 4px 6px; font-size: 12.5px; }
+.kc-timer {
+  font-size: 36px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  color: var(--primary-deep, #5e8268);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  margin: 4px 0 6px;
+}
+.kc-add-icon {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.kc-add-icon .ic { width: 16px; height: 16px; object-fit: contain; }
+@media (max-width: 560px) {
+  .kc-name { font-size: 24px; }
+  .kc-name.long { font-size: 18px; }
+  .kc-timer { font-size: 30px; }
+  .kc-tab { font-size: 12px; padding: 6px 3px; }
+  .kc-timer-card { padding: 10px 8px 10px; }
+}
+
 .home-list .item { background: var(--surface-soft); border-color: transparent; }
 .home-list .item:hover { background: #fff; border-color: var(--line); }
 .home-list .item.warn { background: var(--warn-soft); }
@@ -802,6 +919,132 @@ table.tbl tr:hover td { background: var(--surface-2); }
 .dictate-row .d-word { flex: 1; font-size: 16px; font-weight: 600; color: var(--text); }
 .dictate-row .d-spk { flex: 0 0 auto; opacity: .65; }
 .dictate-row .d-spk .ic { width: 20px; height: 20px; object-fit: contain; }
+
+/* ============ 调研汇报练习（精简版：随机闪词条 + 整理/汇报 tab + 移动端简洁） ============ */
+.sk-research-card .rsch-pick-card {
+  border: 2px dashed var(--primary, #a7c4ab);
+  border-radius: 16px;
+  padding: 16px 14px;
+  margin-top: 12px;
+  background: linear-gradient(135deg, rgba(167, 196, 171, .10), rgba(255, 255, 255, .5));
+}
+.rsch-name-bilingual {
+  text-align: center;
+  margin-bottom: 6px;
+  min-height: 64px;
+}
+.rsch-name-cn {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1.25;
+  letter-spacing: 1px;
+  /* 闪动时 transition 让切换更顺滑 */
+  transition: color .12s, transform .12s;
+}
+.rsch-name-en {
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--primary-deep);
+  margin-top: 4px;
+  letter-spacing: 0.5px;
+}
+/* 闪动时快速变换 */
+.rsch-name-cn.spinning, .rsch-name-en.spinning { color: var(--primary-deep); transform: scale(1.03); }
+.rsch-ops {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+/* 整理/汇报 tab 切换（紧凑、小一号） */
+.rsch-tabs {
+  display: flex;
+  gap: 4px;
+  margin-top: 14px;
+  background: var(--surface-2, #f3f5f4);
+  padding: 3px;
+  border-radius: 9px;
+}
+.rsch-tab {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 7px 4px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.rsch-tab.on {
+  background: var(--surface-1, #fff);
+  color: var(--primary-deep);
+  box-shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+.rsch-tab:not(.on):hover { color: var(--text-primary); }
+.rsch-timer-card {
+  background: var(--surface-1, #fff);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 14px 12px;
+  text-align: center;
+  margin-top: 10px;
+}
+.rsch-phase-title {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--text-primary);
+  margin-bottom: 10px;
+}
+.rsch-timer-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+.rsch-min-sel {
+  max-width: 66px;
+  padding: 4px 6px;
+  font-size: 12.5px;
+}
+.rsch-timer {
+  font-size: 36px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  color: var(--primary-deep, #5e8268);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  margin: 4px 0 6px;
+}
+/* 右上角添加词条图标按钮 */
+.rsch-add-icon {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.rsch-add-icon .ic { width: 16px; height: 16px; object-fit: contain; }
+/* 移动端：词条更大、tab 更紧凑、倒计时不变 */
+@media (max-width: 560px) {
+  .sk-research-card .rsch-pick-card { padding: 12px 10px; }
+  .rsch-name-cn { font-size: 25px; }
+  .rsch-name-en { font-size: 17px; }
+  .rsch-timer { font-size: 30px; }
+  .rsch-ops { gap: 6px; }
+  .rsch-ops .btn { padding: 4px 10px; font-size: 12.5px; }
+  .rsch-tab { font-size: 12px; padding: 6px 3px; }
+  .rsch-timer-card { padding: 10px 8px 10px; }
+  .rsch-phase-title { font-size: 12.5px; }
+}
 
 /* ============ 每日AI学习选题 ============ */
 .sk-daily-card { position: relative; }
@@ -1301,6 +1544,24 @@ img.ic, img.emoji, img.e, .stat-icon img {
   padding: 2px 7px;
   border-radius: 6px;
 }
+/* 自定义听力卡片删除按钮（右上角） */
+.ls-del-custom {
+  position: absolute;
+  top: 34px;
+  right: 10px;
+  width: 22px;
+  height: 22px;
+  line-height: 20px;
+  text-align: center;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface-1);
+  color: var(--danger);
+  font-size: 14px;
+  cursor: pointer;
+  z-index: 2;
+}
+.ls-del-custom:hover { background: var(--danger-soft, #fee2e2); border-color: var(--danger); }
 .ls-card-footer {
   display: flex;
   align-items: center;
