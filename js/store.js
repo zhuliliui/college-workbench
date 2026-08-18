@@ -83,7 +83,8 @@
         topicPool: [],            // 后端爬到的热点累积池（自动去重，离线回退首选）
         researchTopics: [],       // 调研汇报练习·自建词条 [{id,name,en}]
         researchSettings: { phase1Min: 5, phase2Min: 5 }, // 调研两阶段计时：整理(phase1)/汇报(phase2)，单位分钟
-        aiKeywords: '',           // 每日AI选题·用户筛选关键词（逗号分隔）
+        aiEvents: [],             // AI活动·用户自建 [{id,title,cat,date,url,benefit,tutorial,org}]
+        aiEventsDate: '',          // 已从后端加载活动的日期（同日不重复拉取）
       },
       // 云端同步配置（默认码云 Gitee 私有仓库备份，国内直连免代理；亦可切 GitHub）
       cloud: {
@@ -282,7 +283,8 @@
     if (!Array.isArray(st.skill.dailyTopics)) st.skill.dailyTopics = [];
     if (!Array.isArray(st.skill.topicPool)) st.skill.topicPool = []; // 后端爬到的热点累积池（离线可用）
     if (!Array.isArray(st.skill.researchTopics)) st.skill.researchTopics = []; // 调研汇报练习·自建词条
-    if (typeof st.skill.aiKeywords !== 'string') st.skill.aiKeywords = ''; // AI选题筛选关键词
+    if (!Array.isArray(st.skill.aiEvents)) st.skill.aiEvents = []; // AI活动·用户自建
+    if (typeof st.skill.aiEventsDate !== 'string') st.skill.aiEventsDate = '';
     if (!st.skill.researchSettings) st.skill.researchSettings = { phase1Min: 5, phase2Min: 5 };
     if (typeof st.skill.researchSettings.phase1Min !== 'number' || st.skill.researchSettings.phase1Min < 1) st.skill.researchSettings.phase1Min = 5;
     if (typeof st.skill.researchSettings.phase2Min !== 'number' || st.skill.researchSettings.phase2Min < 1) st.skill.researchSettings.phase2Min = 5;

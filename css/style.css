@@ -1101,6 +1101,67 @@ table.tbl tr:hover td { background: var(--surface-2); }
 }
 .ai-add-btn:active { transform: scale(.95); }
 
+/* ============ AI 活动（可报名聚合） ============ */
+.ae-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.ae-tab {
+  border: 1px solid var(--border);
+  background: var(--surface-1, #fff);
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all .15s;
+}
+.ae-tab.on {
+  background: var(--primary, #a7c4ab);
+  border-color: var(--primary);
+  color: var(--primary-deep, #5e8268);
+}
+.ae-tab:not(.on):hover { border-color: var(--primary); color: var(--text-primary); }
+.ae-list { display: flex; flex-direction: column; gap: 8px; }
+.ae-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-1, #fff);
+  transition: border-color .15s;
+}
+.ae-row:hover { border-color: var(--primary); }
+.ae-row.ae-expired { opacity: .55; }
+.ae-row .ae-main { flex: 1; min-width: 0; }
+.ae-row .ae-title { font-size: 14px; font-weight: 600; color: var(--text-primary); line-height: 1.5; }
+.ae-row .ae-org { font-size: 12px; color: var(--text-secondary); font-weight: 400; }
+.ae-row .ae-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 5px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.ae-row .ae-benefit { color: var(--primary-deep); }
+.ae-row .ae-ops { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.ae-cat-fan { background: rgba(245,166,35,.18); color: #b45309; }
+.ae-cat-student { background: rgba(37,99,235,.12); color: #1d4ed8; }
+.ae-cat-token { background: rgba(5,150,105,.14); color: #047857; }
+.ae-cat-inner { background: rgba(147,51,234,.12); color: #7c3aed; }
+.ae-cat-hackathon { background: rgba(220,38,38,.12); color: #dc2626; }
+@media (max-width: 560px) {
+  .ae-row { flex-direction: column; align-items: stretch; gap: 8px; }
+  .ae-row .ae-ops { justify-content: flex-end; }
+  .ae-tab { font-size: 12px; padding: 5px 10px; }
+}
+
 @media (max-width: 560px) {
   .ai-topic-row { gap: 10px; padding: 10px 12px; }
   .ai-num { flex: 0 0 30px; width: 30px; height: 30px; font-size: 13px; }

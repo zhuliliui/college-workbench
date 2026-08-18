@@ -1080,6 +1080,19 @@ const server = http.createServer(async (req, res) => {
     send(res, 200, JSON.stringify({ ok: true, articles: arts, todayArticles, todayCount: todayArticles.length, lastDaily: journal.lastDaily || null }), 'application/json');
     return;
   }
+  // AI 活动：返回仓库维护的可报名活动清单（assets/ai-events.json，前端「实时刷新」时拉取合并）
+  if (pathname === '/api/ai/events' && req.method === 'GET') {
+    try {
+      const f = path.join(__dirname, 'assets', 'ai-events.json');
+      if (fs.existsSync(f)) {
+        const arr = JSON.parse(fs.readFileSync(f, 'utf8'));
+        send(res, 200, JSON.stringify({ date: todayISO(), events: Array.isArray(arr) ? arr : [] }), 'application/json');
+        return;
+      }
+    } catch (e) { /* 文件缺失/损坏则返回空，前端回退本地种子 */ }
+    send(res, 200, JSON.stringify({ date: todayISO(), events: [] }), 'application/json');
+    return;
+  }
   // 每日 AI 学习选题：后端实时抓取真实热门 AI 话题（?refresh=1 强制重新抓取一批）
   if (pathname === '/api/ai/topics' && req.method === 'GET') {
     const refresh = parsed.query.refresh === '1';

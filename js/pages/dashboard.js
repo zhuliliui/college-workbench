@@ -163,6 +163,30 @@ Pages.dashboard = function () {
   window.speechSynthesis.resume();
   } catch (e) {}
   };
+  // 闹钟提醒：Web Audio 蜂鸣（无需音频文件）+ 震动（支持时）；到点响铃
+  const kcAlarm = () => {
+  try { if (navigator.vibrate) navigator.vibrate([350, 160, 350, 160, 350]); } catch (e) {}
+  try {
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  if (!Ctx) return;
+  const ctx = new Ctx();
+  const tone = (freq, t0, dur) => {
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.type = 'sine'; o.frequency.value = freq;
+  o.connect(g); g.connect(ctx.destination);
+  const t = ctx.currentTime + t0;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.65, t + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.start(t); o.stop(t + dur + 0.06);
+  };
+  // 经典闹钟音：880Hz 三连音 × 3 轮（约 2.6 秒）
+  for (let round = 0; round < 3; round++) {
+  for (let i = 0; i < 3; i++) tone(880, round * 0.88 + i * 0.26, 0.2);
+  }
+  setTimeout(() => { try { ctx.close(); } catch (e) {} }, 3200);
+  } catch (e) {}
+  };
   const kcStartSpin = () => {
   const all = getKcTopics();
   if (!all.length) return;
@@ -386,7 +410,8 @@ Pages.dashboard = function () {
   const left = phase === 1 ? _kcLeft1 : _kcLeft2;
   if (left <= 0) {
   kcStop(phase);
-  UI.toast(phaseName + '阶段时间到！', 'love');
+  kcAlarm(); // 闹钟响铃 + 震动提醒
+  UI.toast(phaseName + '阶段时间到！⏰', 'love');
   Pages.dashboard();
   return;
   }

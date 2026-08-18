@@ -6,6 +6,9 @@
 window.Pages = window.Pages || {};
 // 模块级状态：AI 选题是否处于「已读热点」视图（必须在页面函数外，否则每次重渲染被重置）
 let _topicReadView = false;
+// AI 活动分类筛选 / 是否显示已结束（模块级，重渲染不重置）
+let _aeCat = 'all';
+let _aeShowExpired = false;
   // 持久化当前专题详情（刷新后保留在课程详情页，不退回到列表）
   function saveSkillView() { try { if (window.__skillViewId) localStorage.setItem('cw_skill_view', window.__skillViewId); else localStorage.removeItem('cw_skill_view'); } catch (_) {} }
 
@@ -113,21 +116,6 @@ Pages.skill = function () {
     }
   }
 
-  // 每日AI选题·用户自定义筛选关键词（逗号分隔，存 Store.skill.aiKeywords；无匹配回退全部）
-  const aiKeywords = () => {
-  const kw = (Store.get().skill && Store.get().skill.aiKeywords) || '';
-  return String(kw).split(/[,，;；\s]+/).map((s) => s.trim().toLowerCase()).filter(Boolean);
-  };
-  const aiFiltered = (topics) => {
-  const kws = aiKeywords();
-  if (!kws.length || !Array.isArray(topics) || !topics.length) return topics;
-  const hit = topics.filter((t) => {
-  const text = ((t.title || '') + ' ' + ((t.tags || []).join(' '))).toLowerCase();
-  return kws.some((k) => text.includes(k));
-  });
-  return hit.length ? hit : topics; // 无匹配回退全部，避免列表空
-  };
-
   // 从联网后端实时拉取「每日 AI 学习选题」：仅当日首次自动填充（之后用本地已存，避免覆盖用户编辑）
   // 后端 server.js 的 /api/ai/topics 每日首次启动抓取真实 AI 热门（arXiv + Hacker News），落盘 data/ai-topics.json
   let _aiTopicsLoaded = false;
@@ -142,8 +130,7 @@ Pages.skill = function () {
     try {
       const ctrl = new AbortController();
       const to = setTimeout(() => ctrl.abort(), 8000);
-      const kwParam = aiKeywords().length ? '?keywords=' + encodeURIComponent(aiKeywords().join(',')) : '';
-      const r = await fetch(backend + '/api/ai/topics' + kwParam, { signal: ctrl.signal });
+      const r = await fetch(backend + '/api/ai/topics', { signal: ctrl.signal });
       clearTimeout(to);
       if (!r.ok) return false;
       const j = await r.json().catch(() => null);
@@ -160,7 +147,7 @@ Pages.skill = function () {
       }
       Store.update((st) => {
         st.skill.aiTopicsDate = loadedDate;
-        st.skill.dailyTopics = aiFiltered(topics).map((t) => ({ id: Store.uid(), title: t.title, tags: (t.tags || []).slice(), url: t.url || '' }));
+        st.skill.dailyTopics = topics.map((t) => ({ id: Store.uid(), title: t.title, tags: (t.tags || []).slice(), url: t.url || '' }));
         // 自动加入本地种子池（去重 + 上限 100），后端不可达时离线也能刷到最新热点
         const pool = (st.skill.topicPool || []).slice();
         st.skill.dailyTopics.forEach((f) => { if (!pool.some((p) => p.title === f.title)) pool.push(f); });
@@ -223,8 +210,99 @@ Pages.skill = function () {
   <div class="card-body">${listHtml}</div>
   </div>
   <div class="muted-text mt8"> 课程可关联到「学习复习计划」统一打卡。</div>
-  ${renderDailyTopics()}`;
+  ${renderDailyTopics()}
+  ${renderAIEvents()}`;
   }
+
+  // ---------- AI 活动（全网可报名 AI 活动聚合：福利/学生/Token/内测/黑客松，过期自动过滤） ----------
+  const AI_EVENT_CATS = [
+  { key: 'fan', label: '🎁 福利', name: '粉丝福利' },
+  { key: 'student', label: '🎓 学生', name: '学生福利' },
+  { key: 'token', label: '🔑 Token', name: 'Token/算力' },
+  { key: 'inner', label: '🧪 内测', name: '模型内测' },
+  { key: 'hackathon', label: '🏆 黑客松', name: '黑客松/大赛' },
+  ];
+  // 内置活动种子（真实可报名/长期有效；date 为 '长期有效' 或 YYYY-MM-DD 截止日）
+  const AI_EVENTS_SEED = [
+  { title: '阿里云百炼：新用户免费大模型 Token（通义千问 Qwen）', cat: 'token', date: '长期有效', url: 'https://bailian.console.aliyun.com/', benefit: '注册送免费 Token 额度，可调用通义千问 Qwen 全系模型', org: '阿里云', tutorial: 'https://bailian.console.aliyun.com/' },
+  { title: '百度智能云千帆：新用户免费 ERNIE Token / 算力', cat: 'token', date: '长期有效', url: 'https://cloud.baidu.com/product/wenxinworkshop', benefit: '文心一言 ERNIE 系列免费额度 + 千帆平台免费算力', org: '百度', tutorial: '' },
+  { title: '智谱 AI 开放平台：注册送免费 GLM Token', cat: 'token', date: '长期有效', url: 'https://open.bigmodel.cn/', benefit: 'GLM-4 系列模型免费 Token 额度，新用户专享', org: '智谱AI', tutorial: '' },
+  { title: 'DeepSeek 开放平台：新用户 API 免费额度', cat: 'token', date: '长期有效', url: 'https://platform.deepseek.com/', benefit: 'DeepSeek API 注册赠送额度，推理模型性价比之王', org: '深度求索', tutorial: 'https://api-docs.deepseek.com/zh-cn/' },
+  { title: '讯飞星火开放平台：新用户免费额度', cat: 'token', date: '长期有效', url: 'https://xinghuo.xfyun.cn/', benefit: '星火大模型免费 Token，语音/多模态能力齐全', org: '科大讯飞', tutorial: '' },
+  { title: '火山引擎方舟（豆包）：新用户 Token 券', cat: 'token', date: '长期有效', url: 'https://www.volcengine.com/product/ark', benefit: '豆包/DeepSeek 等模型免费 Token 券，注册即领', org: '字节跳动', tutorial: '' },
+  { title: '腾讯云大模型知识引擎：混元免费额度', cat: 'token', date: '长期有效', url: 'https://cloud.tencent.com/product/lke', benefit: '腾讯混元大模型免费调用额度 + 开发工具', org: '腾讯云', tutorial: '' },
+  { title: 'GitHub Student Developer Pack：学生免费领 Copilot / JetBrains 等', cat: 'student', date: '长期有效', url: 'https://education.github.com/benefits', benefit: '学生认证后 Copilot、JetBrains 全家桶、Azure 等免费', org: 'GitHub', tutorial: 'https://docs.github.com/zh/education/explore-the-benefits-of-github' },
+  { title: 'JetBrains 学生授权：edu 邮箱免费全家桶', cat: 'student', date: '长期有效', url: 'https://www.jetbrains.com.cn/community/education/', benefit: 'IntelliJ / PyCharm / WebStorm 等全部免费', org: 'JetBrains', tutorial: '' },
+  { title: 'Cursor 学生计划：教育邮箱认证学生优惠', cat: 'student', date: '长期有效', url: 'https://cursor.com/', benefit: '学生可申请 Cursor Pro 权益（AI 编程编辑器）', org: 'Cursor', tutorial: '' },
+  { title: '阿里云开发者社区学生认证：学生云资源优惠', cat: 'student', date: '长期有效', url: 'https://developer.aliyun.com/adc/student/', benefit: '学生认证享云服务器/免费学习资源', org: '阿里云', tutorial: '' },
+  { title: '腾讯云校园计划：学生专属云资源', cat: 'student', date: '长期有效', url: 'https://cloud.tencent.com/act/campus', benefit: '学生认证免费/低价云服务器与 AI 资源', org: '腾讯云', tutorial: '' },
+  { title: 'Coze 扣子空间：新人礼包 + 邀请好友得积分', cat: 'fan', date: '长期有效', url: 'https://www.coze.cn/', benefit: '新人礼包、邀请奖励积分，可换算力', org: '字节跳动', tutorial: 'https://www.coze.cn/docs/' },
+  { title: '通义千问 App：邀请好友得免费额度', cat: 'fan', date: '长期有效', url: 'https://tongyi.aliyun.com/', benefit: '邀请好友、每日签到领免费使用次数', org: '阿里云', tutorial: '' },
+  { title: 'KIMI 智能助手：签到 / 邀请领免费算力', cat: 'fan', date: '长期有效', url: 'https://kimi.moonshot.cn/', benefit: '每日签到 + 邀请奖励，免费领取长文本算力', org: '月之暗面', tutorial: '' },
+  { title: 'Gemini API 免费额度（Google AI Studio）', cat: 'inner', date: '长期有效', url: 'https://ai.google.dev/', benefit: 'Gemini 模型免费试用额度 + 抢先体验新模型', org: 'Google', tutorial: 'https://ai.google.dev/gemini-api/docs' },
+  { title: '阿里天池大赛：各类 AI 竞赛（长期举办）', cat: 'hackathon', date: '长期有效', url: 'https://tianchi.aliyun.com/', benefit: '真实数据集 + 奖金 + 免费算力，常设算法/AI 赛事', org: '阿里云', tutorial: 'https://tianchi.aliyun.com/competition' },
+  { title: 'Kaggle 竞赛：全球 AI 数据科学大赛', cat: 'hackathon', date: '长期有效', url: 'https://www.kaggle.com/competitions', benefit: '全球竞赛 + 奖金 + 免费 GPU Notebook', org: 'Kaggle', tutorial: 'https://www.kaggle.com/learn' },
+  { title: '百度飞桨 AI Studio：AI 大赛 + 免费算力', cat: 'hackathon', date: '长期有效', url: 'https://aistudio.baidu.com/competition', benefit: '常设 AI 大赛 + 免费 GPU 算力 + 课程', org: '百度', tutorial: '' },
+  { title: 'Datawhale AI 夏令营 / 组队学习', cat: 'hackathon', date: '长期有效', url: 'https://github.com/datawhalechina', benefit: '免费组队学习 + 实践项目 + 开源社区', org: 'Datawhale', tutorial: '' },
+  { title: '智源 BAAI：黑客松 / 大模型开放日', cat: 'hackathon', date: '长期有效', url: 'https://hub.baai.ac.cn/', benefit: '大模型开放平台 + 社区赛事', org: '智源研究院', tutorial: '' },
+  { title: 'Hugging Face 社区挑战赛', cat: 'hackathon', date: '长期有效', url: 'https://huggingface.co/challenges', benefit: '模型微调/应用挑战 + 社区声望 + 奖励', org: 'Hugging Face', tutorial: 'https://huggingface.co/learn' },
+  ];
+  const getAIEvents = () => {
+  const s = Store.get().skill;
+  s.aiEvents = s.aiEvents || [];
+  return AI_EVENTS_SEED.concat(s.aiEvents.map((x) => Object.assign({}, x, { _user: true })));
+  };
+  const aeExpired = (e) => {
+  const d = String(e.date || '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return false; // 非日期（长期有效）不过期
+  return d < D.todayStr();
+  };
+  const aeCatName = (k) => { const c = AI_EVENT_CATS.find((x) => x.key === k); return c ? c.name : (k || ''); };
+  function renderAIEvents() {
+  const all = getAIEvents();
+  const list = all.filter((e) => (aeExpired(e) ? _aeShowExpired : true)).filter((e) => _aeCat === 'all' || e.cat === _aeCat);
+  const expiredN = all.filter((e) => aeExpired(e)).length;
+  const activeN = all.length - expiredN;
+  const catTabs = ['all'].concat(AI_EVENT_CATS.map((c) => c.key)).map((k) => {
+  const label = k === 'all' ? '全部' : (AI_EVENT_CATS.find((c) => c.key === k) || {}).label;
+  return `<button class="ae-tab ${_aeCat === k ? 'on' : ''}" data-act="ae-cat" data-cat="${k}">${label}</button>`;
+  }).join('');
+  const rows = list.length ? list.map((e, i) => {
+  const exp = aeExpired(e);
+  return `<div class="ae-row ${exp ? 'ae-expired' : ''}">
+  <div class="ae-main">
+  <div class="ae-title">${UI.esc(e.title)}${e.org ? `<span class="ae-org"> · ${UI.esc(e.org)}</span>` : ''}</div>
+  <div class="ae-meta">
+  <span class="tag ae-cat-${e.cat}">${UI.esc(aeCatName(e.cat))}</span>
+  <span class="ae-time">${exp ? '⛔ 已结束' : '🕐 ' + UI.esc(e.date || '')}</span>
+  ${e.benefit ? `<span class="ae-benefit">🎁 ${UI.esc(e.benefit)}</span>` : ''}
+  </div>
+  </div>
+  <div class="ae-ops">
+  ${e.url ? `<a class="btn btn-sm btn-primary" href="${UI.esc(e.url)}" target="_blank" rel="noopener">报名</a>` : ''}
+  ${e.tutorial ? `<a class="btn btn-soft btn-sm" href="${UI.esc(e.tutorial)}" target="_blank" rel="noopener">教程</a>` : ''}
+  ${e._user ? `<button class="btn btn-soft btn-icon" data-act="ae-del" data-id="${e.id}" title="删除"><img class="ic" src="assets/icons/hk-18.png" alt=""/></button>` : ''}
+  </div>
+  </div>`;
+  }).join('') : '<div class="muted-text center">该分类下暂无活动</div>';
+  return `
+  <div class="card mt12">
+  <div class="card-head">
+  <div class="title"><img class="ic" src="assets/icons/hk-01.png" alt=""/>AI 活动<span class="tag muted" style="margin-left:6px">可报名 ${activeN}</span></div>
+  <div class="spacer"></div>
+  ${expiredN ? `<button class="btn btn-soft btn-sm" data-act="ae-toggle-expired">${_aeShowExpired ? '隐藏已结束' : `已结束 ${expiredN}`}</button>` : ''}
+  <button class="btn btn-sm btn-refresh" data-act="ae-refresh">⟳ 实时刷新</button>
+  <button class="btn btn-soft btn-sm" data-act="ae-add">＋ 添加活动</button>
+  <button class="collapse-btn" title="折叠">▾</button>
+  </div>
+  <div class="card-body">
+  <div class="muted-text" style="font-size:12px;margin-bottom:10px">只收录真实可报名 / 可申领权益的 AI 活动（福利·学生·Token·内测·黑客松），过滤普通新闻资讯；已结束自动隐藏。</div>
+  <div class="ae-tabs">${catTabs}</div>
+  <div class="ae-list mt12">${rows}</div>
+  </div>
+  </div>`;
+  }
+
 
   // ---------- 每日AI学习选题 ----------
   // 已读热点独立视图（切换界面展示所有已读）
@@ -300,17 +378,13 @@ Pages.skill = function () {
   const readCount = all.filter((x) => x.read).length;
   const backendOn = !!Store.readerBackend();
   const liveTag = backendOn ? `<span class="tag tag-live" title="已接入联网后端，每日实时更新真实 AI 热门选题">实时</span>` : '';
-  const kw = aiKeywords();
-  const kwTag = kw.length ? `<span class="tag" style="background:var(--primary-soft);color:var(--primary-deep)" title="当前筛选关键词">🔍 ${UI.esc(kw.join(' '))}</span>` : '';
   return `
   <div class="card mt12 sk-daily-card">
   <div class="card-head">
     <div class="title"><img class="ic" src="assets/icons/hk-01.png" alt=""/>每日AI学习选题${liveTag}</div>
     <div class="spacer"></div>
-    ${kwTag}
     ${readCount ? `<span class="tag muted">已读 ${readCount}</span>` : ''}
     ${readCount ? `<button class="btn btn-soft btn-sm" data-act="ai-show-read">已读热点</button>` : ''}
-    <button class="btn btn-soft btn-sm" data-act="ai-filter" title="设置筛选关键词">🔍 筛选</button>
     <button class="btn btn-sm btn-refresh" data-act="ai-refresh">⟳ 刷新一批选题</button>
     <button class="collapse-btn" title="折叠">▾</button>
   </div>
@@ -471,24 +545,6 @@ Pages.skill = function () {
   Pages.skill();
   return;
   }
-  if (act === 'ai-filter') {
-  UI.openModal({
-  title: 'AI 选题筛选关键词', icon: '<img class="ic" src="assets/icons/hk-01.png" alt=""/>',
-  body: `<div class="field"><label>筛选关键词（逗号分隔，标题/标签包含任一即保留）</label><textarea class="textarea" id="aiKw" placeholder="如：小米,Token,黑客松,Agent,MCP" style="min-height:70px">${UI.esc((Store.get().skill.aiKeywords || ''))}</textarea></div>
-  <div class="muted-text" style="font-size:12px">留空 = 不过滤（显示全部）。筛选对实时拉取和本地刷新都生效；无匹配时自动回退显示全部。</div>`,
-  actions: [
-  { label: '取消', cls: 'btn-soft', onClick: UI.closeModal },
-  { label: '保存并刷新', onClick: () => {
-  const kw = UI.val('#aiKw').trim();
-  Store.update((st) => { st.skill.aiKeywords = kw; });
-  UI.closeModal();
-  UI.toast(kw ? '已设置筛选关键词' : '已清除筛选', 'ok');
-  Pages.skill();
-  } }
-  ]
-  });
-  return;
-  }
   if (act === 'ai-read-back') {
   _topicReadView = false; // 返回选题列表
   Pages.skill();
@@ -509,6 +565,83 @@ Pages.skill = function () {
   Pages.skill();
   return;
   }
+  if (act === 'ae-cat') { _aeCat = b.dataset.cat; Pages.skill(); return; }
+  if (act === 'ae-toggle-expired') { _aeShowExpired = !_aeShowExpired; Pages.skill(); return; }
+  if (act === 'ae-refresh') return (async () => {
+  // 实时刷新：优先从后端拉取最新活动（assets/ai-events.json），合并去重后过滤过期
+  const doLocalRefresh = () => {
+  Store.update((st) => {
+  st.skill.aiEvents = (st.skill.aiEvents || []).filter((e) => !aeExpired(e));
+  });
+  const expiredNow = getAIEvents().filter((e) => aeExpired(e)).length;
+  UI.toast('已刷新：过滤 ' + expiredNow + ' 项已结束活动', 'ok');
+  Pages.skill();
+  };
+  const backend = Store.readerBackend();
+  if (backend) {
+  try {
+  UI.toast('正在从后端同步最新活动…', 'ok');
+  const ctrl = new AbortController();
+  const to = setTimeout(() => ctrl.abort(), 9000);
+  const r = await fetch(backend + '/api/ai/events', { signal: ctrl.signal });
+  clearTimeout(to);
+  if (r.ok) {
+  const j = await r.json().catch(() => null);
+  if (j && Array.isArray(j.events) && j.events.length) {
+  Store.update((st) => {
+  st.skill.aiEvents = (st.skill.aiEvents || []).filter((e) => !aeExpired(e));
+  const cur = (st.skill.aiEvents || []).slice();
+  const seen = new Set(cur.map((x) => x.title));
+  for (const e of j.events) {
+  if (!e || !e.title || seen.has(e.title)) continue;
+  seen.add(e.title);
+  cur.push(Object.assign({ id: Store.uid(), _server: true }, e));
+  }
+  st.skill.aiEvents = cur;
+  st.skill.aiEventsDate = j.date || '';
+  });
+  UI.toast('已同步最新活动（' + j.events.length + ' 条）', 'ok');
+  Pages.skill();
+  return;
+  }
+  }
+  } catch (e) { /* 后端不可达则回退本地 */ }
+  }
+  doLocalRefresh();
+  })();
+  if (act === 'ae-del') {
+  Store.update((st) => { st.skill.aiEvents = (st.skill.aiEvents || []).filter((x) => x.id !== id); });
+  Pages.skill();
+  return;
+  }
+  if (act === 'ae-add') {
+  const catOpts = AI_EVENT_CATS.map((c) => `<option value="${c.key}">${c.label}（${c.name}）</option>`).join('');
+  UI.openModal({
+  title: '添加 AI 活动', icon: '<img class="ic" src="assets/icons/hk-01.png" alt=""/>',
+  body: `<div class="field"><label>活动名称</label><input class="input" id="aeTitle" placeholder="如：某某模型内测报名"/></div>
+  <div class="row">
+  <div class="field"><label>分类</label><select class="input" id="aeCat">${catOpts}</select></div>
+  <div class="field"><label>截止日期</label><input class="input" id="aeDate" placeholder="长期有效 或 2026-09-30"/></div>
+  </div>
+  <div class="field"><label>报名链接</label><input class="input" id="aeUrl" placeholder="https://..."/></div>
+  <div class="field"><label>福利说明</label><input class="input" id="aeBenefit" placeholder="如：注册送 100 万 Token"/></div>
+  <div class="field"><label>教程链接（选填）</label><input class="input" id="aeTutorial" placeholder="https://..."/></div>
+  <div class="field"><label>主办方（选填）</label><input class="input" id="aeOrg" placeholder="如：阿里云"/></div>`,
+  actions: [
+  { label: '取消', cls: 'btn-soft', onClick: UI.closeModal },
+  { label: '保存', onClick: () => {
+  const title = UI.val('#aeTitle').trim();
+  if (!title) { UI.toast('请填写活动名称', 'warn'); return; }
+  Store.update((st) => {
+  st.skill.aiEvents = st.skill.aiEvents || [];
+  st.skill.aiEvents.push({ id: Store.uid(), title, cat: UI.val('#aeCat') || 'fan', date: UI.val('#aeDate').trim() || '长期有效', url: UI.val('#aeUrl').trim(), benefit: UI.val('#aeBenefit').trim(), tutorial: UI.val('#aeTutorial').trim(), org: UI.val('#aeOrg').trim() });
+  });
+  UI.closeModal(); UI.toast('已添加活动', 'ok'); Pages.skill();
+  } }
+  ]
+  });
+  return;
+  }
   if (act === 'ai-refresh') return UI.confirm('刷新将用一批新的 AI 热门选题覆盖当前列表，继续？', async () => {
   const backend = Store.readerBackend();
   if (backend) {
@@ -516,8 +649,7 @@ Pages.skill = function () {
     UI.toast('正在从后端获取实时 AI 选题…', 'ok');
     const ctrl = new AbortController();
     const to = setTimeout(() => ctrl.abort(), 12000);
-    const kwParam = aiKeywords().length ? '&keywords=' + encodeURIComponent(aiKeywords().join(',')) : '';
-    const r = await fetch(backend + '/api/ai/topics?refresh=1' + kwParam, { signal: ctrl.signal });
+    const r = await fetch(backend + '/api/ai/topics?refresh=1', { signal: ctrl.signal });
     clearTimeout(to);
     if (r.ok) {
       const j = await r.json().catch(() => null);
@@ -532,7 +664,7 @@ Pages.skill = function () {
       }
       Store.update((st) => {
         st.skill.aiTopicsDate = j.date || ''; // 真实后端日期；无日期不冒领"今天"
-        st.skill.dailyTopics = aiFiltered(topics).map((t) => ({ id: Store.uid(), title: t.title, tags: (t.tags || []).slice(), url: t.url || '' }));
+        st.skill.dailyTopics = topics.map((t) => ({ id: Store.uid(), title: t.title, tags: (t.tags || []).slice(), url: t.url || '' }));
         // 自动加入本地种子池
         const pool = (st.skill.topicPool || []).slice();
         st.skill.dailyTopics.forEach((f) => { if (!pool.some((p) => p.title === f.title)) pool.push(f); });
@@ -555,19 +687,9 @@ Pages.skill = function () {
     }
     const idx = st.skill.topicSeedIndex || 0;
     const batch = 4;
-    // 按用户筛选关键词过滤本地种子库（无匹配回退全部）
-    const kws = aiKeywords();
-    let srcPool = pool;
-    if (kws.length) {
-      const hit = pool.filter((p) => {
-        const text = ((p.title || '') + ' ' + ((p.tags || []).join(' '))).toLowerCase();
-        return kws.some((k) => text.includes(k));
-      });
-      if (hit.length) srcPool = hit;
-    }
     const next = [];
     for (let i = 0; i < batch; i++) {
-      const s = srcPool[(idx + i) % srcPool.length];
+      const s = pool[(idx + i) % pool.length];
       if (s) next.push({ id: Store.uid(), title: s.title, tags: s.tags.slice(), url: s.url });
     }
     st.skill.dailyTopics = next;
