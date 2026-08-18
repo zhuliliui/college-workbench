@@ -1100,6 +1100,13 @@ table.tbl tr:hover td { background: var(--surface-2); }
   transition: transform .15s, box-shadow .15s;
 }
 .ai-add-btn:active { transform: scale(.95); }
+/* 国内直连源标记 */
+.ai-src-dom {
+  background: rgba(5,150,105,.14);
+  color: #047857;
+  margin-left: 4px;
+  font-weight: 600;
+}
 
 /* ============ AI 活动（可报名聚合） ============ */
 .ae-tabs {

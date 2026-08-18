@@ -8,6 +8,7 @@ let _kcCur = null;
 let _kcT1 = false; let _kcT2 = false;
 let _kcInt1 = null; let _kcInt2 = null;
 let _kcLeft1 = 300; let _kcLeft2 = 300;
+let _kcAudioCtx = null; // 闹钟 AudioContext（需在用户手势内预热解锁，到点才响得了）
 let _kcActiveTab = 1;
 let _kcSpinInt = null;
 const KC_MIN_OPTS = [2, 3, 5, 8, 10, 15, 20, 30];
@@ -163,28 +164,43 @@ Pages.dashboard = function () {
   window.speechSynthesis.resume();
   } catch (e) {}
   };
-  // 闹钟提醒：Web Audio 蜂鸣（无需音频文件）+ 震动（支持时）；到点响铃
-  const kcAlarm = () => {
-  try { if (navigator.vibrate) navigator.vibrate([350, 160, 350, 160, 350]); } catch (e) {}
+  // 预热/复用 AudioContext：必须在用户手势（点按钮）内调用，浏览器才会解锁音频；
+  // 解锁后倒计时到点（无手势）才能正常响铃（移动端/主屏幕 PWA 必须这样，否则被挂起无声）
+  const kcEnsureAudio = () => {
   try {
+  if (!_kcAudioCtx) {
   const Ctx = window.AudioContext || window.webkitAudioContext;
-  if (!Ctx) return;
-  const ctx = new Ctx();
-  const tone = (freq, t0, dur) => {
+  if (!Ctx) return null;
+  _kcAudioCtx = new Ctx();
+  }
+  if (_kcAudioCtx.state === 'suspended') {
+  try { _kcAudioCtx.resume(); } catch (e) {}
+  }
+  return _kcAudioCtx;
+  } catch (e) { return null; }
+  };
+  // 闹钟提醒：清脆「叮叮叮」铃声（用已预热的 AudioContext）+ 震动；到点响铃
+  const kcAlarm = () => {
+  try { if (navigator.vibrate) navigator.vibrate([300, 120, 300, 120, 300]); } catch (e) {}
+  const ctx = kcEnsureAudio();
+  if (!ctx) return;
+  try {
+  // 每个「叮」= 高频短促音（基频 E6 + 泛音，三角波更清脆，快速衰减），每声间隔 0.42s，共 4 声
+  const ding = (t0) => {
+  [1318.5, 2637].forEach((freq, i) => {
   const o = ctx.createOscillator(), g = ctx.createGain();
-  o.type = 'sine'; o.frequency.value = freq;
+  o.type = 'triangle';
+  o.frequency.value = freq;
   o.connect(g); g.connect(ctx.destination);
   const t = ctx.currentTime + t0;
   g.gain.setValueAtTime(0.0001, t);
-  g.gain.exponentialRampToValueAtTime(0.65, t + 0.02);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  o.start(t); o.stop(t + dur + 0.06);
+  g.gain.exponentialRampToValueAtTime(i === 0 ? 0.5 : 0.14, t + 0.005);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.32);
+  o.start(t); o.stop(t + 0.38);
+  });
   };
-  // 经典闹钟音：880Hz 三连音 × 3 轮（约 2.6 秒）
-  for (let round = 0; round < 3; round++) {
-  for (let i = 0; i < 3; i++) tone(880, round * 0.88 + i * 0.26, 0.2);
-  }
-  setTimeout(() => { try { ctx.close(); } catch (e) {} }, 3200);
+  for (let i = 0; i < 4; i++) ding(i * 0.42);
+  // 不 close：保留 context 复用（关闭后下次又需手势解锁）
   } catch (e) {}
   };
   const kcStartSpin = () => {
@@ -383,8 +399,8 @@ Pages.dashboard = function () {
   });
   return;
   }
-  if (act === 'kc-tab') { _kcActiveTab = +b.dataset.tab; Pages.dashboard(); return; }
-  if (act === 'kc-spin') { kcStartSpin(); return; }
+  if (act === 'kc-tab') { kcEnsureAudio(); _kcActiveTab = +b.dataset.tab; Pages.dashboard(); return; }
+  if (act === 'kc-spin') { kcEnsureAudio(); kcStartSpin(); return; }
   if (act === 'kc-set-min') {
   const phase = +b.dataset.phase;
   const v = Math.max(1, parseInt(b.value) || 5);
@@ -398,6 +414,7 @@ Pages.dashboard = function () {
   }
   if (act === 'kc-timer') {
   const phase = +b.dataset.phase;
+  kcEnsureAudio(); // 用户手势内预热音频，保证倒计时到点能响铃
   const running = phase === 1 ? _kcT1 : _kcT2;
   if (running) { kcStop(phase); Pages.dashboard(); return; }
   if (phase === 1) { _kcT1 = true; _kcLeft1 = kcGetMin(1) * 60; }

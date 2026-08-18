@@ -777,6 +777,20 @@ async function fetchLatestArticles(count, force) {
   for (const it of picked) {
     try { const art = await buildArticle(it); if (art) arts.push(art); } catch (e) { console.warn('[reader] 构建失败', it.title, e.message); }
   }
+  // 海外源不足（无梯子/被墙/超时）→ 回退国内可直连英文源：中国日报双语（免梯子，中英对照）
+  if (arts.length < count) {
+    try {
+      const cn = await fetchCnDailyArticles(count - arts.length + 2);
+      const seen2 = new Set(arts.map((a) => a.link || a.title));
+      for (const a of cn) {
+        if (!a || seen2.has(a.link || a.title)) continue;
+        seen2.add(a.link || a.title);
+        arts.push(a);
+      }
+      if (arts.length > count) arts.length = count;
+      console.log('[reader] 海外源不足，已用国内双语源补齐', arts.length, '篇');
+    } catch (e) { console.warn('[reader] 国内双语补齐失败', e.message); }
+  }
   return arts;
 }
 // 每日定时抓取：每天首次运行时拉取最新 5 篇外刊 + 3 篇国内双语入库（落盘持久化，重启不丢），每篇标记 fetchDate=当日
@@ -947,6 +961,70 @@ async function fetchHNTopics() {
   }));
   return out;
 }
+// ---------- 国内直连 AI 热点源（免梯子：VPN 不可用时的降级源）----------
+const CN_AI_KW = /AI|人工智能|大模型|GPT|智能体|模型|算法|机器人|自动驾驶|芯片|OpenAI|ChatGPT|DeepSeek|文心|豆包|通义|Gemini|Claude|神经网络|深度学习|Agent|算力|AIGC|机器学习|编程/;
+// 量子位（AI 原生科技媒体，国内直连，列表页 h2/h3 标题解析）
+async function fetchQbitai() {
+  const h = await fetchText('https://www.qbitai.com/', 10000);
+  const out = [];
+  const blocks = h.match(/<h[23][^>]*>([\s\S]*?)<\/h[23]>/g) || [];
+  const seen = new Set();
+  for (const blk of blocks) {
+    const am = blk.match(/href="([^"]+)"/);
+    const title = blk.replace(/<[^>]+>/g, '').replace(/&[a-z]+;/g, ' ').replace(/\s+/g, ' ').trim();
+    if (title.length < 8 || seen.has(title)) continue;
+    seen.add(title);
+    out.push({ title, url: am ? (am[1].startsWith('http') ? am[1] : 'https://www.qbitai.com' + am[1]) : 'https://www.qbitai.com/', tags: ['量子位', 'AI'] });
+    if (out.length >= 20) break;
+  }
+  return out;
+}
+// 今日头条热榜（JSON，国内直连；按 AI 关键词过滤）
+async function fetchToutiaoHot() {
+  const t = await fetchText('https://www.toutiao.com/hot-event/hot-board/?origin=toutiao_pc', 10000);
+  const j = JSON.parse(t);
+  const out = [];
+  for (const it of (j.data || [])) {
+    const title = it.Title || '';
+    if (!title || !CN_AI_KW.test(title)) continue;
+    out.push({ title: title.trim(), url: it.Url || 'https://www.toutiao.com/', tags: ['头条热榜', 'AI'] });
+  }
+  return out;
+}
+// 腾讯新闻热榜（JSON，国内直连；按 AI 关键词过滤）
+async function fetchTencentHot() {
+  const t = await fetchText('https://r.inews.qq.com/gw/event/hot_ranking_list?page_size=50', 10000);
+  const j = JSON.parse(t);
+  const out = [];
+  for (const idl of (j.idlist || [])) {
+    for (const it of (idl.newslist || [])) {
+      const title = it.title || '';
+      if (!title || !CN_AI_KW.test(title)) continue;
+      out.push({ title: title.trim(), url: it.url || 'https://news.qq.com/', tags: ['腾讯热榜', 'AI'] });
+    }
+  }
+  return out;
+}
+// 国内直连聚合（量子位为主，不足补头条/腾讯热榜）
+async function fetchAIDomestic() {
+  let out = [];
+  try { out = await fetchQbitai(); } catch (e) { console.warn('[ai-topics] 量子位失败', e.message); }
+  if (out.length < 8) {
+    try {
+      const tt = await fetchToutiaoHot();
+      const seen = new Set(out.map((x) => x.title));
+      for (const x of tt) if (!seen.has(x.title)) out.push(x);
+    } catch (e) { console.warn('[ai-topics] 头条热榜失败', e.message); }
+  }
+  if (out.length < 8) {
+    try {
+      const tx = await fetchTencentHot();
+      const seen = new Set(out.map((x) => x.title));
+      for (const x of tx) if (!seen.has(x.title)) out.push(x);
+    } catch (e) { console.warn('[ai-topics] 腾讯热榜失败', e.message); }
+  }
+  return out;
+}
 async function buildAITopics() {
   const collected = [];
   const seen = new Set();
@@ -975,11 +1053,17 @@ async function buildAITopics() {
     pushUnique(ax);
   }
   let topics = collected.slice(0, 12);
+  let sourceTag = 'GitHub/海外';
+  // 4) 海外源全部失败（无梯子/被墙）→ 回退国内直连源（知乎热榜 / IT之家 AI，免梯子）
+  if (!topics.length) {
+    const dom = await fetchAIDomestic().catch(() => []);
+    if (dom.length) { topics = dom.slice(0, 12); sourceTag = '国内直连'; }
+  }
   if (!topics.length) topics = AI_TOPICS_SEED.slice(0, 12); // 全部失败则回退内置种子
-  const obj = { date: todayISO(), topics, generatedAt: Date.now() };
+  const obj = { date: todayISO(), source: sourceTag, topics, generatedAt: Date.now() };
   aiTopics = obj;
   saveAITopics(obj);
-  console.log('[ai-topics] 今日选题生成', topics.length, '条（GitHub 命中', collected.length, '条）');
+  console.log('[ai-topics] 今日选题生成', topics.length, '条（' + sourceTag + '，海外命中', collected.length, '条）');
   return obj;
 }
 function checkDailyAITopics() {

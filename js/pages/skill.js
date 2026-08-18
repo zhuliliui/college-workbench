@@ -147,6 +147,7 @@ Pages.skill = function () {
       }
       Store.update((st) => {
         st.skill.aiTopicsDate = loadedDate;
+        st.skill.aiSource = j.source || ''; // 来源标记（GitHub/海外 或 国内直连）
         st.skill.dailyTopics = topics.map((t) => ({ id: Store.uid(), title: t.title, tags: (t.tags || []).slice(), url: t.url || '' }));
         // 自动加入本地种子池（去重 + 上限 100），后端不可达时离线也能刷到最新热点
         const pool = (st.skill.topicPool || []).slice();
@@ -344,6 +345,8 @@ Pages.skill = function () {
   const all = getDailyTopics();
   const topics = all.filter((x) => !x.read); // 默认隐藏已读
   const _topicDate = Store.get().skill.aiTopicsDate || ''; // 仅显示真实收录日期；无日期（本地种子/离线）不冒领"今天"
+  const _aiSource = Store.get().skill.aiSource || '';
+  const srcTag = _aiSource === '国内直连' ? `<span class="tag ai-src-dom" title="VPN 不可用时自动回退国内直连源（知乎热榜/IT之家）">国内直连源</span>` : '';
   let html;
   if (!topics.length) {
     html = all.length
@@ -363,7 +366,7 @@ Pages.skill = function () {
     <div class="ai-main">
       <div class="ai-title" contenteditable="true" data-field="title" data-tid="${x.id}">${UI.esc(x.title || '')}</div>
       <div class="ai-tags" contenteditable="true" data-field="tags" data-tid="${x.id}">${tags}</div>
-      ${_topicDate ? `<div class="ai-date">收录于 ${UI.esc(_topicDate)}</div>` : `<div class="ai-date ai-local">本地选题</div>`}
+      ${_topicDate ? `<div class="ai-date">收录于 ${UI.esc(_topicDate)}${srcTag}</div>` : `<div class="ai-date ai-local">本地选题</div>`}
     </div>
     <div class="ai-ops">
       <button class="btn btn-soft btn-icon ai-link ${hasUrl ? '' : 'disabled'}" data-act="ai-link" data-tid="${x.id}" title="${hasUrl ? '打开链接' : '未设置链接'}"><img class="ic" src="assets/icons/hk-29.png" alt=""/></button>
@@ -664,6 +667,7 @@ Pages.skill = function () {
       }
       Store.update((st) => {
         st.skill.aiTopicsDate = j.date || ''; // 真实后端日期；无日期不冒领"今天"
+        st.skill.aiSource = j.source || '';
         st.skill.dailyTopics = topics.map((t) => ({ id: Store.uid(), title: t.title, tags: (t.tags || []).slice(), url: t.url || '' }));
         // 自动加入本地种子池
         const pool = (st.skill.topicPool || []).slice();

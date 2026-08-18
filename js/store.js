@@ -79,6 +79,7 @@
         topics: [],               // [{id,name,icon,intro,courses:[{id,icon,title,tags:[],desc,duration,url,done}]}]
         dailyTopics: [],          // 每日AI学习选题 [{id,title,tags[],url}]
         aiTopicsDate: '',          // 已从后端加载当日选题的日期（同日不重复覆盖用户编辑）
+        aiSource: '',              // 选题来源标记（GitHub/海外 或 国内直连）
         topicSeedIndex: 0,        // 内置热门话题种子读取位置
         topicPool: [],            // 后端爬到的热点累积池（自动去重，离线回退首选）
         researchTopics: [],       // 调研汇报练习·自建词条 [{id,name,en}]
@@ -285,6 +286,7 @@
     if (!Array.isArray(st.skill.researchTopics)) st.skill.researchTopics = []; // 调研汇报练习·自建词条
     if (!Array.isArray(st.skill.aiEvents)) st.skill.aiEvents = []; // AI活动·用户自建
     if (typeof st.skill.aiEventsDate !== 'string') st.skill.aiEventsDate = '';
+    if (typeof st.skill.aiSource !== 'string') st.skill.aiSource = ''; // 选题来源标记
     if (!st.skill.researchSettings) st.skill.researchSettings = { phase1Min: 5, phase2Min: 5 };
     if (typeof st.skill.researchSettings.phase1Min !== 'number' || st.skill.researchSettings.phase1Min < 1) st.skill.researchSettings.phase1Min = 5;
     if (typeof st.skill.researchSettings.phase2Min !== 'number' || st.skill.researchSettings.phase2Min < 1) st.skill.researchSettings.phase2Min = 5;
