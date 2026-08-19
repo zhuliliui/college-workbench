@@ -599,10 +599,10 @@ window.Pages = window.Pages || {};
         <div class="eb-stage-iv">${lab}</div>
         <div class="eb-stage-cnt">${cnt[i]} 词</div>
       </div>`).join('');
-    const dueList = due.slice(0, 18).map((x) => `<span class="eb-due-item">${UI.esc(x.word)}</span>`).join('');
+    const dueList = due.map((x) => `<span class="eb-due-item">${UI.esc(x.word)}</span>`).join('');
     const dueHtml = `
       <div class="eb-due">
-        <div class="eb-future-label">今日到期复习（${due.length}${due.length > 18 ? ' · 显示前18' : ''}）</div>
+        <div class="eb-future-label">今日到期复习（${due.length}）</div>
         <div class="eb-due-list">${due.length ? dueList : '<span class="muted-text eb-empty">暂无到期单词</span>'}</div>
       </div>`;
     return `

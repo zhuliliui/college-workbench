@@ -54,8 +54,6 @@ Pages.study = function () {
   }
   const byDate = {};
   s.tasks.forEach((t) => { if (t.due) { const k = D.fmtDate(D.parseLDT(t.due)); (byDate[k] = byDate[k] || []).push(t); } });
-  // 自动重置到今日（避免昨日视图滞留）
-  if (STUDY_VIEW.date < today) { STUDY_VIEW.date = today; STUDY_VIEW.month = today.slice(0, 7); }
 
   const dayCells = monthCells(STUDY_VIEW.month).map((cell) => {
     const dateStr = cell.other ? '' : (STUDY_VIEW.month + '-' + D.pad(cell.d));
