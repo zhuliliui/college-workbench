@@ -7,17 +7,17 @@
   { id: 'checkin', emoji: '<img class="emoji" src="assets/icons/hk-09.png" alt=""/>', label: '专注打卡' },
   { id: 'skill', emoji: '<img class="emoji" src="assets/icons/hk-01.png" alt=""/>', label: '技能学习' },
   { id: 'english', emoji: '<img class="emoji" src="assets/icons/hk-27.png" alt=""/>', label: '英语学习' },
-  { id: 'study', emoji: '<img class="emoji" src="assets/icons/hk-38.png" alt=""/>', label: '学习复习计划' },
-  { id: 'ddl', emoji: '<img class="emoji" src="assets/icons/hk-41.png" alt=""/>', label: '学业DDL倒计时' },
+  { id: 'study', emoji: '<img class="emoji" src="assets/icons/hk-38.png" alt=""/>', label: '复习计划' },
+  { id: 'ddl', emoji: '<img class="emoji" src="assets/icons/hk-41.png" alt=""/>', label: 'DDL' },
   { id: 'finance', emoji: '<img class="emoji" src="assets/icons/hk-02.png" alt=""/>', label: '记账存钱' },
   { id: 'discipline', emoji: '<img class="emoji" src="assets/icons/hk-06.png" alt=""/>', label: '自律成长' },
-  { id: 'review', emoji: '<img class="emoji" src="assets/icons/hk-37.png" alt=""/>', label: '月度目标复盘' },
-  { id: 'travel', emoji: '<img class="emoji" src="assets/icons/hk-35.png" alt=""/>', label: '假期旅行规划' },
+  { id: 'review', emoji: '<img class="emoji" src="assets/icons/hk-37.png" alt=""/>', label: '月度复盘' },
+  { id: 'travel', emoji: '<img class="emoji" src="assets/icons/hk-35.png" alt=""/>', label: '假期规划' },
   ];
   const TITLES = {
-  dashboard: '万能工作台', study: '学习复习计划', ddl: '学业DDL倒计时',
-  finance: '记账存钱', discipline: '自律成长', travel: '假期旅行规划',
-  review: '月度目标复盘', english: '英语学习', skill: '技能学习', checkin: '专注打卡计时',
+  dashboard: '万能工作台', study: '复习计划', ddl: 'DDL',
+  finance: '记账存钱', discipline: '自律成长', travel: '假期规划',
+  review: '月度复盘', english: '英语学习', skill: '技能学习', checkin: '专注打卡计时',
   };
   // 首页与学习计划已拆分为独立页面（dashboard.js / study.js）
 

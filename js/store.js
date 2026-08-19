@@ -12,7 +12,7 @@
   function blankState() {
     return {
       version: 1,
-      // 学习复习计划（万能工作台首页 + 月度日历联动数据源）
+      // 复习计划（万能工作台首页 + 月度日历联动数据源）
       tasks: [],
       weakNotes: [],
       dailySummary: {},            // { 'YYYY-MM-DD': text }
@@ -53,7 +53,7 @@
         checklist: [],            // {id,name,checked}
         notes: '',
       },
-      // 月度目标复盘
+      // 月度复盘
       monthly: {
         goals: {},                // {month:[{id,text}]}
         done: [],                 // {id,text,month}

@@ -1,6 +1,6 @@
 /* ============================================================
   技能学习页（两级：专题列表 → 专题详情）
-  · 课程可关联到「学习复习计划」，在计划页统一打卡
+  · 课程可关联到「复习计划」，在计划页统一打卡
   · 数据本地持久化，纳入全局 JSON 备份（store.skill）
   ============================================================ */
 window.Pages = window.Pages || {};
@@ -212,7 +212,7 @@ Pages.skill = function () {
   </div>
   <div class="card-body">${listHtml}</div>
   </div>
-  <div class="muted-text mt8"> 课程可关联到「学习复习计划」统一打卡。</div>
+  <div class="muted-text mt8"> 课程可关联到「复习计划」统一打卡。</div>
   ${renderDailyTopics()}
   ${renderAIEvents()}`;
   }
@@ -925,7 +925,7 @@ Pages.skill = function () {
   <div class="field"><label>外链地址（选填）</label><input class="input" id="coUrl" value="${UI.esc(cr ? (cr.url || '') : '')}" placeholder="https://..."/></div>
   <div class="field" style="display:flex;align-items:center;gap:8px">
   <input type="checkbox" id="coLinkTask" ${cr && cr.taskId ? 'checked' : ''}/>
-  <label for="coLinkTask" style="margin:0;font-weight:400">同时加入学习复习计划（可在计划页统一打卡）</label>
+  <label for="coLinkTask" style="margin:0;font-weight:400">同时加入复习计划（可在计划页统一打卡）</label>
   </div>`,
   actions: [{ label: '取消', cls: 'btn-soft', onClick: UI.closeModal },
   { label: cr ? '保存' : '添加', onClick: () => {
@@ -949,7 +949,7 @@ Pages.skill = function () {
   saved = Object.assign({ id: Store.uid(), done: false }, data);
   tp.courses.push(saved);
   }
-  // 关联/取消关联学习复习计划任务
+  // 关联/取消关联复习计划任务
   if (linkTask && !saved.taskId) {
   const task = {
   id: Store.uid(),

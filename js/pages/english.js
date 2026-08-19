@@ -1444,7 +1444,7 @@ window.Pages = window.Pages || {};
   // 浏览器只请求后端域名（国内可直连），绝不直接访问 allorigins / corsproxy / jina 等被墙代理，因此不会卡顿。
   async function fetchReaderFromBackend(force) {
   const backend = Store.readerBackend();
-  if (!backend) { UI.toast('未配置联网后端，当前展示离线精选文章（在「学业DDL」页配置推送后端后也可联网获取）', 'warn'); return null; }
+  if (!backend) { UI.toast('未配置联网后端，当前展示离线精选文章（在「DDL」页配置推送后端后也可联网获取）', 'warn'); return null; }
   try {
   const r = await fetchWithTimeout(backend + '/api/reader/article?force=' + (force ? 1 : 0), 8000);
   if (!r.ok) { UI.toast('联网获取失败（后端不可用）', 'warn'); return null; }

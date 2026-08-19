@@ -27,7 +27,6 @@ Pages.checkin = function () {
   <div class="focus-layout">
     <div class="focus-main-col">
       <div class="focus-optimize-hint">
-        <div class="foh-text">💡 <b>专注力越低，越需要明确目标</b>。先选一个今日必做任务，再开始计时。盲目开始 → 计时无意义。</div>
         <button class="btn btn-soft btn-sm" data-act="f-open-study">查看优化项目</button>
       </div>
       ${renderFocusPlan(s)}
