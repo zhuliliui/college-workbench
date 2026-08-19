@@ -3,12 +3,13 @@
   ============================================================ */
 window.Pages = window.Pages || {};
 (function () {
-  const EN_TABS = ['bank', 'flash', 'quiz', 'reader', 'listening', 'import'];
-  // 刷新后保留上次选中的子页（非法值回退词库）
-  let curTab = EN_TABS.includes(localStorage.getItem('cw_en_tab')) ? localStorage.getItem('cw_en_tab') : 'bank';
+  const EN_TABS = ['bank', 'flash', 'reader', 'listening', 'import'];
+  // 刷新后保留上次选中的子页（非法值回退词库；旧版「quiz」已并入闪卡模块）
+  const savedTab = localStorage.getItem('cw_en_tab');
+  let curTab = EN_TABS.includes(savedTab) ? savedTab : 'bank';
   let session = null;
   let quiz = null;
-  // 闪卡背诵模式：new=今日新学（只学未背过）| review=复习（只复习到期已背词）
+  // 闪卡模式：new=今日新学（只学未背过）| review=复习（只复习到期已背词）
   let flashMode = 'new';
   // 默写单词源：new=今日已背 | review=到期复习词
   let dictateSrc = 'new';
@@ -432,14 +433,13 @@ window.Pages = window.Pages || {};
   const s = Store.get();
   const c = UI.$('#content');
   const bank = s.english.words;
-  const tabs = [['bank', '词库'], ['flash', '闪卡背诵'], ['quiz', '默写自测'], ['reader', '外刊阅读'], ['listening', '听力阅读'], ['import', '导入']];
+  const tabs = [['bank', '词库'], ['flash', '闪卡'], ['reader', '外刊'], ['listening', '听力'], ['import', '导入']];
   c.innerHTML = `<div class="flex-wrap gap8" style="margin-bottom:16px">` + tabs.map(([k, label]) => `<button class="btn ${curTab === k ? '' : 'btn-soft'} btn-sm" data-tab="${k}">${label}</button>`).join('') + `</div><div id="enBody"></div>`;
   window.PageHandler = (e) => { const tb = e.target.closest('[data-tab]'); if (tb) { const nt = tb.dataset.tab; if (nt !== 'flash') stopDictate(); curTab = nt; localStorage.setItem('cw_en_tab', nt); Pages.english(); } };
   const body = UI.$('#enBody');
   if (curTab !== 'flash') stopDictate(); // 离开闪卡页时停止默写朗读，避免后台持续出声
   if (curTab === 'bank') renderBank(body, bank);
   else if (curTab === 'flash') renderFlash(body, bank);
-  else if (curTab === 'quiz') renderQuiz(body, bank);
   else if (curTab === 'reader') renderReader(body);
   else if (curTab === 'listening') renderListening(body);
   else if (curTab === 'import') renderImport(body);
@@ -451,8 +451,8 @@ window.Pages = window.Pages || {};
   <div class="card">
   <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-27.png" alt=""/>个人背诵词库</div>
   <div class="spacer"></div><span class="tag" id="bankTag">共 ${bank.length} 词</span>
-  <button class="btn btn-sm" data-act="add-word">＋ 手动添加</button>
-  <button class="btn btn-soft btn-sm" data-act="clear-all" style="color:var(--danger);border-color:var(--danger-soft)"> 清空全部</button>
+  <button class="btn btn-sm" data-act="add-word"><img class="ic" src="assets/icons/hk-33.png" alt=""/> 添加</button>
+  <button class="btn btn-soft btn-sm" data-act="clear-all" style="color:var(--danger);border-color:var(--danger-soft)"><img class="ic" src="assets/icons/hk-18.png" alt=""/> 清空</button>
   <button class="collapse-btn" title="折叠">▾</button></div>
   <div class="card-body">
   <input class="input" id="bankSearch" placeholder=" 搜索单词 / 释义…" style="margin-bottom:12px"/>
@@ -493,9 +493,9 @@ window.Pages = window.Pages || {};
   tag.textContent = `共 ${bank.length} 词（筛选 ${list.length}）`;
   if (pages > 1) {
   pager.innerHTML = `
-  <button class="btn btn-soft btn-sm" data-pg="prev" ${page === 0 ? 'disabled style="opacity:.45"' : ''}>‹ 上一页</button>
-  <span class="muted-text">第 ${page + 1} / ${pages} 页</span>
-  <button class="btn btn-soft btn-sm" data-pg="next" ${page >= pages - 1 ? 'disabled style="opacity:.45"' : ''}>下一页 ›</button>`;
+  <button class="btn btn-soft btn-sm" data-pg="prev" ${page === 0 ? 'disabled style="opacity:.45"' : ''}><img class="ic" src="assets/icons/hk-15.png" alt=""/> 上页</button>
+  <span class="muted-text">${page + 1} / ${pages}</span>
+  <button class="btn btn-soft btn-sm" data-pg="next" ${page >= pages - 1 ? 'disabled style="opacity:.45"' : ''}>下页 <img class="ic" src="assets/icons/hk-16.png" alt=""/></button>`;
   } else {
   pager.innerHTML = '';
   }
@@ -684,16 +684,16 @@ window.Pages = window.Pages || {};
   </div>
   </div>
   <div class="flex-wrap gap8 mt16" style="justify-content:center">
-  <button class="btn btn-soft btn-sm" data-act="speak" id="flashSpeakBtn">发音</button>
-  <button class="btn btn-sm" data-act="flip">${session.flipped ? ' 隐藏' : ' 翻转'}</button>
+  <button class="btn btn-soft btn-sm" data-act="speak" id="flashSpeakBtn"><img class="ic" src="assets/icons/hk-09.png" alt=""/> 朗读</button>
+  <button class="btn btn-sm" data-act="flip">${session.flipped ? '<img class="ic" src="assets/icons/hk-06.png" alt=""/> 隐藏' : '<img class="ic" src="assets/icons/hk-32.png" alt=""/> 翻转'}</button>
   </div>
   <div class="flex-wrap gap8 mt8" style="justify-content:center;display:${session.flipped ? 'flex' : 'none'}" id="flashActions">
-  <button class="btn btn-danger btn-sm" data-act="forget"> 还没记住</button>
-  <button class="btn btn-success btn-sm" data-act="remember"> 记住了</button>
+  <button class="btn btn-danger btn-sm" data-act="forget"><img class="ic" src="assets/icons/hk-18.png" alt=""/> 不会</button>
+  <button class="btn btn-success btn-sm" data-act="remember"><img class="ic" src="assets/icons/hk-38.png" alt=""/> 会了</button>
   </div>
   <div class="muted-text mt12 center">${flashMode === 'new' ? ' 一天累计学完 20 个单词，自动奖励 +1 元（当前还差 ' + left + ' 个）' : ' 复习模式：记得牢就点「记住了」（推进间隔），不打断今日学习计数'}</div>
   </div>
-  </div>` + dictateCardHtml(dList, dueWords());
+  </div>` + renderQuizCard(bank) + dictateCardHtml(dList, dueWords());
   const w = wrap(body, html);
   // 原生环境：异步检测 TTS 引擎状态，反映在「发音」按钮上（Google 引擎 → 绿色对勾，无引擎 → ✗ 可跳系统设置）
   try {
@@ -791,11 +791,11 @@ window.Pages = window.Pages || {};
   const cur = dictateSrc === 'review' ? reviewList : newList;
   const head = `<div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-09.png" alt=""/>默写单词</div>
   <div class="spacer"></div>
-  <button class="btn btn-sm ${dictateSrc === 'new' ? '' : 'btn-soft'}" data-act="dictate-src-new">📘 今日已背 ${newList.length}</button>
-  <button class="btn btn-sm ${dictateSrc === 'review' ? '' : 'btn-soft'}" data-act="dictate-src-review">🔄 复习 ${reviewList.length}</button>
+  <button class="btn btn-sm ${dictateSrc === 'new' ? '' : 'btn-soft'}" data-act="dictate-src-new"><img class="ic" src="assets/icons/hk-39.png" alt=""/> 已背 ${newList.length}</button>
+  <button class="btn btn-sm ${dictateSrc === 'review' ? '' : 'btn-soft'}" data-act="dictate-src-review"><img class="ic" src="assets/icons/hk-10.png" alt=""/> 复习 ${reviewList.length}</button>
   </div>`;
   if (!cur.length) {
-  const emptyTxt = dictateSrc === 'review' ? '当前没有到期待复习的单词，先去「🔄 复习」闪卡把到期词过一遍吧～' : '今天还没背过单词哦，先在上面闪卡点「记住了」几个吧～';
+  const emptyTxt = dictateSrc === 'review' ? '当前没有到期待复习的单词，先去「复习」闪卡把到期词过一遍吧～' : '今天还没背过单词哦，先在上面闪卡点「记住了」几个吧～';
   return `<div class="card mt16">${head}<div class="card-body"><div class="muted-text center">${emptyTxt}</div></div></div>`;
   }
   const rows = cur.map((wd, i) => `
@@ -808,8 +808,8 @@ window.Pages = window.Pages || {};
   <div class="card-body">
   <div class="muted-text">点击「开始默写」将逐词朗读，每词间隔 12 秒，可边听边默写；也可点任意单词单独听。</div>
   <div class="flex-wrap gap8 mt12" style="justify-content:center">
-  <button class="btn btn-sm" data-act="dictate-start">▶ 开始默写</button>
-  <button class="btn btn-soft btn-sm" data-act="dictate-stop" style="display:${dictate.playing ? 'inline-block' : 'none'}">■ 停止</button>
+  <button class="btn btn-sm" data-act="dictate-start"><img class="ic" src="assets/icons/hk-09.png" alt=""/> 开始</button>
+  <button class="btn btn-soft btn-sm" data-act="dictate-stop" style="display:${dictate.playing ? 'inline-block' : 'none'}"><img class="ic" src="assets/icons/hk-18.png" alt=""/> 停止</button>
   </div>
   <div id="dictateStatus" class="center mt12" style="min-height:22px;color:var(--primary-deep);font-weight:600"></div>
   <div class="dictate-list mt12">${rows}</div>
@@ -866,89 +866,76 @@ window.Pages = window.Pages || {};
   if (stopBtn) stopBtn.style.display = 'none';
   }
 
-  // ---------- 默写自测 ----------
-  function renderQuiz(body, bank) {
-  if (!bank.length) { wrap(body, `<div class="empty"><img class="emoji" src="assets/icons/hk-38.png" alt=""/><div class="t">词库为空</div></div>`); return; }
-  if (!quiz || quiz.done) quiz = { mode: 'ec', idx: 0, list: bank.slice().sort(() => Math.random() - 0.5), revealed: false, answer: '', done: false, feedback: null };
-  const total = quiz.list.length;
-  if (quiz.idx >= total) {
-  const html = `<div class="empty"><img class="emoji" src="assets/icons/hk-06.png" alt=""/><div class="t">本轮自测完成</div><div class="s">共 ${total} 词 · 点击下方重来</div></div><div class="center mt12"><button class="btn btn-sm" data-act="restart">再来一轮</button></div>`;
-  const w = wrap(body, html);
-  w.addEventListener('click', (e) => { if (e.target.closest('[data-act="restart"]')) { quiz = null; Pages.english(); } });
-  return;
+  // ---------- 默写练习（已并入闪卡模块，显示在「默写单词」上方） ----------
+  function currentQuizWord() {
+    if (!quiz || !quiz.list || quiz.idx >= quiz.list.length) return null;
+    return quiz.list[quiz.idx];
   }
-  const w0 = quiz.list[quiz.idx];
-  const isEC = quiz.mode === 'ec';
-  // 答案归一化：忽略大小写/空格/标点（中英通用）
-  const norm = (s) => ('' + (s || '')).toLowerCase().replace(/[\s,.;:!?·、，。；：！？()（）"'“”‘’'\-]/g, '');
-  // 判断输入是否正确
-  function judge(input) {
-  const inp = norm(input);
-  if (!inp) return null; // 空输入不判
-  if (isEC) {
-  // 英→中：用户写中文，宽松判（释义归一化后包含用户输入，且用户输入够长）
-  const target = norm(w0.cn);
-  return target && inp.length >= 2 && (target === inp || target.indexOf(inp) >= 0);
+  function judgeQuiz(input, w0, isEC) {
+    const norm = (s) => ('' + (s || '')).toLowerCase().replace(/[\s,.;:!?·、，。；：！？()（）""''''\-]/g, '');
+    const inp = norm(input);
+    if (!inp) return null; // 空输入不判
+    if (isEC) {
+      // 英→中：用户写中文，宽松判（释义归一化后包含用户输入，且用户输入够长）
+      const target = norm(w0.cn);
+      return target && inp.length >= 2 && (target === inp || target.indexOf(inp) >= 0);
+    }
+    // 中→英：用户写英文，严格判（忽略大小写空格）
+    return inp === norm(w0.word);
   }
-  // 中→英：用户写英文，严格判（忽略大小写空格）
-  return inp === norm(w0.word);
+  function renderQuizCard(bank) {
+    if (!bank.length) return '';
+    if (!quiz || quiz.done) quiz = { mode: 'ec', idx: 0, list: bank.slice().sort(() => Math.random() - 0.5), revealed: false, answer: '', done: false, feedback: null };
+    const total = quiz.list.length;
+    if (quiz.idx >= total) {
+      return `<div class="card mt16" id="quizCard">
+        <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-38.png" alt=""/>默写练习</div><div class="spacer"></div></div>
+        <div class="card-body center">
+          <div class="empty"><img class="emoji" src="assets/icons/hk-06.png" alt=""/><div class="t">本轮自测完成</div><div class="s">共 ${total} 词 · 点击下方重来</div></div>
+          <div class="center mt12"><button class="btn btn-sm" data-act="q-restart">再来一轮</button></div>
+        </div>
+      </div>`;
+    }
+    const w0 = quiz.list[quiz.idx];
+    const isEC = quiz.mode === 'ec';
+    const fb = quiz.feedback;
+    const fbHtml = fb ? (fb.ok
+      ? `<div class="mt16" style="background:rgba(60,150,90,.12);border:1px solid var(--success);border-radius:12px;padding:12px;text-align:left;color:var(--success);font-weight:700">✓ 回答正确！<span class="muted-text" style="font-weight:400">${UI.esc(w0.word)} ${UI.esc(w0.phonetic)}</span></div>`
+      : `<div class="mt16" style="background:rgba(200,60,60,.08);border:1px solid var(--danger);border-radius:12px;padding:12px;text-align:left">
+        <div style="color:var(--danger);font-weight:700">✗ 答错了</div>
+        <div class="mt4"><b style="color:var(--primary-deep)">${UI.esc(w0.word)}</b> <span class="muted-text">${UI.esc(w0.phonetic)} ${UI.esc(w0.pos)}</span></div>
+        <div class="mt4">${UI.esc(w0.cn)}</div>
+        <div class="muted-text mt4">你的答案：${UI.esc(fb.input || '')}</div>
+      </div>`) : '';
+    return `
+    <div class="card mt16" id="quizCard">
+      <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-38.png" alt=""/>默写练习</div>
+      <div class="spacer"></div><span class="tag">${quiz.idx + 1} / ${total}</span>
+      <button class="btn btn-soft btn-sm" data-act="q-switch">切换 ${isEC ? '中→英' : '英→中'}</button></div>
+      <div class="card-body center">
+        <div class="mt8">${isEC ? '英文：<b style="color:var(--primary-deep);font-size:20px">' + UI.esc(w0.word) + '</b>' : '中文：<b style="color:var(--primary-deep);font-size:18px">' + UI.esc(w0.cn) + '</b>'}</div>
+        <input class="input mt12" id="quizInput" placeholder="${isEC ? '写出中文释义' : '写出英文单词'}" style="max-width:320px;margin:12px auto;text-align:center" value="${UI.esc(quiz.answer || '')}"/>
+        ${fbHtml}
+        <div class="flex-wrap gap8" style="justify-content:center">
+          <button class="btn btn-soft btn-sm" data-act="q-speak">发音</button>
+          <button class="btn btn-soft btn-sm" data-act="q-reveal">显示答案</button>
+          <button class="btn btn-success btn-sm" data-act="q-next">${fb && !fb.ok ? '下一题 →' : '判断并下一题 →'}</button>
+        </div>
+        <div class="muted-text mt8" style="font-size:12px">输入答案后点「判断并下一题」：答对自动跳到下一题，答错会显示正确答案。</div>
+      </div>
+    </div>`;
   }
-  const fb = quiz.feedback;
-  const fbHtml = fb ? (fb.ok
-  ? `<div class="mt16" style="background:rgba(60,150,90,.12);border:1px solid var(--success);border-radius:12px;padding:12px;text-align:left;color:var(--success);font-weight:700">✓ 回答正确！<span class="muted-text" style="font-weight:400">${UI.esc(w0.word)} ${UI.esc(w0.phonetic)}</span></div>`
-  : `<div class="mt16" style="background:rgba(200,60,60,.08);border:1px solid var(--danger);border-radius:12px;padding:12px;text-align:left">
-  <div style="color:var(--danger);font-weight:700">✗ 答错了</div>
-  <div class="mt4"><b style="color:var(--primary-deep)">${UI.esc(w0.word)}</b> <span class="muted-text">${UI.esc(w0.phonetic)} ${UI.esc(w0.pos)}</span></div>
-  <div class="mt4">${UI.esc(w0.cn)}</div>
-  <div class="muted-text mt4">你的答案：${UI.esc(fb.input || '')}</div>
-  </div>`) : '';
-  const html = `
-  <div class="card">
-  <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-38.png" alt=""/>默写自测</div>
-  <div class="spacer"></div><span class="tag">${quiz.idx + 1} / ${total}</span>
-  <button class="btn btn-soft btn-sm" data-act="switch">切换 ${isEC ? '中→英' : '英→中'}</button></div>
-  <div class="card-body center">
-  <div class="mt8">${isEC ? '英文：<b style="color:var(--primary-deep);font-size:20px">' + UI.esc(w0.word) + '</b>' : '中文：<b style="color:var(--primary-deep);font-size:18px">' + UI.esc(w0.cn) + '</b>'}</div>
-  <input class="input mt12" id="qInput" placeholder="${isEC ? '写出中文释义' : '写出英文单词'}" style="max-width:320px;margin:12px auto;text-align:center"/>
-  ${fbHtml}
-  <div class="flex-wrap gap8" style="justify-content:center">
-  <button class="btn btn-soft btn-sm" data-act="speak">发音</button>
-  <button class="btn btn-soft btn-sm" data-act="reveal">显示答案</button>
-  <button class="btn btn-success btn-sm" data-act="next">${fb && !fb.ok ? '下一题 →' : '判断并下一题 →'}</button>
-  </div>
-  <div class="muted-text mt8" style="font-size:12px">输入答案后点「判断并下一题」：答对自动跳到下一题，答错会显示正确答案。</div>
-  </div>
-  </div>`;
-  const w = wrap(body, html);
-  const qIn = w.querySelector('#qInput');
-  w.addEventListener('click', (e) => {
-  const b = e.target.closest('[data-act]'); if (!b) return;
-  const act = b.dataset.act;
-  if (act === 'speak') return speak(w0.word);
-  if (act === 'switch') { quiz.mode = quiz.mode === 'ec' ? 'ce' : 'ec'; quiz.revealed = false; quiz.answer = ''; quiz.feedback = null; renderQuiz(body, bank); return; }
-  if (act === 'reveal') { quiz.answer = (qIn ? qIn.value : ''); quiz.feedback = { ok: false, input: quiz.answer }; renderQuiz(body, bank); return; }
-  if (act === 'next') {
-  const input = (qIn ? qIn.value : '') || '';
-  // 答错后：再点「下一题」直接进入下一题
-  if (fb && !fb.ok) { quiz.feedback = null; quiz.idx++; renderQuiz(body, bank); return; }
-  const ok = judge(input);
-  if (ok === null) { UI.toast('请先输入答案', 'warn'); return; }
-  if (ok) {
-  quiz.feedback = { ok: true, input: input };
-  renderQuiz(body, bank);
-  // 答对：1 秒后自动进入下一题
-  setTimeout(() => { if (quiz && quiz.feedback && quiz.feedback.ok) { quiz.feedback = null; quiz.idx++; renderQuiz(body, bank); } }, 1000);
-  } else {
-  quiz.feedback = { ok: false, input: input };
-  renderQuiz(body, bank);
+  function refreshQuizCard(body, bank) {
+    const qc = body.querySelector('#quizCard');
+    if (qc) {
+      qc.outerHTML = renderQuizCard(bank);
+    }
+    const qIn = body.querySelector('#quizInput');
+    if (qIn) {
+      qIn.addEventListener('keydown', (e) => { if (e.key === 'Enter') { const b = body.querySelector('[data-act="q-next"]'); if (b) b.click(); } });
+      qIn.focus();
+    }
   }
-  return;
-  }
-  });
-  // 回车提交判断
-  if (qIn) qIn.addEventListener('keydown', (e) => { if (e.key === 'Enter') { const b = w.querySelector('[data-act="next"]'); if (b) b.click(); } });
-  }
-
   // ---------- 外刊阅读（离线优先：内置多篇英文外刊 + 中文译文，打开即读，绝不卡顿）----------
   // 内置文章：英文原文 + 中文译文一一对应，无需联网、不依赖任何被墙代理，国内 WiFi 也能秒开
   const ARTICLES = [
@@ -1731,7 +1718,7 @@ window.Pages = window.Pages || {};
   <div class="reader-2col">
   <aside class="reader-side">
   <div class="rs-head">
-  <div class="rs-title"><span class="rs-book"></span>外刊阅读</div>
+  <div class="rs-title"><span class="rs-book"></span>外刊</div>
   <div class="rs-actions">
   <button class="btn btn-sm round" data-act="realnews" title="实时外刊：从已配置的联网后端强制爬取最新外刊（立即抓 2 篇入库并全量同步到本地文库）；未配置后端时用离线精选"> 实时外刊</button>
   <button class="btn btn-sm round ${readerBatch ? 'on' : ''}" data-act="batch" title="批量管理/删除"> 批量</button>
@@ -2170,7 +2157,7 @@ window.Pages = window.Pages || {};
   const hasDef = res.cn && !/^（离线）|^未找到/.test(res.cn); // 有可用的本地释义
   const canAdd = !res.known; // 还没加入个人词库
   pop.innerHTML = `
-  <div class="wp-word">${UI.esc(res.word)} <button class="btn btn-soft btn-sm" data-spk style="padding:4px 8px">朗读</button></div>
+  <div class="wp-word">${UI.esc(res.word)} <button class="btn btn-soft btn-sm" data-spk style="padding:4px 8px"><img class="ic" src="assets/icons/hk-09.png" alt=""/> 朗读</button></div>
   <div class="wp-phon">${UI.esc(res.phonetic)} ${res.pos ? '· ' + UI.esc(res.pos) : ''}</div>
   ${hasDef
   ? '<div class="wp-cn"><b>释义：</b>' + UI.esc(res.cn) + '</div>'
@@ -2178,8 +2165,8 @@ window.Pages = window.Pages || {};
   ${res.syn ? '<div class="wp-cn"><b>近义：</b>' + UI.esc(res.syn) + '</div>' : ''}
   ${res.phrases ? '<div class="wp-cn"><b>词组：</b>' + UI.esc(res.phrases) + '</div>' : ''}
   <div class="wp-trans">
-  ${canAdd ? '<button class="btn btn-sm" data-add-now>＋ 加入词库</button>' : '<button class="btn btn-sm" disabled>已在词库</button>'}
-  ${!hasDef ? '<button class="btn btn-soft btn-sm" data-search> 联网搜索</button>' : ''}
+  ${canAdd ? '<button class="btn btn-sm" data-add-now><img class="ic" src="assets/icons/hk-33.png" alt=""/> 加入</button>' : '<button class="btn btn-sm" disabled>已在词库</button>'}
+  ${!hasDef ? '<button class="btn btn-soft btn-sm" data-search><img class="ic" src="assets/icons/hk-27.png" alt=""/> 搜索</button>' : ''}
   </div>
   <div class="wp-online muted-text" data-online-result></div>`;
   document.body.appendChild(pop);
@@ -2191,10 +2178,10 @@ window.Pages = window.Pages || {};
   const searchBtn = pop.querySelector('[data-search]');
   if (searchBtn) searchBtn.onclick = () => {
   searchBtn.disabled = true;
-  searchBtn.textContent = ' 翻译中…';
+  searchBtn.innerHTML = '<img class="ic" src="assets/icons/hk-32.png" alt=""/> 翻译…';
   translateWord(res.word).then((t) => {
   if (t) {
-  onlineBox.innerHTML = '<div class="wp-cn"><b>翻译：</b>' + UI.esc(t) + '</div><button class="btn btn-sm" data-add2>＋ 用此释义加入词库</button>';
+  onlineBox.innerHTML = '<div class="wp-cn"><b>翻译：</b>' + UI.esc(t) + '</div><button class="btn btn-sm" data-add2><img class="ic" src="assets/icons/hk-33.png" alt=""/> 加入</button>';
   const a2 = onlineBox.querySelector('[data-add2]');
   if (a2) a2.onclick = () => { addToBank(Object.assign({}, res, { cn: t })); pop.remove(); if (popClose) { document.removeEventListener('click', popClose, true); popClose = null; } };
   } else {
@@ -2214,15 +2201,14 @@ window.Pages = window.Pages || {};
   <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-33.png" alt=""/>导入单词</div>
   <div class="spacer"></div><button class="collapse-btn" title="折叠">▾</button></div>
   <div class="card-body">
-  <div class="muted-text" style="margin-bottom:10px">支持上传英语词汇 PDF（如单词书导出的词汇表）。解析器以「单词 + 音标」为锚点逐条提取，<b>中文释义直接取自原书、绝不错位</b>，长释义换行也能正确归属。若仍失败（如扫描图片版），可改用「仅提取英文 + 联网补全中文」或「粘贴文本解析」。</div>
   <div class="seg-group" style="margin-bottom:12px">
-  <label class="seg-label"><input type="radio" name="parseMode" value="bilingual" checked/> 智能解析（英/音标/中文）</label>
-  <label class="seg-label"><input type="radio" name="parseMode" value="enOnly"/> 仅提取英文，联网补全中文</label>
+  <label class="seg-label"><input type="radio" name="parseMode" value="bilingual" checked/> 智能解析</label>
+  <label class="seg-label"><input type="radio" name="parseMode" value="enOnly"/> 仅英文</label>
   </div>
   <input type="file" id="pdfFile" accept="application/pdf" style="margin-bottom:10px"/>
   <div class="flex-wrap gap8">
-  <button class="btn btn-sm" data-act="parse-pdf"> 解析 PDF</button>
-  <button class="btn btn-soft btn-sm" data-act="paste-text"> 粘贴文本解析</button>
+  <button class="btn btn-sm" data-act="parse-pdf"><img class="ic" src="assets/icons/hk-33.png" alt=""/> 解析</button>
+  <button class="btn btn-soft btn-sm" data-act="paste-text"><img class="ic" src="assets/icons/hk-32.png" alt=""/> 粘贴</button>
   </div>
   <div id="parseProgressWrap" class="mt12" style="display:none">
   <div class="flex-between muted-text" style="font-size:12px"><span id="parseProgressText">0 / 0</span><span id="parseProgressPct">0%</span></div>
@@ -2235,7 +2221,7 @@ window.Pages = window.Pages || {};
   <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-39.png" alt=""/>导入听力</div>
   <div class="spacer"></div><span class="tag" id="lsImpCount"></span><button class="collapse-btn" title="折叠">▾</button></div>
   <div class="card-body">
-  <div class="muted-text" style="margin-bottom:10px">粘贴听力原文与译文（<b>每两行一组：第 1 行英文、第 2 行中文</b>），导入后加入「听力阅读」的「自定义」分组，可用 TTS 逐句朗读 + 听写练习。</div>
+  <div class="muted-text" style="margin-bottom:10px">粘贴听力原文与译文（<b>每两行一组：第 1 行英文、第 2 行中文</b>），导入后加入「听力」的「自定义」分组，可用 TTS 逐句朗读 + 听写练习。</div>
   <div class="row">
   <div class="field"><label>标题</label><input class="input" id="lsImpTitle" placeholder="如：CNN 新闻 2026-08-17"/></div>
   <div class="field"><label>等级</label>
@@ -2247,26 +2233,14 @@ window.Pages = window.Pages || {};
   </div>
   <textarea class="textarea" id="lsImpText" placeholder="英文句子 1&#10;中文翻译 1&#10;英文句子 2&#10;中文翻译 2&#10;..." style="min-height:150px;margin-bottom:10px"></textarea>
   <div class="flex-wrap gap8">
-  <button class="btn btn-sm" data-act="ls-import"> 导入听力</button>
-  <button class="btn btn-soft btn-sm" data-act="ls-import-preview"> 解析预览</button>
+  <button class="btn btn-sm" data-act="ls-import"><img class="ic" src="assets/icons/hk-33.png" alt=""/> 导入</button>
+  <button class="btn btn-soft btn-sm" data-act="ls-import-preview"><img class="ic" src="assets/icons/hk-39.png" alt=""/> 预览</button>
   </div>
   <div id="lsImpPreview" class="muted-text mt12"></div>
   </div>
   </div>
-  <div class="card">
-  <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-27.png" alt=""/>考研词汇闪过（PDF 词库）</div>
-  <div class="spacer"></div><button class="collapse-btn" title="折叠">▾</button></div>
-  <div class="card-body">
-  <div class="muted-text" style="margin-bottom:10px">已内置《考研词汇闪过》两套 PDF 的离线词库：<b>真题重点高频词替换</b>（单词 + 音标/词性/释义 + 近义/同族/反义/形近）+ <b>真题重点固定搭配</b>（词组 + 中文）。点击载入即加入个人词库，可在「闪卡」复习（显示单词 / 中文 / 固定搭配 / 同义词）。</div>
-  <div class="flex-wrap gap8">
-  <button class="btn btn-sm" data-act="load-kaoyan"><img src="assets/icons/hk-33.png" alt="" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px"/>载入考研词汇闪过词库</button>
-  <span class="muted-text" id="kaoyanCount"></span>
-  </div>
-  </div>
   </div>`;
   const w = wrap(body, html);
-  const kc = w.querySelector('#kaoyanCount');
-  if (kc) kc.textContent = window.KAOYAN_SEED ? ('内置 ' + window.KAOYAN_SEED.length + ' 条') : '（词库文件未加载）';
   const lc = w.querySelector('#lsImpCount');
   if (lc) lc.textContent = '已导入 ' + ((Store.get().english.customListenings || []).length) + ' 篇';
   // 解析粘贴文本 → 句子对（每两行一组：英文 / 中文）
@@ -2281,7 +2255,6 @@ window.Pages = window.Pages || {};
   const b = e.target.closest('[data-act]'); if (!b) return;
   if (b.dataset.act === 'parse-pdf') return doParsePdf();
   if (b.dataset.act === 'paste-text') return pasteText();
-  if (b.dataset.act === 'load-kaoyan') return loadKaoyan();
   if (b.dataset.act === 'ls-import-preview') {
   const pairs = parseLsPairs();
   const pv = w.querySelector('#lsImpPreview');
@@ -2315,23 +2288,6 @@ window.Pages = window.Pages || {};
   return;
   }
   });
-  }
-  // 载入《考研词汇闪过》内置离线条目到个人词库（去重）
-  function loadKaoyan() {
-  if (!window.KAOYAN_SEED || !window.KAOYAN_SEED.length) return UI.toast('词库文件未加载', 'warn');
-  let added = 0, skipped = 0;
-  Store.update((st) => {
-  const exist = new Set(st.english.words.map((x) => x.word.toLowerCase()));
-  for (const e of window.KAOYAN_SEED) {
-  const wd = (e.word || '').trim();
-  if (!wd) continue;
-  if (exist.has(wd.toLowerCase())) { skipped++; continue; }
-  st.english.words.push(newWordObj({ word: wd, phonetic: e.phonetic || '', pos: e.pos || '', cn: e.cn || '', phrases: e.phrases || '', syn: e.syn || '' }));
-  exist.add(wd.toLowerCase());
-  added++;
-  }
-  });
-  UI.toast(`已载入 ${added} 条（跳过重复 ${skipped} 条），去「闪卡」开始复习吧`, 'ok');
   }
   // 把文字项按 y 坐标分组为「行」（自上而下、自左而右）
   function itemsToLines(items) {
@@ -5657,13 +5613,13 @@ window.Pages = window.Pages || {};
               const isCustom = !!a.id; // 自定义听力有 id
               return '<div class="ls-card" data-lsid="' + idx + '">' +
                 '<div class="ls-card-level tag-level-' + a.level + '">' + a.level + '</div>' +
-                (isCustom ? '<button class="ls-del-custom" data-act="ls-del-custom" data-id="' + a.id + '" title="删除">×</button>' : '') +
+                (isCustom ? '<button class="ls-del-custom" data-act="ls-del-custom" data-id="' + a.id + '" title="删除"><img class="ic" src="assets/icons/hk-18.png" alt=""/></button>' : '') +
                 '<div class="ls-card-title">' + a.title + '</div>' +
                 '<div class="ls-card-footer">' +
-                  '<span class="ls-meta-item">📖 ' + a.wordCount + ' 词</span>' +
-                  '<span class="ls-meta-item">📝 ' + a.sentenceCount + ' 句</span>' +
-                  '<span class="ls-meta-item">⏱ ' + a.duration + '</span>' +
-                  '<button class="ls-try-btn">▶ 试听</button>' +
+                  '<span class="ls-meta-item"><img class="ic" src="assets/icons/hk-27.png" alt=""/> ' + a.wordCount + ' 词</span>' +
+                  '<span class="ls-meta-item"><img class="ic" src="assets/icons/hk-32.png" alt=""/> ' + a.sentenceCount + ' 句</span>' +
+                  '<span class="ls-meta-item"><img class="ic" src="assets/icons/hk-11.png" alt=""/> ' + a.duration + '</span>' +
+                  '<button class="ls-try-btn"><img class="ic" src="assets/icons/hk-09.png" alt=""/> 试听</button>' +
                 '</div>' +
               '</div>';
             }).join('') +
@@ -5672,7 +5628,7 @@ window.Pages = window.Pages || {};
         ).join('') +
       '</div>'
     ).join('');
-    const html = '<div class="card"><div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-39.png" alt=""/>听力阅读</div><div class="spacer"></div><span class="tag">共 ' + articles.length + ' 篇</span></div><div class="card-body">' + groupsHtml + '</div></div>';
+    const html = '<div class="card"><div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-39.png" alt=""/>听力</div><div class="spacer"></div><span class="tag">共 ' + articles.length + ' 篇</span></div><div class="card-body">' + groupsHtml + '</div></div>';
     const w = wrap(body, html);
     w.addEventListener('click', (e) => {
       const del = e.target.closest('[data-act="ls-del-custom"]');

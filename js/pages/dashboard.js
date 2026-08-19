@@ -127,7 +127,7 @@ Pages.dashboard = function () {
   const cls = days <= 30 ? 'danger' : days <= 90 ? 'warn' : '';
   return `<span class="tag ${cls}" style="${days <= 30 ? 'background:var(--danger-soft, #fee2e2);color:var(--danger, #dc2626)' : ''}">${UI.esc(e.name)} 倒计时 ${days} 天</span>`;
   }).filter(Boolean).join(' ');
-  const examHtml = examChips ? `<div class="exam-countdown">📅 ${examChips}</div>` : '';
+  const examHtml = examChips ? `<div class="exam-countdown"><img class="ic" src="assets/icons/hk-11.png" alt=""/> ${examChips}</div>` : '';
 
   // ---------- 关键词演讲挑战（词条 + 随机闪词条 + 整理/汇报两阶段计时） ----------
   const getKcTopics = () => {
@@ -242,7 +242,7 @@ Pages.dashboard = function () {
   const dispId = phase === 1 ? 'kcDisp1' : 'kcDisp2';
   const btnId = phase === 1 ? 'kcBtn1' : 'kcBtn2';
   const hint = phase === 1 ? KC_HINT1 : KC_HINT2;
-  const phaseIcon = phase === 1 ? '📝' : '🎤';
+  const phaseIcon = phase === 1 ? '<img class="ic" src="assets/icons/hk-32.png" alt=""/>' : '<img class="ic" src="assets/icons/hk-09.png" alt=""/>';
   const phaseName = phase === 1 ? '整理' : '汇报';
   const long = cur.name.length > 10 ? ' long' : '';
   return `
@@ -260,18 +260,18 @@ Pages.dashboard = function () {
   <div class="kc-name${long}" id="kcName">${UI.esc(cur.name)}</div>
   </div>
   <div class="kc-ops">
-  <button class="btn btn-sm" data-act="kc-spin">🎲 随机闪词条</button>
+  <button class="btn btn-sm" data-act="kc-spin"><img class="ic" src="assets/icons/hk-38.png" alt=""/> 随机</button>
   </div>
   <div class="kc-tabs">
-  <button class="kc-tab ${_kcActiveTab === 1 ? 'on' : ''}" data-act="kc-tab" data-tab="1">📝 整理</button>
-  <button class="kc-tab ${_kcActiveTab === 2 ? 'on' : ''}" data-act="kc-tab" data-tab="2">🎤 汇报</button>
+  <button class="kc-tab ${_kcActiveTab === 1 ? 'on' : ''}" data-act="kc-tab" data-tab="1"><img class="ic" src="assets/icons/hk-32.png" alt=""/> 整理</button>
+  <button class="kc-tab ${_kcActiveTab === 2 ? 'on' : ''}" data-act="kc-tab" data-tab="2"><img class="ic" src="assets/icons/hk-09.png" alt=""/> 汇报</button>
   </div>
   <div class="kc-timer-card">
   <div class="kc-phase-title">${phaseIcon} ${phaseName}阶段</div>
   <div class="kc-timer-controls">
   <select class="input kc-min-sel" data-act="kc-set-min" data-phase="${phase}">${KC_MIN_OPTS.map((m) => `<option value="${m}" ${m === kcGetMin(phase) ? 'selected' : ''}>${m}</option>`).join('')}</select>
   <span class="muted-text" style="font-size:12px">分钟</span>
-  <button class="btn ${running ? 'btn-danger' : 'btn-primary'} btn-sm" data-act="kc-timer" data-phase="${phase}" id="${btnId}">${running ? '■ 停止' : '▶ 开始'}</button>
+  <button class="btn ${running ? 'btn-danger' : 'btn-primary'} btn-sm" data-act="kc-timer" data-phase="${phase}" id="${btnId}">${running ? '<img class="ic" src="assets/icons/hk-18.png" alt=""/> 停止' : '<img class="ic" src="assets/icons/hk-09.png" alt=""/> 开始'}</button>
   </div>
   <div class="kc-timer" id="${dispId}">${kcFmt(left)}</div>
   <div class="muted-text center" style="font-size:12px;margin-top:6px">${UI.esc(hint)}</div>
@@ -320,7 +320,7 @@ Pages.dashboard = function () {
   <div class="card-head">
   <div class="title"><img class="ic" src="assets/icons/hk-38.png" alt=""/>今日学习任务 <span class="sub" style="margin-left:8px">${todayDone}/${todayTotal} 已完成</span></div>
   <div class="spacer"></div>
-  <button class="btn btn-sm btn-soft" data-act="go-study">＋ 添加</button>
+  <button class="btn btn-sm btn-soft" data-act="go-study"><img class="ic" src="assets/icons/hk-33.png" alt=""/> 添加</button>
   <button class="collapse-btn" title="折叠">▾</button>
   </div>
   <div class="card-body">${taskListHtml}</div>
@@ -347,11 +347,11 @@ Pages.dashboard = function () {
   <div class="card-body">
   <div class="list home-list">${checkinListHtml}</div>
   <div class="flex-wrap gap8 mt12">
-  <span class="tag">⏱ 专注 ${focusCount} 次 ${focusMin ? '· ' + focusMin + ' 分钟' : ''}</span>
-  <span class="tag">📖 学词 ${learnedWords} 个</span>
-  <span class="tag">💬 关怀 ${cntToday.care || 0}</span>
-  <span class="tag">🧑‍🏫 导师 ${cntToday.mentor || 0}</span>
-  <span class="tag">📮 投稿 ${cntToday.submit || 0}</span>
+  <span class="tag"><img class="ic" src="assets/icons/hk-09.png" alt=""/> 专注 ${focusCount} 次 ${focusMin ? '· ' + focusMin + ' 分钟' : ''}</span>
+  <span class="tag"><img class="ic" src="assets/icons/hk-27.png" alt=""/> 学词 ${learnedWords} 个</span>
+  <span class="tag"><img class="ic" src="assets/icons/hk-06.png" alt=""/> 关怀 ${cntToday.care || 0}</span>
+  <span class="tag"><img class="ic" src="assets/icons/hk-38.png" alt=""/> 导师 ${cntToday.mentor || 0}</span>
+  <span class="tag"><img class="ic" src="assets/icons/hk-32.png" alt=""/> 投稿 ${cntToday.submit || 0}</span>
   </div>
   </div>
   </div>

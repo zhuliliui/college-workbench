@@ -207,7 +207,7 @@ Pages.skill = function () {
   <div class="card-head">
   <div class="title"><img class="ic" src="assets/icons/hk-01.png" alt=""/>技能学习专题</div>
   <div class="spacer"></div>
-  <button class="btn btn-sm" data-act="add-topic">＋ 新建专题</button>
+  <button class="btn btn-sm" data-act="add-topic"><img class="ic" src="assets/icons/hk-33.png" alt=""/> 专题</button>
   <button class="collapse-btn" title="折叠">▾</button>
   </div>
   <div class="card-body">${listHtml}</div>
@@ -391,8 +391,8 @@ Pages.skill = function () {
   <div class="spacer"></div>
   ${expiredN ? `<button class="btn btn-soft btn-sm" data-act="ae-toggle-expired">${_aeShowExpired ? '隐藏已结束' : `已结束 ${expiredN}`}</button>` : ''}
   <button class="btn btn-soft btn-sm" data-act="ae-help" title="后端连接说明">ⓘ</button>
-  <button class="btn btn-sm btn-refresh" data-act="ae-refresh">⟳ 实时刷新</button>
-  <button class="btn btn-soft btn-sm" data-act="ae-add">＋ 添加活动</button>
+  <button class="btn btn-sm btn-refresh" data-act="ae-refresh"><img class="ic" src="assets/icons/hk-10.png" alt=""/> 刷新</button>
+  <button class="btn btn-soft btn-sm" data-act="ae-add"><img class="ic" src="assets/icons/hk-33.png" alt=""/> 活动</button>
   <button class="collapse-btn" title="折叠">▾</button>
   </div>
   <div class="card-body">
@@ -528,19 +528,19 @@ Pages.skill = function () {
   <button class="btn btn-soft btn-icon" data-act="edit-course" data-id="${x.id}" title="编辑"><img class="ic" src="assets/icons/hk-32.png" alt=""/></button>
   <button class="btn btn-soft btn-icon" data-act="del-course" data-id="${x.id}" title="删除"><img class="ic" src="assets/icons/hk-18.png" alt=""/></button>
   </div>
-  <button class="sk-check" data-act="check" data-id="${x.id}" title="打卡">${x.done ? '<img class="ic" src="assets/icons/hk-38.png" alt=""/>' : '○'}</button>
+  <button class="sk-check" data-act="check" data-id="${x.id}" title="打卡"><img class="ic" src="assets/icons/${x.done ? 'hk-38.png' : 'hk-06.png'}" alt=""/></button>
   </div>
   </div>`;
   }).join('');
   }
 
   c.innerHTML = `
-  <button class="btn btn-soft btn-sm sk-back" data-act="back">← 返回专题列表</button>
+  <button class="btn btn-soft btn-sm sk-back" data-act="back"><img class="ic" src="assets/icons/hk-15.png" alt=""/> 返回</button>
   <div class="card mt12">
   <div class="card-head">
   <div class="title"><img class="ic" src="assets/icons/hk-01.png" alt=""/>${UI.esc(t.name)}</div>
   <div class="spacer"></div>
-  <button class="btn btn-sm" data-act="add-course">＋ 新增课程</button>
+  <button class="btn btn-sm" data-act="add-course"><img class="ic" src="assets/icons/hk-33.png" alt=""/> 课程</button>
   </div>
   <div class="card-body">
   ${t.intro ? `<div class="muted-text" style="margin-bottom:12px">${UI.esc(t.intro)}</div>` : ''}
@@ -1044,7 +1044,7 @@ Pages.skill = function () {
   body: `
   <div class="muted-text" style="margin-bottom:10px">课程：<b>${UI.esc(kw)}</b><br/>以课程标题为关键词去 B 站搜索，找到后把视频链接粘贴到下面即可加入本课 🔗。</div>
   <div class="field"><label>搜索关键词</label><input class="input" id="biliKw" value="${UI.esc(kw)}" placeholder="如：Pandas 数据清洗"/></div>
-  <button class="btn" id="biliGo" style="width:100%;background:#fb7299;border-color:#fb7299;color:#fff;margin-top:4px">🔍 去 B 站搜索</button>
+  <button class="btn" id="biliGo" style="width:100%;background:#fb7299;border-color:#fb7299;color:#fff;margin-top:4px"><img class="ic" src="assets/icons/hk-bili.png" alt=""/> 搜索</button>
   <hr style="margin:14px 0;border:none;border-top:1px dashed var(--line)"/>
   <div class="field"><label>收藏到本课 🔗</label><input class="input" id="biliUrl" value="${UI.esc(cr.url || '')}" placeholder="https://www.bilibili.com/video/BV..."/></div>
   ${cr.url ? `<div class="muted-text" style="margin-top:6px">当前链接：<a href="${UI.esc(cr.url)}" target="_blank" rel="noopener">${UI.esc(cr.url)}</a></div>` : ''}`,

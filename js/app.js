@@ -131,13 +131,13 @@
   const cloudOn = !!cal.backendUrl;
 
   const mask = UI.openModal({
-  title: '🔔 提醒设置', icon: '<img class="ic" src="assets/icons/hk-41.png" alt=""/>',
+  title: '提醒设置', icon: '<img class="ic" src="assets/icons/hk-41.png" alt=""/>',
   body: `
   <div class="muted-text mb8">统一管理三类提醒：微信推送 / 手机日历订阅 / 本地日历写入。点下方按钮分别配置。</div>
   <div class="grid grid-3" style="gap:8px;margin-bottom:10px">
-  <button type="button" class="btn btn-soft btn-sm rtab" data-rtab="push">💬 微信推送</button>
-  <button type="button" class="btn btn-soft btn-sm rtab" data-rtab="cal">📅 日历订阅</button>
-  <button type="button" class="btn btn-soft btn-sm rtab" data-rtab="local">📲 本地日历</button>
+  <button type="button" class="btn btn-soft btn-sm rtab" data-rtab="push"><img class="ic" src="assets/icons/hk-bell.png" alt=""/> 微信</button>
+  <button type="button" class="btn btn-soft btn-sm rtab" data-rtab="cal"><img class="ic" src="assets/icons/hk-11.png" alt=""/> 日历</button>
+  <button type="button" class="btn btn-soft btn-sm rtab" data-rtab="local"><img class="ic" src="assets/icons/hk-41.png" alt=""/> 本地</button>
   </div>
 
   <!-- Tab: 微信推送 -->
@@ -186,11 +186,11 @@
   ${localAuthorized ? '<button type="button" class="btn btn-soft btn-sm" id="rLocalRevoke">清除系统日历日程</button>' : ''}
   </div>
   <div class="muted-text">${localStatusText}</div>
-  <div class="muted-text mt8" style="font-size:12px">💡 vivo/华为/小米/鸿蒙等国产系统的日历 App 默认不显示 LOCAL 账户日历（系统行为，无法绕过）。遇到这种情况时，会自动把 webcal 订阅链接复制到剪贴板——到系统日历 App 「通过链接订阅」粘贴即可。</div>`
+  <div class="muted-text mt8" style="font-size:12px">vivo/华为/小米/鸿蒙等国产系统的日历 App 默认不显示 LOCAL 账户日历（系统行为，无法绕过）。遇到这种情况时，会自动把 webcal 订阅链接复制到剪贴板——到系统日历 App 「通过链接订阅」粘贴即可。</div>`
   : `<div class="muted-text" style="color:var(--text-faint);margin-bottom:8px">当前是浏览器环境，无法直接写入系统日历。请用下面任一方式让 DDL 进手机日历：</div>
   <button type="button" class="btn btn-sm" id="rLocalWebcal" style="margin-bottom:8px">复制订阅链接（推荐）</button>
   <button type="button" class="btn btn-soft btn-sm" id="rLocalIcs">下载 .ics 文件</button>
-  <div class="muted-text mt8" style="font-size:12px">订阅链接需先填好「📅 日历订阅」tab 里的后端地址；国产日历 App 大多不支持 .ics 导入，首选订阅链接。</div>`}
+  <div class="muted-text mt8" style="font-size:12px">订阅链接需先填好「日历订阅」tab 里的后端地址；国产日历 App 大多不支持 .ics 导入，首选订阅链接。</div>`}
   </div>
   `,
   actions: [
@@ -293,7 +293,7 @@
   if (webcalBtn) {
   webcalBtn.addEventListener('click', () => {
   const cal = Store.get().cal || {};
-  if (!cal.backendUrl) return UI.toast('请先在「📅 日历订阅」tab 填后端地址并保存', 'warn');
+  if (!cal.backendUrl) return UI.toast('请先在「日历订阅」tab 填后端地址并保存', 'warn');
   const url = cal.backendUrl.replace(/\/$/, '') + '/api/ddl/calendar.ics?clientId=' + encodeURIComponent(cal.clientId || 'cw_device');
   const webcal = 'webcal://' + url.replace(/^https?:\/\//, '');
   const fb = (t) => {

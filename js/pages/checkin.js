@@ -26,9 +26,6 @@ Pages.checkin = function () {
   ${renderFocusStats(s)}
   <div class="focus-layout">
     <div class="focus-main-col">
-      <div class="focus-optimize-hint">
-        <button class="btn btn-soft btn-sm" data-act="f-open-study">查看优化项目</button>
-      </div>
       ${renderFocusPlan(s)}
       ${renderFocusTimer(s)}
       ${renderFocusManual(s)}
@@ -282,31 +279,8 @@ function renderFocusStats(s) {
 
 function renderFocusPlan(s) {
   const today = D.todayStr();
-  const isToday = (t) => !t.due || D.fmtDate(D.parseLDT(t.due)) === today;
-  const planTasks = s.tasks.filter(isToday);
   const tempTasks = s.discipline.tempTasks || [];
   const items = s.discipline.items || [];
-  const doneN = planTasks.filter((t) => t.done).length;
-
-  // 今日任务卡（仿图1：名称 + 状态/类型标签 + 截止 + 开始/完成/修改三按钮）
-  const planHtml = planTasks.length ? planTasks.map((t) => {
-  const st = t.done ? '已完成' : '待开始';
-  const dueTxt = t.due ? `截止 ${D.fmtDate(D.parseLDT(t.due))}` : '';
-  return `
-    <div class="fp-card ${t.done ? 'done' : ''}">
-      <div class="fp-card-top">
-        <span class="fp-state ${t.done ? 'st-done' : 'st-todo'}">${st}</span>
-        <span class="fp-type">今日应该</span>
-        <b class="fp-name">${UI.esc(t.name)}</b>
-      </div>
-      <div class="fp-card-meta">${dueTxt}${dueTxt && t.category ? ' · ' : ''}${t.category ? UI.esc(t.category) : ''}</div>
-      <div class="fp-card-ops">
-        <button class="fp-op fp-op-start" data-act="f-start-plan" data-id="${t.id}">开始</button>
-        <button class="fp-op fp-op-done" data-act="f-done-plan" data-id="${t.id}">${t.done ? '取消' : '完成'}</button>
-        <button class="fp-op fp-op-edit" data-act="f-edit-plan" data-id="${t.id}">修改</button>
-      </div>
-    </div>`;
-  }).join('') : `<div class="empty soft"><div class="t">今天还没有学习计划任务</div></div>`;
 
   const tempHtml = tempTasks.length ? tempTasks.map((t) => `
     <div class="fp-item ${t.done ? 'done' : ''}">
@@ -340,14 +314,10 @@ function renderFocusPlan(s) {
       <button class="collapse-btn" title="折叠">▾</button>
     </div>
     <div class="card-body">
-      <div class="fp-hint">整合今日候选、到期任务与当前进行中，开始/结束会自动生成专注记录和日程时间块。</div>
-      <div class="fp-section">今日需要完成的任务</div>
-      <div class="fp-summary">今日 ${planTasks.length} 项 · 待完成 ${planTasks.length - doneN} 项 · 已完成 ${doneN} 项</div>
-      <div class="fp-list">${planHtml}</div>
-      <div class="fp-section mt12">临时任务</div>
+      <div class="fp-section">临时任务</div>
       <div class="fp-add-line">
-        <input class="input" id="fTempInput" placeholder="临时任务，如：修改实验图" autocomplete="off"/>
-        <button class="btn fp-add-btn" data-act="f-add-temp">新增临时任务</button>
+        <input class="input" id="fTempInput" placeholder="临时任务" autocomplete="off"/>
+        <button class="btn fp-add-btn" data-act="f-add-temp"><img class="ic" src="assets/icons/hk-32.png" alt=""/> 新增</button>
       </div>
       <div class="fp-list">${tempHtml}</div>
       <div class="fp-section mt12">打卡项目</div>
@@ -403,8 +373,8 @@ function renderFocusTimer(s) {
         <input class="input" id="fNote" placeholder="备注（可选）" style="max-width:420px"/>
         <div class="focus-btn-group">
           ${running
-            ? `<button class="btn focus-btn focus-btn-start" data-act="f-stop">结束专注</button><button class="btn focus-btn focus-btn-abort" data-act="f-abort">放弃本次</button>`
-            : `<button class="btn focus-btn focus-btn-start" data-act="f-start">开始专注</button>`}
+            ? `<button class="btn focus-btn focus-btn-start" data-act="f-stop"><img class="ic" src="assets/icons/hk-09.png" alt=""/> 结束</button><button class="btn focus-btn focus-btn-abort" data-act="f-abort"><img class="ic" src="assets/icons/hk-18.png" alt=""/> 放弃</button>`
+            : `<button class="btn focus-btn focus-btn-start" data-act="f-start"><img class="ic" src="assets/icons/hk-09.png" alt=""/> 开始</button>`}
         </div>
       </div>
     </div>
@@ -429,7 +399,7 @@ function renderFocusManual(s) {
         <input class="input" type="time" id="fManEnd" value="${nowStr}"/>
         <input class="input" id="fManTheme" placeholder="补录主题" style="grid-column:1/-1"/>
       </div>
-      <button class="btn btn-block mt12 focus-btn-record" data-act="f-add-manual">添加专注记录</button>
+      <button class="btn btn-block mt12 focus-btn-record" data-act="f-add-manual"><img class="ic" src="assets/icons/hk-32.png" alt=""/> 补录</button>
     </div>
   </div>`;
 }
@@ -490,11 +460,6 @@ function renderFocusSchedule(s) {
   const currentTop = ((now.getHours() + now.getMinutes() / 60 - SCHEDULE_START) / totalHours) * 100;
   const showNow = currentTop >= 0 && currentTop <= 100;
 
-  const unscheduled = [];
-  s.tasks.filter((t) => !t.done && (!t.due || D.fmtDate(D.parseLDT(t.due)) === today)).forEach((t) => unscheduled.push({ name: t.name, tag: '计划' }));
-  (s.discipline.tempTasks || []).filter((t) => !t.done).forEach((t) => unscheduled.push({ name: t.name, tag: '临时' }));
-  (s.discipline.items || []).filter((it) => !it.records[today]).forEach((it) => unscheduled.push({ name: it.name, tag: '打卡' }));
-
   return `
   <div class="card focus-schedule-card">
     <div class="card-head">
@@ -503,15 +468,11 @@ function renderFocusSchedule(s) {
       <span class="sub">${new Date().toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'short' })}</span>
     </div>
     <div class="card-body focus-schedule-body">
-      <div class="focus-schedule-tip">时间块规则：把今日执行任务放入具体时间段</div>
+      <div class="focus-schedule-tip">今日专注/打卡时间块</div>
       <div class="focus-schedule-axis">
         ${slots.map((h) => `<div class="focus-slot" style="top:${((h - SCHEDULE_START) / totalHours) * 100}%"><span class="focus-slot-label">${pad2(h)}:00</span></div>`).join('')}
         ${showNow ? `<div class="focus-now-line" style="top:${currentTop}%"></div>` : ''}
         ${events.map((e) => `<div class="focus-event ${e.type === 'checkin' ? 'event-checkin' : 'event-focus'}" style="top:${e.top}%;height:${e.height}%" title="${e.time} · ${e.dur}"><div class="focus-event-title">${e.label}</div><div class="focus-event-meta">${e.time}</div></div>`).join('')}
-      </div>
-      <div class="focus-unscheduled">
-        <div class="fp-section">待安排</div>
-        ${unscheduled.length ? unscheduled.map((u) => `<div class="fp-item"><div class="fp-body"><div class="fp-name">${UI.esc(u.name)}</div><div class="fp-tags"><span class="fp-tag tag-soft">${u.tag}</span></div></div></div>`).join('') : '<div class="muted-text">今日任务都已安排或完成</div>'}
       </div>
     </div>
   </div>`;
