@@ -1025,41 +1025,134 @@ async function fetchAIDomestic() {
   }
   return out;
 }
-// AI 活动·实时抓取：GitHub 搜 hackathon / AI 赛事类仓库（按最近更新排序）
-// 借鉴 TrendRadar/TrendReader 的「多源+关键词+实时」思路；很多黑客松/大赛以仓库形式在 GitHub 发布
+// ---------- newsnow 多平台热榜（TrendReader/TrendRadar 同款数据源，35+平台，国内直连）----------
+// TrendRadar 项目即通过 newsnow API 聚合知乎/B站/华尔街见闻/财联社等热榜；直接联动进 AI活动实时抓取
+const NEWSNOW_SOURCES = [
+  { id: 'toutiao', name: '今日头条' },
+  { id: 'baidu', name: '百度热搜' },
+  { id: 'zhihu', name: '知乎' },
+  { id: 'bilibili-hot-search', name: 'B站热搜' },
+  { id: 'wallstreetcn-hot', name: '华尔街见闻' },
+  { id: 'weibo', name: '微博' },
+  { id: 'douyin', name: '抖音' },
+  { id: 'cls-telegraph', name: '财联社' },
+];
+async function fetchNewsnow(max) {
+  const out = [];
+  await Promise.all(NEWSNOW_SOURCES.map(async (src) => {
+    try {
+      const r = await fetch('https://newsnow.busiyi.world/api/s?id=' + src.id, { signal: AbortSignal.timeout(9000), headers: { 'User-Agent': 'Mozilla/5.0' } });
+      const j = await r.json();
+      for (const it of (j.items || []).slice(0, 10)) {
+        const title = String(it.title || '').trim();
+        if (title.length < 8) continue;
+        out.push({ title, url: it.url || '', tags: [src.name, '热榜'] });
+      }
+    } catch (e) { /* 单平台失败忽略 */ }
+  }));
+  return out.slice(0, max || 60);
+}
+// AI 活动·分类实时抓取：每个类别一个真实数据源（借鉴 TrendRadar「多源+关键词+实时」思路）
+// - hackathon: GitHub 搜赛事/黑客松仓库（海外源，本机无梯子自动跳过）
+// - security:  CTFtime 官方 API 即将开赛的全球 CTF 赛事（真实 start/finish 日期）
+// - fan/inner/token/student: 国内直连 AI 资讯（量子位/头条/腾讯热榜）按关键词实时分桶
+// - tool:      GitHub 热门 AI 工具仓库
 async function fetchAIEventsLive() {
   const out = [];
   const seen = new Set();
-  const queries = [
-    'hackathon+created:%3E2026-01-01',
-    'ai+hackathon+stars:%3E5',
-    'llm+hackathon',
-    'ai+competition+created:%3E2026-01-01',
-    'aigc+hackathon',
-    'ai+creative+competition',
-    'llm+application+hackathon',
-    'chinese+hackathon+language:Chinese',
-    'ai+competition+language:Chinese',
-    'mlh+hackathon',
-    'devpost+hackathon',
-  ];
-  for (const q of queries) {
+  const push = (e) => { const k = String(e.title || '').toLowerCase().trim(); if (!k || seen.has(k)) return; seen.add(k); out.push(e); };
+
+  // 1) 🏆 黑客松/大赛：GitHub 赛事仓库（并发查询，任一失败跳过）
+  const ghQueries = ['hackathon+created:%3E2026-01-01', 'ai+hackathon+stars:%3E5', 'llm+hackathon', 'ai+competition+created:%3E2026-01-01', 'mlh+hackathon', 'devpost+hackathon'];
+  const ghBuckets = await Promise.all(ghQueries.map(async (q) => {
     try {
-      const u = 'https://api.github.com/search/repositories?q=' + q + '&sort=updated&order=desc&per_page=8';
+      const u = 'https://api.github.com/search/repositories?q=' + q + '&sort=updated&order=desc&per_page=6';
       const j = JSON.parse(await fetchText(u, 10000));
-      for (const it of (j.items || [])) {
-        const key = (it.full_name || '').toLowerCase();
-        if (seen.has(key)) continue;
-        seen.add(key);
-        const desc = (it.description || '').replace(/\s+/g, ' ').trim();
-        const title = it.full_name + (desc ? ' — ' + desc.slice(0, 70) : '');
-        const updated = (it.updated_at || '').slice(0, 10);
-        out.push({ title: title.slice(0, 110), cat: 'hackathon', date: updated, url: it.html_url || '', benefit: 'GitHub 实时收录的赛事/黑客松项目（更新于 ' + updated + '），点链接查看报名与详情', org: (it.owner && it.owner.login) || '', tutorial: '' });
-      }
-    } catch (e) { /* 单查询失败忽略（无梯子/限流），继续其他查询 */ }
-    if (out.length >= 12) break;
+      return j.items || [];
+    } catch (e) { return []; }
+  }));
+  let ghN = 0;
+  for (const items of ghBuckets) {
+    for (const it of items) {
+      const desc = (it.description || '').replace(/\s+/g, ' ').trim();
+      const updated = (it.updated_at || '').slice(0, 10);
+      push({ title: (it.full_name + (desc ? ' — ' + desc.slice(0, 70) : '')).slice(0, 110), cat: 'hackathon', date: updated, url: it.html_url || '', benefit: 'GitHub 实时收录的赛事/黑客松项目（更新于 ' + updated + '），点链接查看报名与详情', org: (it.owner && it.owner.login) || '', tutorial: '' });
+      if (++ghN >= 6) break;
+    }
+    if (ghN >= 6) break;
   }
-  return out.slice(0, 12);
+
+  // 2) 🛡️ 黑客/网络安全：CTFtime 官方 API 即将开赛的 CTF（真实日期，海外源）
+  try {
+    const j = JSON.parse(await fetchText('https://ctftime.org/api/v1/events/?limit=12', 12000));
+    for (const ev of (Array.isArray(j) ? j : [])) {
+      const start = String(ev.start || '').slice(0, 10);
+      const finish = String(ev.finish || '').slice(0, 10);
+      if (!ev.title || !/^\d{4}-\d{2}-\d{2}$/.test(start)) continue;
+      const orgName = ((ev.organizers || [])[0] || {}).name || 'CTFtime';
+      push({ title: ('CTF · ' + ev.title + '（' + (ev.format || 'Jeopardy') + '）').slice(0, 110), cat: 'security', type: 'event', start, end: finish, deadline: finish || start, url: ev.ctftime_url || ev.url || 'https://ctftime.org/events/', benefit: 'CTFtime 实时收录的全球 CTF 赛事' + (ev.duration && ev.duration.hours ? '，时长 ' + ev.duration.hours + ' 小时' : '') + (ev.location ? ' · ' + ev.location : ''), org: orgName, tutorial: '' });
+    }
+  } catch (e) { console.warn('[ai-events] CTFtime 失败（无梯子/限流），安全类用清单兜底', e.message); }
+
+  // 3) 🎁福利/🧪内测/🔑Token/🎓学生/🛡️安全：多平台热榜实时资讯按关键词分桶（免梯子）
+  //    数据源 = newsnow 多平台热榜（TrendReader 同款）+ 量子位/头条/腾讯（fetchAIDomestic）
+  try {
+    const pool = [];
+    const seenT = new Set();
+    const addNews = (arr) => { for (const n of (arr || [])) { const t = String(n.title || '').trim(); if (!t || seenT.has(t)) continue; seenT.add(t); pool.push(n); } };
+    addNews(await fetchNewsnow(60).catch(() => []));
+    addNews(await fetchAIDomestic().catch(() => []));
+    const kwInner = /内测|公测|灰度|抢先体验|预约|beta|early access/i;
+    const kwFan = /免费|白嫖|福利|瓜分|奖金|奖池|抽奖|红包|赠送|补贴|开源|送出|发放|0元|零元|会员|直降|优惠券/;
+    const kwKey = /公益|中转|公开|key|api key|免费.*key|白嫖.*key/i; // 福利 = 网上公开 API Key
+    const kwToken = /token|额度|算力|api|开放平台|模型开放/i;
+    const kwStudent = /学生|高校|校园|大学|教育|青少年|中小学/;
+    const kwSecNews = /网络安全|黑客|漏洞|CTF|渗透|勒索|网络攻击|数据泄露|杀毒|木马/;
+    let nN = 0;
+    for (const n of pool.slice(0, 80)) {
+      const t = String(n.title || '').trim();
+      if (!t) continue;
+      let cat = '';
+      if (kwInner.test(t)) cat = 'inner';
+      else if (kwKey.test(t)) cat = 'fan'; // 公开 API Key 优先归福利
+      else if (kwFan.test(t) && kwToken.test(t)) cat = 'token';
+      else if (kwFan.test(t)) cat = 'fan';
+      else if (kwSecNews.test(t)) cat = 'security';
+      else if (kwStudent.test(t)) cat = 'student';
+      if (!cat) continue;
+      push({ title: t.slice(0, 110), cat, type: 'daily', start: '', end: '', deadline: '', url: n.url || '', benefit: '实时资讯：' + t.slice(0, 70), org: (n.tags || [])[0] || '热榜', tutorial: '' });
+      if (++nN >= 12) break;
+    }
+  } catch (e) { console.warn('[ai-events] 热榜资讯分桶失败', e.message); }
+
+  // 3b) 🛡️ 安全类实时资讯：Solidot RSS（国内直连）过滤安全/黑客关键词
+  try {
+    const xml = await fetchText('https://www.solidot.org/index.rss', 10000);
+    const items = xml.match(/<item>([\s\S]*?)<\/item>/g) || [];
+    const kwSec = /安全|黑客|漏洞|CTF|渗透|密码|勒索|攻击|恶意|APT|0day/i;
+    let sN = 0;
+    for (const it of items) {
+      const tm = (it.match(/<title>([\s\S]*?)<\/title>/) || [])[1] || '';
+      const lm = (it.match(/<link>([\s\S]*?)<\/link>/) || [])[1] || '';
+      const t = tm.replace(/<!\[CDATA\[|\]\]>/g, '').trim();
+      if (!t || !kwSec.test(t)) continue;
+      push({ title: ('安全资讯 · ' + t).slice(0, 110), cat: 'security', type: 'daily', start: '', end: '', deadline: '', url: lm.trim() || 'https://www.solidot.org/', benefit: 'Solidot 实时安全资讯：' + t.slice(0, 70), org: 'Solidot', tutorial: '' });
+      if (++sN >= 5) break;
+    }
+  } catch (e) { /* Solidot 不可达则跳过 */ }
+
+  // 4) 🧰 工具：GitHub 热门 AI 工具仓库（实时）
+  try {
+    const u = 'https://api.github.com/search/repositories?q=ai+tools+OR+ai+cli+OR+awesome-ai+created:%3E2025-09-01&sort=stars&order=desc&per_page=8';
+    const j = JSON.parse(await fetchText(u, 12000));
+    let tN = 0;
+    for (const it of (j.items || [])) {
+      push({ title: (it.full_name + ' — ' + ((it.description || '').trim().slice(0, 60))).slice(0, 110), cat: 'tool', type: 'tool', start: '', end: '', deadline: '', url: it.html_url || '', benefit: 'GitHub 实时热门 AI 工具仓库（' + it.stargazers_count + ' 星）', org: (it.owner && it.owner.login) || '', tutorial: '' });
+      if (++tN >= 5) break;
+    }
+  } catch (e) { /* GitHub 不可达则跳过，工具类用清单兜底 */ }
+
+  return out.slice(0, 45);
 }
 async function buildAITopics() {
   const collected = [];
@@ -1200,28 +1293,37 @@ const server = http.createServer(async (req, res) => {
     send(res, 200, JSON.stringify({ ok: true, articles: arts, todayArticles, todayCount: todayArticles.length, lastDaily: journal.lastDaily || null }), 'application/json');
     return;
   }
-  // AI 活动：返回仓库维护的可报名活动清单（assets/ai-events.json，前端「实时刷新」时拉取合并）
-  // AI 活动：返回仓库维护的可报名活动清单（assets/ai-events.json）
-  // ?refresh=1 时额外尝试「实时抓取」：GitHub 搜 hackathon/AI 赛事仓库（海外源；本机无梯子自动回退清单）
+  // AI 活动：返回仓库维护的可报名活动清单（assets/ai-events.json，覆盖全部类别的基础数据）
+  // 已结束的限时赛事（deadline/end 早于今天）直接过滤，不再返回；?refresh=1 时叠加「分类实时抓取」
+  // （newsnow 多平台热榜 + CTFtime + GitHub），清单在前+实时增补在后，按标题去重
   if (pathname === '/api/ai/events' && req.method === 'GET') {
-    if (parsed.query.refresh === '1') {
-      try {
-        const live = await fetchAIEventsLive();
-        if (live.length) {
-          send(res, 200, JSON.stringify({ date: todayISO(), source: 'live', events: live }), 'application/json');
-          return;
-        }
-      } catch (e) { console.warn('[ai-events] 实时抓取失败，回退清单', e.message); }
-    }
+    let list = [];
     try {
       const f = path.join(__dirname, 'assets', 'ai-events.json');
       if (fs.existsSync(f)) {
         const arr = JSON.parse(fs.readFileSync(f, 'utf8'));
-        send(res, 200, JSON.stringify({ date: todayISO(), source: 'list', events: Array.isArray(arr) ? arr : [] }), 'application/json');
+        if (Array.isArray(arr)) {
+          const today = todayISO();
+          list = arr.filter((e) => {
+            if (e.type === 'daily' || e.type === 'tool') return true;
+            const d = String(e.deadline || e.end || '').trim();
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return true;
+            return d >= today;
+          });
+        }
+      }
+    } catch (e) { /* 清单缺失/损坏则用空数组，前端回退本地种子 */ }
+    if (parsed.query.refresh === '1') {
+      let live = [];
+      try { live = await fetchAIEventsLive(); } catch (e) { console.warn('[ai-events] 实时抓取失败，仅返回清单', e.message); }
+      if (live.length) {
+        const seen = new Set(list.map((e) => String(e.title || '').toLowerCase()));
+        const events = list.concat(live.filter((e) => { const k = String(e.title || '').toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; }));
+        send(res, 200, JSON.stringify({ date: todayISO(), source: 'live', events }), 'application/json');
         return;
       }
-    } catch (e) { /* 文件缺失/损坏则返回空，前端回退本地种子 */ }
-    send(res, 200, JSON.stringify({ date: todayISO(), source: 'list', events: [] }), 'application/json');
+    }
+    send(res, 200, JSON.stringify({ date: todayISO(), source: 'list', events: list }), 'application/json');
     return;
   }
   // 每日 AI 学习选题：后端实时抓取真实热门 AI 话题（?refresh=1 强制重新抓取一批）

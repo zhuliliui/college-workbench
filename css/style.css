@@ -1163,16 +1163,43 @@ table.tbl tr:hover td { background: var(--surface-2); }
 .ae-cat-token { background: rgba(5,150,105,.14); color: #047857; }
 .ae-cat-inner { background: rgba(147,51,234,.12); color: #7c3aed; }
 .ae-cat-hackathon { background: rgba(220,38,38,.12); color: #dc2626; }
+.ae-cat-security { background: rgba(2,132,199,.12); color: #0369a1; }
 .ae-cat-tool { background: rgba(75,85,99,.14); color: #374151; }
 .ae-type-event { background: rgba(220,38,38,.12); color: #dc2626; }
 .ae-type-daily { background: rgba(5,150,105,.14); color: #047857; }
 .ae-type-tool { background: rgba(75,85,99,.14); color: #374151; }
 .ae-time.ae-urgent { color: var(--danger, #dc2626); font-weight: 700; }
 .ae-time.ae-soon { color: #b45309; font-weight: 600; }
+/* AI活动分页：浅绿可爱风 */
+.ae-pager {
+  display: flex; align-items: center; justify-content: center; flex-wrap: wrap;
+  gap: 7px; margin-top: 14px; padding: 9px 10px;
+  background: rgba(167,196,171,.10); border-radius: 16px;
+}
+.ae-page-btn {
+  min-width: 32px; height: 32px; padding: 0 11px;
+  border: 1px solid rgba(94,130,104,.22);
+  background: #fff; color: #5e8268;
+  font-size: 13px; font-weight: 600; border-radius: 999px; cursor: pointer;
+  box-shadow: 0 1px 2px rgba(94,130,104,.08);
+  transition: transform .12s ease, background .18s, box-shadow .18s, color .18s, border-color .18s;
+}
+.ae-page-btn:hover:not(:disabled):not(.on) {
+  background: rgba(167,196,171,.24); border-color: rgba(94,130,104,.4);
+  transform: translateY(-2px) scale(1.06);
+}
+.ae-page-btn:active:not(:disabled) { transform: translateY(0) scale(.94); }
+.ae-page-btn.on {
+  background: linear-gradient(135deg, #a7c4ab 0%, #8fb39b 100%);
+  border-color: #8fb39b; color: #fff;
+  box-shadow: 0 3px 9px rgba(94,130,104,.30);
+}
+.ae-page-btn:disabled { opacity: .38; cursor: not-allowed; }
 @media (max-width: 560px) {
   .ae-row { flex-direction: column; align-items: stretch; gap: 8px; }
   .ae-row .ae-ops { justify-content: flex-end; }
   .ae-tab { font-size: 12px; padding: 5px 10px; }
+  .ae-page-btn { min-width: 30px; height: 30px; padding: 0 9px; font-size: 12px; }
 }
 
 @media (max-width: 560px) {

@@ -6,9 +6,11 @@
 window.Pages = window.Pages || {};
 // 模块级状态：AI 选题是否处于「已读热点」视图（必须在页面函数外，否则每次重渲染被重置）
 let _topicReadView = false;
-// AI 活动分类筛选 / 是否显示已结束（模块级，重渲染不重置）
+// AI 活动分类筛选 / 是否显示已结束 / 分页（模块级，重渲染不重置）
 let _aeCat = 'all';
 let _aeShowExpired = false;
+let _aePage = 1;
+const AE_PAGE_SIZE = 8;
   // 持久化当前专题详情（刷新后保留在课程详情页，不退回到列表）
   function saveSkillView() { try { if (window.__skillViewId) localStorage.setItem('cw_skill_view', window.__skillViewId); else localStorage.removeItem('cw_skill_view'); } catch (_) {} }
 
@@ -217,11 +219,12 @@ Pages.skill = function () {
 
   // ---------- AI 活动（全网可报名 AI 活动聚合：福利/学生/Token/内测/黑客松，过期自动过滤） ----------
   const AI_EVENT_CATS = [
-  { key: 'fan', label: '🎁 福利', name: '粉丝福利' },
-  { key: 'student', label: '🎓 学生', name: '学生福利' },
+  { key: 'fan', label: '🎁 福利', name: '课程/GPU/插件/公开Key' },
+  { key: 'student', label: '🎓 学生认证', name: '学生认证福利' },
   { key: 'token', label: '🔑 Token', name: 'Token/算力' },
   { key: 'inner', label: '🧪 内测', name: '模型内测' },
   { key: 'hackathon', label: '🏆 黑客松', name: '黑客松/大赛' },
+  { key: 'security', label: '🛡️ 安全', name: '黑客/网络安全' },
   { key: 'tool', label: '🧰 工具', name: '工具/资源' },
   ];
   // 内置活动种子（真实可报名/长期有效；date 为 '长期有效' 或 YYYY-MM-DD 截止日）
@@ -237,15 +240,70 @@ Pages.skill = function () {
   { title: "Datawhale 每月组队学习（免费开源）", cat: "hackathon", type: "daily", start: "2026-08-17", end: "2026-08-31", deadline: "2026-08-31", url: "https://www.datawhale.cn/activity", benefit: "每月滚动：Transformer实战营/具身智能/大模型算法/Codex入门等十几门，本期 8/17-8/31 报名", org: "Datawhale", tutorial: "" },
   { title: "Hugging Face 社区挑战赛（按赛题更新）", cat: "hackathon", type: "daily", start: "", end: "", deadline: "", url: "https://huggingface.co/challenges", benefit: "模型微调/应用挑战按月更新，随时可加入当前赛题", org: "Hugging Face", tutorial: "https://huggingface.co/learn" },
   { title: "Kaggle 竞赛（全球常设）", cat: "hackathon", type: "daily", start: "", end: "", deadline: "", url: "https://www.kaggle.com/competitions", benefit: "全球数据科学/AI 竞赛常设，免费 GPU Notebook，随时加入", org: "Kaggle", tutorial: "https://www.kaggle.com/learn" },
-  { title: "GitHub Student Developer Pack（学生长期权益）", cat: "student", type: "daily", start: "", end: "", deadline: "", url: "https://education.github.com/benefits", benefit: "学生认证长期有效：Copilot / JetBrains / Azure 等免费", org: "GitHub", tutorial: "https://docs.github.com/zh/education/explore-the-benefits-of-github" },
+  { title: "GitHub Student Developer Pack（学生认证长期权益）", cat: "student", type: "daily", start: "", end: "", deadline: "", url: "https://education.github.com/pack", benefit: "edu 邮箱学生认证长期有效：Copilot / JetBrains / Azure / Canva 等几十项免费开发者工具", org: "GitHub", tutorial: "https://docs.github.com/zh/education/explore-the-benefits-of-github" },
+  { title: "JetBrains 学生免费授权（全系 IDE）", cat: "student", type: "daily", start: "", end: "", deadline: "", url: "https://www.jetbrains.com/community/education/#students", benefit: "学生认证免费一年授权（IntelliJ/PyCharm/WebStorm 等），可续期，需 edu 邮箱或学生证", org: "JetBrains", tutorial: "https://www.jetbrains.com/community/education/#students" },
+  { title: "Microsoft Azure for Students（学生免费额度）", cat: "student", type: "daily", start: "", end: "", deadline: "", url: "https://azure.microsoft.com/zh-cn/free/students/", benefit: "学生认证无需信用卡，送 $100 额度 + 免费云服务（12 个月），含 AI 服务额度", org: "Microsoft", tutorial: "https://azure.microsoft.com/zh-cn/free/students/" },
+  { title: "阿里云学生认证（云工开物/高校计划）", cat: "student", type: "daily", start: "", end: "", deadline: "", url: "https://university.aliyun.com/", benefit: "学生认证送云服务器/算力代金券与免费课程，国内直连，需学信网/在校认证", org: "阿里云", tutorial: "https://university.aliyun.com/" },
+  { title: "腾讯云校园认证（云+校园）", cat: "student", type: "daily", start: "", end: "", deadline: "", url: "https://cloud.tencent.com/act/campus", benefit: "学生认证送云资源代金券与免费算力试用，含大模型 API 体验额度，国内直连", org: "腾讯云", tutorial: "https://cloud.tencent.com/act/campus" },
+  { title: "Notion for Students（学生免费 Plus）", cat: "student", type: "daily", start: "", end: "", deadline: "", url: "https://www.notion.so/product/notion-for-students", benefit: "edu 邮箱学生认证免费升级 Plus 版（无限块/历史/协作），笔记与知识库首选", org: "Notion", tutorial: "https://www.notion.so/product/notion-for-students" },
+  { title: "Figma Education（学生免费专业版）", cat: "student", type: "daily", start: "", end: "", deadline: "", url: "https://www.figma.com/education/", benefit: "学生认证免费专业版（无限文件/团队库），UI 设计与原型工具，需 edu 邮箱", org: "Figma", tutorial: "https://www.figma.com/education/" },
   { title: "阿里云百炼：新用户免费大模型 Token", cat: "token", type: "daily", start: "", end: "", deadline: "", url: "https://bailian.console.aliyun.com/", benefit: "注册送免费 Token 额度，通义千问 Qwen 全系", org: "阿里云", tutorial: "" },
   { title: "DeepSeek 开放平台：新用户 API 免费额度", cat: "token", type: "daily", start: "", end: "", deadline: "", url: "https://platform.deepseek.com/", benefit: "DeepSeek API 注册赠送额度", org: "深度求索", tutorial: "https://api-docs.deepseek.com/zh-cn/" },
   { title: "智谱 AI 开放平台：注册送免费 GLM Token", cat: "token", type: "daily", start: "", end: "", deadline: "", url: "https://open.bigmodel.cn/", benefit: "GLM-4 系列模型免费 Token 额度", org: "智谱AI", tutorial: "" },
-  { title: "小米百亿 Token 补贴（以官方公告为准）", cat: "token", type: "daily", start: "", end: "", deadline: "", url: "https://dev.mi.com/", benefit: "小米开发者百亿 Token 补贴，关注小米开放平台公告", org: "小米", tutorial: "" },
-  { title: "Cursor 教育计划 / 无限续杯教程", cat: "tool", type: "tool", start: "", end: "", deadline: "", url: "https://www.baidu.com/s?wd=Cursor+%E6%95%99%E8%82%B2%E8%AE%A1%E5%88%92+%E6%97%A0%E9%99%90%E7%BB%AD%E6%9D%AF+%E6%95%99%E7%A8%8B", benefit: "edu 邮箱认证学生优惠与额度续期玩法，教程自行甄别（以官方页面为准）", org: "Cursor", tutorial: "https://cursor.com/education" },
+  { title: "Cursor 无限续杯教程（低成本长期使用）", cat: "tool", type: "tool", start: "", end: "", deadline: "", url: "https://www.baidu.com/s?wd=Cursor+%E6%97%A0%E9%99%90%E7%BB%AD%E6%9D%AF+%E6%95%99%E7%A8%8B", benefit: "社区低成本长期使用 Cursor 的玩法（个人 Pro / 续费优惠等）仍在更新；其 edu 学生认证已于 2026 年结束，教程自行甄别", org: "Cursor", tutorial: "https://cursor.com/" },
   { title: "Claude Code 低成本使用教程", cat: "tool", type: "tool", start: "", end: "", deadline: "", url: "https://www.baidu.com/s?wd=Claude+Code+%E5%85%8D%E8%B4%B9+%E4%BD%8E%E6%88%90%E6%9C%AC+%E6%95%99%E7%A8%8B", benefit: "Claude Code 免费额度 / 低成本调用思路，教程自行甄别", org: "Anthropic", tutorial: "https://docs.anthropic.com/" },
   { title: "OpenAI Codex 免费额度教程", cat: "tool", type: "tool", start: "", end: "", deadline: "", url: "https://www.baidu.com/s?wd=OpenAI+Codex+%E5%85%8D%E8%B4%B9%E9%A2%9D%E5%BA%A6+%E6%95%99%E7%A8%8B", benefit: "Codex 免费/低成本使用思路，教程自行甄别", org: "OpenAI", tutorial: "https://openai.com/codex/" },
   { title: "Cloudflare WARP 官方免费版（自备网络通道）", cat: "tool", type: "tool", start: "", end: "", deadline: "", url: "https://one.one.one.one/", benefit: "官方免费加速/加密通道，使用请遵守当地法律法规", org: "Cloudflare", tutorial: "https://developers.cloudflare.com/warp-client/" },
+  { title: "硅基流动 SiliconFlow：新用户免费 Token", cat: "token", type: "daily", start: "", end: "", deadline: "", url: "https://cloud.siliconflow.cn/", benefit: "注册送 2000 万 Token 免费额度，Qwen/DeepSeek/GLM 等开源模型 API，国内直连稳定", org: "硅基流动", tutorial: "https://docs.siliconflow.cn/" },
+  { title: "火山方舟（字节）：新用户免费大模型额度", cat: "token", type: "daily", start: "", end: "", deadline: "", url: "https://www.volcengine.com/product/ark", benefit: "字节火山引擎方舟平台，Doubao/DeepSeek 等模型注册送试用额度，国内直连", org: "火山引擎", tutorial: "https://www.volcengine.com/docs/82379/" },
+  { title: "腾讯混元：新用户免费 API 额度", cat: "token", type: "daily", start: "", end: "", deadline: "", url: "https://cloud.tencent.com/product/hunyuan", benefit: "腾讯混元大模型注册送免费额度，支持对话/文生图，国内直连", org: "腾讯云", tutorial: "https://cloud.tencent.com/document/product/1729" },
+  { title: "阶跃星辰 Step：免费 API 额度", cat: "token", type: "daily", start: "", end: "", deadline: "", url: "https://platform.stepfun.com/", benefit: "阶跃星辰 Step 系列模型注册送免费 Token，多模态能力强", org: "阶跃星辰", tutorial: "" },
+  { title: "MiniMax：免费 API 额度", cat: "token", type: "daily", start: "", end: "", deadline: "", url: "https://www.minimax.io/platform", benefit: "MiniMax 文本/语音/视频模型注册送免费额度", org: "MiniMax", tutorial: "" },
+  { title: "Google AI Studio：免费 Gemini API Key", cat: "token", type: "daily", start: "", end: "", deadline: "", url: "https://aistudio.google.com/apikey", benefit: "Google 个人账号免费领 Gemini API Key，Gemini 2.5/3 Pro 可用（需自备网络通道）", org: "Google", tutorial: "https://aistudio.google.com/" },
+  { title: "NVIDIA 开发者计划：免费课程 + GPU 试用", cat: "fan", type: "daily", start: "", end: "", deadline: "", url: "https://developer.nvidia.com/", benefit: "NVIDIA 深度学习学院免费课程、NGC 模型库、部分区域免费 GPU 试用", org: "NVIDIA", tutorial: "https://learn.nvidia.com/" },
+  { title: "通义灵码（阿里）：免费 AI 编码插件", cat: "fan", type: "daily", start: "", end: "", deadline: "", url: "https://tongyi.aliyun.com/lingma", benefit: "阿里通义灵码 VS Code/IDEA 插件，代码补全+对话，个人完全免费", org: "阿里", tutorial: "https://help.aliyun.com/zh/lingma/" },
+  { title: "Gemini 新模型内测招募（AI Test Kitchen）", cat: "inner", type: "daily", start: "", end: "", deadline: "", url: "https://labs.google/", benefit: "Google AI Test Kitchen / AI Studio 抢先体验 Gemini 新模型与实验功能", org: "Google", tutorial: "https://aistudio.google.com/" },
+  { title: "Claude 新模型内测（Anthropic）", cat: "inner", type: "daily", start: "", end: "", deadline: "", url: "https://www.anthropic.com/", benefit: "Anthropic 官网/Claude 应用抢先体验新模型与功能（部分需排队）", org: "Anthropic", tutorial: "https://docs.anthropic.com/" },
+  { title: "OpenAI 新模型 / Codex 内测", cat: "inner", type: "daily", start: "", end: "", deadline: "", url: "https://openai.com/", benefit: "OpenAI 官网与 ChatGPT 抢先体验新模型/Codex 新功能，学生可领 $100 额度", org: "OpenAI", tutorial: "https://openai.com/codex/" },
+  { title: "Trae（字节）新功能内测", cat: "inner", type: "daily", start: "", end: "", deadline: "", url: "https://www.trae.com.cn/", benefit: "字节 Trae AI IDE 新功能内测申请，国内版与国际版同步更新", org: "字节跳动", tutorial: "https://www.trae.com.cn/" },
+  { title: "智谱 GLM 新模型内测", cat: "inner", type: "daily", start: "", end: "", deadline: "", url: "https://open.bigmodel.cn/", benefit: "智谱 AI 开放平台抢先体验 GLM 新模型与 Agent 功能", org: "智谱AI", tutorial: "https://open.bigmodel.cn/" },
+  { title: "豆包 大模型新功能内测", cat: "inner", type: "daily", start: "", end: "", deadline: "", url: "https://www.doubao.com/", benefit: "字节豆包 App/开放平台抢先体验新模型与创作功能", org: "字节跳动", tutorial: "https://www.volcengine.com/product/doubao" },
+  { title: "腾讯混元 新模型内测", cat: "inner", type: "daily", start: "", end: "", deadline: "", url: "https://cloud.tencent.com/product/hunyuan", benefit: "腾讯混元开放平台抢先体验新模型与多模态能力", org: "腾讯", tutorial: "https://cloud.tencent.com/document/product/1729" },
+  { title: "阶跃星辰 Step 新模型内测", cat: "inner", type: "daily", start: "", end: "", deadline: "", url: "https://platform.stepfun.com/", benefit: "阶跃星辰平台抢先体验 Step 新模型与多模态能力", org: "阶跃星辰", tutorial: "" },
+  { title: "Gemini CLI 免费使用教程", cat: "tool", type: "tool", start: "", end: "", deadline: "", url: "https://www.baidu.com/s?wd=Gemini+CLI+%E5%85%8D%E8%B4%B9%E4%BD%BF%E7%94%A8%E6%95%99%E7%A8%8B", benefit: "npm i -g @google/gemini-cli，Google 个人账号登录免费 1000 次/天（Gemini 2.5/3 Pro）", org: "Google", tutorial: "https://github.com/google-gemini/gemini-cli" },
+  { title: "GitHub Copilot 免费版使用教程", cat: "tool", type: "tool", start: "", end: "", deadline: "", url: "https://www.baidu.com/s?wd=GitHub+Copilot+%E5%85%8D%E8%B4%B9%E7%89%88+%E6%95%99%E7%A8%8B", benefit: "Copilot Free 个人免费额度（每月补全+对话次数），学生/开源维护者更多", org: "GitHub", tutorial: "https://github.com/features/copilot" },
+  { title: "Trae（字节）免费 AI IDE 教程", cat: "tool", type: "tool", start: "", end: "", deadline: "", url: "https://www.baidu.com/s?wd=Trae+AI+IDE+%E5%85%8D%E8%B4%B9%E6%95%99%E7%A8%8B", benefit: "字节 Trae 国内版/国际版完全免费，Chat+Builder 双模式，国内直连", org: "字节跳动", tutorial: "https://www.trae.com.cn/" },
+  { title: "通义灵码免费 AI 编码教程", cat: "tool", type: "tool", start: "", end: "", deadline: "", url: "https://www.baidu.com/s?wd=%E9%80%9A%E4%B9%89%E7%81%B5%E7%A0%81+%E5%85%8D%E8%B4%B9+%E6%95%99%E7%A8%8B", benefit: "阿里通义灵码 VS Code/IDEA 插件免费安装与配置，代码补全+单元测试", org: "阿里", tutorial: "https://help.aliyun.com/zh/lingma/" },
+  { title: "硅基流动免费 API 教程", cat: "tool", type: "tool", start: "", end: "", deadline: "", url: "https://www.baidu.com/s?wd=%E7%A1%85%E5%9F%BA%E6%B5%81%E5%8A%A8+%E5%85%8D%E8%B4%B9+API+%E6%95%99%E7%A8%8B", benefit: "SiliconFlow 注册送 Token，OpenAI 兼容接口调用 Qwen/DeepSeek 等开源模型", org: "硅基流动", tutorial: "https://docs.siliconflow.cn/" },
+  { title: "Ollama 本地免费部署大模型教程", cat: "tool", type: "tool", start: "", end: "", deadline: "", url: "https://www.baidu.com/s?wd=Ollama+%E6%9C%AC%E5%9C%B0+%E5%85%8D%E8%B4%B9+%E9%83%A8%E6%A8%A1%E5%9E%8B+%E6%95%99%E7%A8%8B", benefit: "ollama run 本地跑 Qwen/DeepSeek/Llama，完全离线免费，隐私数据不出本机", org: "Ollama", tutorial: "https://ollama.com/" },
+  { title: "OpenRouter 免费模型调用教程", cat: "tool", type: "tool", start: "", end: "", deadline: "", url: "https://www.baidu.com/s?wd=OpenRouter+%E5%85%8D%E8%B4%B9%E6%A8%A1%E5%9E%8B+%E6%95%99%E7%A8%8B", benefit: "OpenRouter 聚合多厂商模型，部分模型免费额度，OpenAI 兼容接口", org: "OpenRouter", tutorial: "https://openrouter.ai/" },
+  { title: "Groq 免费极速 API 教程", cat: "tool", type: "tool", start: "", end: "", deadline: "", url: "https://www.baidu.com/s?wd=Groq+%E5%85%8D%E8%B4%B9+API+%E6%95%99%E7%A8%8B", benefit: "groq.com 免费层，Llama/Mixtral/Gemma 极速推理（每秒数百 token），OpenAI 兼容接口，注册即送额度", org: "Groq", tutorial: "https://console.groq.com/" },
+  { title: "DeepSeek 官方免费/低价 API 教程", cat: "tool", type: "tool", start: "", end: "", deadline: "", url: "https://www.baidu.com/s?wd=DeepSeek+%E5%85%8D%E8%B4%B9+API+%E6%95%99%E7%A8%8B", benefit: "DeepSeek 官方 API 价格极低，新用户充值常送额度，V3/R1 全功能，OpenAI 兼容接口，国内直连", org: "DeepSeek", tutorial: "https://platform.deepseek.com/" },
+  { title: "Kimi（月之暗面）免费使用教程", cat: "tool", type: "tool", start: "", end: "", deadline: "", url: "https://www.baidu.com/s?wd=Kimi+%E5%85%8D%E8%B4%B9+%E4%BD%BF%E7%94%A8+%E6%95%99%E7%A8%8B", benefit: "Kimi 智能助手网页/App 基础免费，长文本（200万字）解析，对话与文档总结", org: "月之暗面", tutorial: "https://kimi.moonshot.cn/" },
+  { title: "豆包（字节）免费 AI 助手教程", cat: "tool", type: "tool", start: "", end: "", deadline: "", url: "https://www.baidu.com/s?wd=%E8%B1%86%E5%8C%85+%E5%85%8D%E8%B4%B9+AI+%E5%8A%A9%E6%89%8B+%E6%95%99%E7%A8%8B", benefit: "豆包网页/App 完全免费对话，Doubao 模型，写作/翻译/图像生成，国内直连", org: "字节跳动", tutorial: "https://www.doubao.com/" },
+  { title: "智谱 GLM 免费使用教程", cat: "tool", type: "tool", start: "", end: "", deadline: "", url: "https://www.baidu.com/s?wd=%E6%99%BA%E8%B0%B1+GLM+%E5%85%8D%E8%B4%B9+%E4%BD%BF%E7%94%A8+%E6%95%99%E7%A8%8B", benefit: "智谱清言网页/App 基础免费，BigModel 开放平台 GLM-4 系列免费 Token 额度", org: "智谱AI", tutorial: "https://open.bigmodel.cn/" },
+  { title: "Hugging Face 免费推理 API 教程", cat: "tool", type: "tool", start: "", end: "", deadline: "", url: "https://www.baidu.com/s?wd=Hugging+Face+%E5%85%8D%E8%B4%B9+%E6%8E%A8%E7%90%86+API+%E6%95%99%E7%A8%8B", benefit: "HF Inference API 免费额度调用开源模型，Spaces 免费部署 Demo，逛模型社区零成本", org: "Hugging Face", tutorial: "https://huggingface.co/docs/api-inference/" },
+  { title: "Poe 免费 AI 聊天教程", cat: "tool", type: "tool", start: "", end: "", deadline: "", url: "https://www.baidu.com/s?wd=Poe+%E5%85%8D%E8%B4%B9+AI+%E8%81%8A%E5%A4%A9+%E6%95%99%E7%A8%8B", benefit: "Quora Poe 每日免费消息额度，可切换 GPT/Claude/Gemini 等多模型，网页/App 可用", org: "Poe", tutorial: "https://poe.com/" },
+  { title: "Coze/扣子 免费搭建 AI Bot 教程", cat: "tool", type: "tool", start: "", end: "", deadline: "", url: "https://www.baidu.com/s?wd=Coze+%E6%89%A3%E5%AD%90+%E5%85%8D%E8%B4%B9+%E6%90%AD%E5%BB%BA+AI+Bot+%E6%95%99%E7%A8%8B", benefit: "字节扣子/Coze 免费可视化搭建 AI 智能体，插件/工作流/知识库，可发布到多渠道", org: "Coze", tutorial: "https://www.coze.cn/" },
+  { title: "公益 API 中转站合集（免费调主流大模型）", cat: "fan", type: "tool", start: "", end: "", deadline: "", url: "https://www.baidu.com/s?wd=%E5%85%AC%E7%9B%8A+API+%E4%B8%AD%E8%BD%AC+%E7%AB%99+%E5%85%8D%E8%B4%B9", benefit: "社区免费 API 中转汇总（GitHub/论坛常更新），可免费调 GPT/Claude/Gemini 等；限流严格、勿商用，仅测试学习", org: "社区", tutorial: "" },
+  { title: "GitHub 免费 API Key 收集仓库教程", cat: "fan", type: "tool", start: "", end: "", deadline: "", url: "https://www.baidu.com/s?wd=GitHub+%E5%85%8D%E8%B4%B9+API+Key+%E6%B1%87%E6%80%BB+%E4%BB%93%E5%BA%93", benefit: "GitHub 上汇总各类免费/公开可用 API Key 与免费额度的仓库，自行甄别有效性（部分已失效）", org: "GitHub", tutorial: "https://github.com/" },
+  { title: "各类大模型官方免费 Key 领取入口汇总", cat: "fan", type: "tool", start: "", end: "", deadline: "", url: "https://www.baidu.com/s?wd=%E5%A4%A7%E6%A8%A1%E5%9E%8B+%E5%85%8D%E8%B4%B9+Key+%E9%A2%86%E5%8F%96", benefit: "Google AI Studio / 硅基流动 / DeepSeek 等官方免费 Key 领取入口汇总帖，优先用官方渠道最稳", org: "汇总", tutorial: "" },
+  { title: "公开测试 API Key 使用须知（限速/勿商用）", cat: "fan", type: "tool", start: "", end: "", deadline: "", url: "https://www.baidu.com/s?wd=%E5%85%AC%E5%BC%80+API+Key+%E4%BD%BF%E7%94%A8+%E6%B3%A8%E6%84%8F", benefit: "公开分享的 Key 多为个人/社区志愿提供，限流严格、勿商用、勿泄露；优先官方免费额度更安全", org: "提醒", tutorial: "" },
+  { title: "免费 API 聚合网关（一个 Key 调多模型）", cat: "fan", type: "tool", start: "", end: "", deadline: "", url: "https://www.baidu.com/s?wd=%E5%85%8D%E8%B4%B9+API+%E8%81%9A%E5%90%88%E7%BD%91%E5%85%B3", benefit: "OpenRouter / 硅基流动等聚合网关统一一个 Key 调多模型，部分模型免费，适合快速试用", org: "聚合", tutorial: "" },
+  { title: "吴恩达 DeepLearning.AI 免费 AI 短课程", cat: "fan", type: "daily", start: "", end: "", deadline: "", url: "https://www.deeplearning.ai/", benefit: "吴恩达团队免费短课（ChatGPT / LLM / AI Agent 等），随到随学，完成可领证书", org: "DeepLearning.AI", tutorial: "https://learn.deeplearning.ai/" },
+  { title: "2026 第二届海浪 AI 电影黑客松（阿那亚）", cat: "hackathon", type: "event", start: "2026-08-11", end: "2026-08-27", deadline: "2026-08-27", url: "https://www.aitop100.cn/infomation/details/34462.html", benefit: "48 小时阿那亚极限创作，AI 内容占比≥70%，最高 1 万元奖金 + 官方展示，报名 8/11–8/27", org: "海浪电影周 × 天猫小黑盒 × AMD", tutorial: "" },
+  { title: "AI 造物黑客松·福州首站", cat: "hackathon", type: "event", start: "2026-08-01", end: "2026-08-30", deadline: "2026-08-25", url: "https://www.competehub.dev/manifest.webmanifest/competitions/urlsb779e5bec43b662d54c0eb86d01e0be0", benefit: "8/28–8/29 福州两日两夜开发，五赛道（AI硬件/社交陪伴/私域/商业/影视），冠军 ¥2 万，报名截止 8/25", org: "MONEYAI", tutorial: "" },
+  { title: "CTFtime 全球 CTF 赛事日历", cat: "security", type: "daily", start: "", end: "", deadline: "", url: "https://ctftime.org/", benefit: "全球 CTF 夺旗赛日历 + 战队排名；连后端刷新会自动拉取即将开赛的比赛（真实日期）", org: "CTFtime", tutorial: "https://ctftime.org/events/" },
+  { title: "PortSwigger Web Security Academy（免费）", cat: "security", type: "daily", start: "", end: "", deadline: "", url: "https://portswigger.net/web-security", benefit: "Burp Suite 官方免费 Web 安全学院，零基础到渗透测试的系统化在线实验室", org: "PortSwigger", tutorial: "https://portswigger.net/web-security/all-labs" },
+  { title: "攻防世界 XCTF（国内 CTF 练习）", cat: "security", type: "daily", start: "", end: "", deadline: "", url: "https://adworld.xctf.org.cn/", benefit: "国内最大 CTF 在线练习平台，新手区→高手区→大师区分难度刷题", org: "XCTF 联盟", tutorial: "" },
+  { title: "BUUCTF（国内 CTF 真题库）", cat: "security", type: "daily", start: "", end: "", deadline: "", url: "https://buuoj.cn/", benefit: "高校战队常用刷题平台，海量国内外赛事真题复现（含泛洪等经典靶场）", org: "BUU", tutorial: "" },
+  { title: "TryHackMe（引导式安全学习）", cat: "security", type: "daily", start: "", end: "", deadline: "", url: "https://tryhackme.com/", benefit: "房间式闯关学习路径，免费房间足够入门黑客技术（需自备网络通道）", org: "TryHackMe", tutorial: "https://tryhackme.com/path/outline/beginner" },
+  { title: "Hack The Box（真实渗透靶场）", cat: "security", type: "daily", start: "", end: "", deadline: "", url: "https://www.hackthebox.com/", benefit: "免费靶机 + 真实渗透环境，全球黑客技术排行榜（需自备网络通道）", org: "HTB", tutorial: "" },
+  { title: "看雪学苑（逆向/安全社区）", cat: "security", type: "daily", start: "", end: "", deadline: "", url: "https://www.kanxue.com/", benefit: "逆向工程/漏洞分析深度社区，免费文章 + 公开课 + 每年安全开发者峰会", org: "看雪", tutorial: "" },
+  { title: "FreeBuf（安全资讯/活动日历）", cat: "security", type: "daily", start: "", end: "", deadline: "", url: "https://www.freebuf.com/", benefit: "国内安全媒体：漏洞情报 / 公开课 / 安全活动与比赛日历", org: "FreeBuf", tutorial: "" },
+  { title: "安全客（漏洞/攻防资讯）", cat: "security", type: "daily", start: "", end: "", deadline: "", url: "https://www.anquanke.com/", benefit: "安全资讯、漏洞预警、攻防技术文章与活动信息", org: "安全客", tutorial: "" },
+  { title: "合天网安实验室（在线实操）", cat: "security", type: "daily", start: "", end: "", deadline: "", url: "https://www.hetianlab.com/", benefit: "浏览器里直接做安全实验（Web安全/逆向/密码学/CTF），大量免费实验", org: "合天网安", tutorial: "" },
+  { title: "OWASP Top 10 + Juice Shop 靶场", cat: "security", type: "daily", start: "", end: "", deadline: "", url: "https://owasp.org/www-project-web-security-testing-guide/", benefit: "Web 安全测试标准指南 + OWASP Juice Shop 免费开源漏洞练习应用", org: "OWASP", tutorial: "https://owasp.org/www-project-juice-shop/" },
   ];
   const getAIEvents = () => {
   const s = Store.get().skill;
@@ -285,11 +343,26 @@ Pages.skill = function () {
   const list = sorted.filter((e) => (aeExpired(e) ? _aeShowExpired : true)).filter((e) => _aeCat === 'all' || e.cat === _aeCat);
   const expiredN = sorted.filter((e) => aeExpired(e)).length;
   const activeN = sorted.length - expiredN;
+  // 分页
+  const totalPages = Math.max(1, Math.ceil(list.length / AE_PAGE_SIZE));
+  if (_aePage > totalPages) _aePage = totalPages;
+  if (_aePage < 1) _aePage = 1;
+  const pageList = list.slice((_aePage - 1) * AE_PAGE_SIZE, _aePage * AE_PAGE_SIZE);
+  const pageBtns = [];
+  for (let p = 1; p <= totalPages; p++) {
+  pageBtns.push(`<button class="ae-page-btn ${p === _aePage ? 'on' : ''}" data-act="ae-page" data-page="${p}">${p}</button>`);
+  }
+  const pagerHtml = totalPages > 1 ? `<div class="ae-pager">
+  <button class="ae-page-btn" data-act="ae-page" data-page="${Math.max(1, _aePage - 1)}" ${_aePage <= 1 ? 'disabled' : ''}>‹</button>
+  ${pageBtns.join('')}
+  <button class="ae-page-btn" data-act="ae-page" data-page="${Math.min(totalPages, _aePage + 1)}" ${_aePage >= totalPages ? 'disabled' : ''}>›</button>
+  <span class="muted-text" style="font-size:12px">${_aePage}/${totalPages} 页 · 共 ${list.length} 条</span>
+  </div>` : '';
   const catTabs = ['all'].concat(AI_EVENT_CATS.map((c) => c.key)).map((k) => {
   const label = k === 'all' ? '全部' : (AI_EVENT_CATS.find((c) => c.key === k) || {}).label;
   return `<button class="ae-tab ${_aeCat === k ? 'on' : ''}" data-act="ae-cat" data-cat="${k}">${label}</button>`;
   }).join('');
-  const rows = list.length ? list.map((e) => {
+  const rows = pageList.length ? pageList.map((e) => {
   const exp = aeExpired(e);
   const dl = aeDaysLeft(e);
   const dlCls = (dl !== null && dl <= 7) ? 'ae-urgent' : (dl !== null && dl <= 30) ? 'ae-soon' : '';
@@ -317,6 +390,7 @@ Pages.skill = function () {
   <div class="title"><img class="ic" src="assets/icons/hk-01.png" alt=""/>AI 活动<span class="tag muted" style="margin-left:6px">可报名 ${activeN}</span></div>
   <div class="spacer"></div>
   ${expiredN ? `<button class="btn btn-soft btn-sm" data-act="ae-toggle-expired">${_aeShowExpired ? '隐藏已结束' : `已结束 ${expiredN}`}</button>` : ''}
+  <button class="btn btn-soft btn-sm" data-act="ae-help" title="后端连接说明">ⓘ</button>
   <button class="btn btn-sm btn-refresh" data-act="ae-refresh">⟳ 实时刷新</button>
   <button class="btn btn-soft btn-sm" data-act="ae-add">＋ 添加活动</button>
   <button class="collapse-btn" title="折叠">▾</button>
@@ -325,6 +399,7 @@ Pages.skill = function () {
   <div class="muted-text" style="font-size:12px;margin-bottom:10px">🏁限时赛事带真实报名截止日期（过期自动隐藏）；🔁常态化为随时可加入的社区打卡/长期权益；🧰资源为教程与工具。已结束赛事已从清单剔除。</div>
   <div class="ae-tabs">${catTabs}</div>
   <div class="ae-list mt12">${rows}</div>
+  ${pagerHtml}
   </div>
   </div>`;
   }
@@ -593,8 +668,40 @@ Pages.skill = function () {
   Pages.skill();
   return;
   }
-  if (act === 'ae-cat') { _aeCat = b.dataset.cat; Pages.skill(); return; }
-  if (act === 'ae-toggle-expired') { _aeShowExpired = !_aeShowExpired; Pages.skill(); return; }
+  if (act === 'ae-cat') { _aeCat = b.dataset.cat; _aePage = 1; Pages.skill(); return; }
+  if (act === 'ae-toggle-expired') { _aeShowExpired = !_aeShowExpired; _aePage = 1; Pages.skill(); return; }
+  if (act === 'ae-page') { _aePage = parseInt(b.dataset.page) || 1; Pages.skill(); return; }
+  if (act === 'ae-help') {
+  const backend = Store.readerBackend();
+  const curBackend = (Store.get().cal && Store.get().cal.backendUrl) || (Store.get().english.readerBackend || '');
+  const loc = (typeof location !== 'undefined' && location) || {};
+  const isLan = /^10\.|^192\.168\.|^172\.(1[6-9]|2\d|3[01])\.|^169\.254\./.test(loc.hostname || '') || /^localhost$|^127\.0\.0\.1$|^\[::1\]$/i.test(loc.hostname || '');
+  UI.openModal({
+  title: '后端连接 · 实时数据来源', icon: '<img class="ic" src="assets/icons/hk-01.png" alt=""/>',
+  body: `<div class="field"><label>当前状态</label>
+  <div class="muted-text" style="font-size:13px">当前打开页面：<code>${UI.esc(loc.origin || '本地')}</code><br/>实时后端：${backend ? '<b style="color:var(--primary-deep)">' + UI.esc(backend) + '</b>' : '<span style="color:#c0392b">未启用（使用本地内置清单）</span>'}</div></div>
+  <div class="field"><label>① 手机与电脑同一 WiFi（最简单）</label>
+  <div class="muted-text" style="font-size:13px;line-height:1.8">1️⃣ 电脑运行 <code>node server.js</code>（本项目目录）<br/>2️⃣ 查电脑 IP：命令提示符输入 <code>ipconfig</code> 记下「IPv4 地址」（如 192.168.1.5）<br/>3️⃣ 手机<b>浏览器直接打开</b> <code>http://电脑IP:3000</code>（如 http://192.168.1.5:3000）<br/>4️⃣ 页面自动识别局域网 → 外刊 / 每日AI选题 / AI活动 实时数据全部走电脑后端，<b>无需手动填地址</b></div></div>
+  <div class="field"><label>② 手机用的是云端/部署版（跨网络）</label>
+  <div class="muted-text" style="font-size:13px;line-height:1.8">若手机打开的是云端链接（非电脑 IP），需手动把后端指向电脑：下面填入电脑局域网地址 <code>http://电脑IP:3000</code>，保存后即可实时同步。电脑 IP 变化后记得改回最新 IP。</div></div>
+  <div class="field"><label>手动填写后端地址</label>
+  <input class="input" id="aeBackendUrl" value="${UI.esc(curBackend)}" placeholder="http://192.168.1.5:3000"/>
+  <div class="muted-text" style="font-size:12px;margin-top:4px">留空则恢复为自动识别（局域网页自动连、云端页用默认后端）。</div></div>`,
+  actions: [
+    { label: '清除', cls: 'btn-soft', onClick: () => {
+      Store.update((st) => { if (st.cal) st.cal.backendUrl = ''; if (st.english) st.english.readerBackend = 'http://localhost:3000'; });
+      UI.closeModal(); UI.toast('已清除手动后端地址', 'ok'); Pages.skill();
+    } },
+    { label: '保存地址', onClick: () => {
+      const v = (UI.val('#aeBackendUrl') || '').trim().replace(/\/$/, '');
+      if (v && !/^https?:\/\//i.test(v)) { UI.toast('地址需以 http:// 或 https:// 开头', 'warn'); return; }
+      Store.update((st) => { if (!st.cal) st.cal = {}; st.cal.backendUrl = v; if (v) { if (!st.english) st.english = {}; st.english.readerBackend = v; } });
+      UI.closeModal(); UI.toast(v ? '已保存：将实时读取 ' + v : '已恢复自动识别', 'ok'); Pages.skill();
+    } }
+  ]
+  });
+  return;
+  }
   if (act === 'ae-refresh') return (async () => {
   // 实时刷新：优先从后端拉取最新活动（assets/ai-events.json），合并去重后过滤过期
   const doLocalRefresh = () => {
@@ -618,10 +725,12 @@ Pages.skill = function () {
   if (j && Array.isArray(j.events) && j.events.length) {
   const live = j.source === 'live';
   const nowStr = D.todayStr();
-  Store.update((st) => {
-  st.skill.aiEvents = (st.skill.aiEvents || []).filter((e) => !aeExpired(e)); // 过期自建活动立即删除
-  const cur = (st.skill.aiEvents || []).slice();
-  const seen = new Set(cur.map((x) => x.title));
+          Store.update((st) => {
+          // 清掉上次同步的旧 _server 条目（本次刷新重新写入），用户自建条目保留；过期自建活动立即删除
+          st.skill.aiEvents = (st.skill.aiEvents || []).filter((e) => !e._server && !aeExpired(e));
+          const cur = (st.skill.aiEvents || []).slice();
+          // 去重集同时含内置种子标题：后端返回「清单+实时」合并结果，清单与内置种子同源，避免重复显示
+          const seen = new Set(cur.map((x) => x.title).concat(AI_EVENTS_SEED.map((x) => x.title)));
   for (const e of j.events) {
   if (!e || !e.title || seen.has(e.title)) continue;
   if (aeExpired(e)) continue; // 后端返回的过期活动不并入，保持列表干净
@@ -673,7 +782,7 @@ Pages.skill = function () {
   if (!title) { UI.toast('请填写活动名称', 'warn'); return; }
   Store.update((st) => {
   st.skill.aiEvents = st.skill.aiEvents || [];
-  st.skill.aiEvents.push({ id: Store.uid(), title, cat: UI.val('#aeCat') || 'fan', type: UI.val('#aeType') || 'event', start: UI.val('#aeStart').trim(), deadline: UI.val('#aeDeadline').trim(), url: UI.val('#aeUrl').trim(), benefit: UI.val('#aeBenefit').trim(), tutorial: UI.val('#aeTutorial').trim(), org: UI.val('#aeOrg').trim() });
+  st.skill.aiEvents.push({ id: Store.uid(), title, cat: UI.val('#aeCat') || 'token', type: UI.val('#aeType') || 'event', start: UI.val('#aeStart').trim(), deadline: UI.val('#aeDeadline').trim(), url: UI.val('#aeUrl').trim(), benefit: UI.val('#aeBenefit').trim(), tutorial: UI.val('#aeTutorial').trim(), org: UI.val('#aeOrg').trim() });
   });
   UI.closeModal(); UI.toast('已添加活动', 'ok'); Pages.skill();
   } }
