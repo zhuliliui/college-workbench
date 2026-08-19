@@ -599,16 +599,6 @@ window.Pages = window.Pages || {};
         <div class="eb-stage-iv">${lab}</div>
         <div class="eb-stage-cnt">${cnt[i]} 词</div>
       </div>`).join('');
-    const hasFuture = fb.today + fb.tomorrow + fb.d2_3 + fb.d4_7 + fb.weekplus > 0;
-    const futureHtml = hasFuture ? `
-      <div class="eb-future">
-        <span class="eb-future-label">未来排期</span>
-        <span class="eb-future-chip">今天 ${fb.today}</span>
-        <span class="eb-future-chip">明天 ${fb.tomorrow}</span>
-        <span class="eb-future-chip">2-3天 ${fb.d2_3}</span>
-        <span class="eb-future-chip">4-7天 ${fb.d4_7}</span>
-        <span class="eb-future-chip">一周+ ${fb.weekplus}</span>
-      </div>` : '';
     const dueList = due.slice(0, 18).map((x) => `<span class="eb-due-item">${UI.esc(x.word)}</span>`).join('');
     const dueHtml = due.length ? `
       <div class="eb-due">
@@ -625,7 +615,6 @@ window.Pages = window.Pages || {};
       <div class="card-body">
         <div class="eb-desc">按遗忘曲线安排间隔复习：学完后在 <b>10分钟 / 1天 / 2天 / 4天 / 7天 / 15天</b> 回看，记得越牢，间隔越长。</div>
         <div class="eb-ladder">${ladder}</div>
-        ${futureHtml}
         ${dueHtml}
       </div>
     </div>`;

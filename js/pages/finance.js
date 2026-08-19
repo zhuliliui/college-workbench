@@ -186,14 +186,14 @@ window.Pages = window.Pages || {};
 
   <div class="card">
   <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-18.png" alt=""/>收支记录</div>
-  <div class="spacer"></div><button class="btn btn-sm" data-act="add-rec">＋ 记一笔</button>
-  <button class="collapse-btn" title="折叠">▾</button></div>
+  <div class="spacer"></div><button class="collapse-btn" title="折叠">▾</button></div>
   <div class="card-body">
-  <div class="flex-wrap gap8" style="margin-bottom:12px">
+  <div class="flex-wrap gap8" style="margin-bottom:12px;align-items:center">
   <select class="select" id="recFilter" style="max-width:150px" onchange="Pages.finance()">
   <option value="all" ${filterType === 'all' ? 'selected' : ''}>全部</option><option value="expense" ${filterType === 'expense' ? 'selected' : ''}>仅支出</option><option value="income" ${filterType === 'income' ? 'selected' : ''}>仅收入</option>
   </select>
   <input class="input" id="recMonth" type="month" value="${filterMonth}" style="max-width:160px" onchange="Pages.finance()"/>
+  <button class="btn btn-sm" data-act="add-rec">＋ 记一笔</button>
   </div>
   ${recsHtml}
   </div>
