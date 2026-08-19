@@ -254,6 +254,7 @@ Pages.skill = function () {
   { title: 'TRAE AI 创造力大赛（字节 AI 编程工具赛事）', cat: 'hackathon', date: '长期有效', url: 'https://www.trae.ai/', benefit: '用 TRAE AI 编程工具做应用参赛，奖金 + 官方曝光，大学生友好', org: '字节跳动', tutorial: 'https://www.trae.ai/' },
   { title: 'AI 先锋大赛：AI 应用创新赛事', cat: 'hackathon', date: '长期有效', url: 'https://www.baidu.com/s?wd=AI%E5%85%88%E9%94%8B%E5%A4%A7%E8%B5%9B', benefit: 'AI 应用 / 创意 / 算法赛道，报名参赛赢奖金与荣誉（赛事常新，可搜索最新报名）', org: '多方主办', tutorial: '' },
   { title: '人工智能创意赛（高校/行业 AI 创意竞赛）', cat: 'hackathon', date: '长期有效', url: 'https://www.baidu.com/s?wd=%E4%BA%BA%E5%B7%A5%E6%99%BA%E8%83%BD%E5%88%9B%E6%84%8F%E8%B5%9B', benefit: 'AI 创意项目征集 / 落地孵化，多数面向在校生，关注教务处通知报名', org: '多方主办', tutorial: '' },
+  { title: '小米百亿 Token 补贴：开发者免费调用大模型', cat: 'token', date: '长期有效', url: 'https://dev.mi.com/', benefit: '小米向开发者发放百亿 Token 补贴，可免费调用大模型能力（关注小米开放平台公告）', org: '小米', tutorial: 'https://dev.mi.com/' },
   ];
   const getAIEvents = () => {
   const s = Store.get().skill;
@@ -592,12 +593,13 @@ Pages.skill = function () {
   try {
   UI.toast('正在从后端同步最新活动…', 'ok');
   const ctrl = new AbortController();
-  const to = setTimeout(() => ctrl.abort(), 9000);
-  const r = await fetch(backend + '/api/ai/events', { signal: ctrl.signal });
+  const to = setTimeout(() => ctrl.abort(), 12000);
+  const r = await fetch(backend + '/api/ai/events?refresh=1', { signal: ctrl.signal });
   clearTimeout(to);
   if (r.ok) {
   const j = await r.json().catch(() => null);
   if (j && Array.isArray(j.events) && j.events.length) {
+  const live = j.source === 'live';
   Store.update((st) => {
   st.skill.aiEvents = (st.skill.aiEvents || []).filter((e) => !aeExpired(e));
   const cur = (st.skill.aiEvents || []).slice();
@@ -610,7 +612,7 @@ Pages.skill = function () {
   st.skill.aiEvents = cur;
   st.skill.aiEventsDate = j.date || '';
   });
-  UI.toast('已同步最新活动（' + j.events.length + ' 条）', 'ok');
+  UI.toast(live ? '已抓取最新活动（' + j.events.length + ' 条）' : '已同步活动清单（' + j.events.length + ' 条）', 'ok');
   Pages.skill();
   return;
   }

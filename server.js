@@ -1025,6 +1025,36 @@ async function fetchAIDomestic() {
   }
   return out;
 }
+// AI 活动·实时抓取：GitHub 搜 hackathon / AI 赛事类仓库（按最近更新排序）
+// 借鉴 TrendRadar/TrendReader 的「多源+关键词+实时」思路；很多黑客松/大赛以仓库形式在 GitHub 发布
+async function fetchAIEventsLive() {
+  const out = [];
+  const seen = new Set();
+  const queries = [
+    'hackathon+created:%3E2026-01-01',
+    'ai+hackathon+stars:%3E5',
+    'llm+hackathon',
+    'ai+competition+created:%3E2026-01-01',
+    'aigc+hackathon',
+  ];
+  for (const q of queries) {
+    try {
+      const u = 'https://api.github.com/search/repositories?q=' + q + '&sort=updated&order=desc&per_page=8';
+      const j = JSON.parse(await fetchText(u, 10000));
+      for (const it of (j.items || [])) {
+        const key = (it.full_name || '').toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const desc = (it.description || '').replace(/\s+/g, ' ').trim();
+        const title = it.full_name + (desc ? ' — ' + desc.slice(0, 70) : '');
+        const updated = (it.updated_at || '').slice(0, 10);
+        out.push({ title: title.slice(0, 110), cat: 'hackathon', date: updated, url: it.html_url || '', benefit: 'GitHub 实时收录的赛事/黑客松项目（更新于 ' + updated + '），点链接查看报名与详情', org: (it.owner && it.owner.login) || '', tutorial: '' });
+      }
+    } catch (e) { /* 单查询失败忽略（无梯子/限流），继续其他查询 */ }
+    if (out.length >= 12) break;
+  }
+  return out.slice(0, 12);
+}
 async function buildAITopics() {
   const collected = [];
   const seen = new Set();
@@ -1165,16 +1195,27 @@ const server = http.createServer(async (req, res) => {
     return;
   }
   // AI 活动：返回仓库维护的可报名活动清单（assets/ai-events.json，前端「实时刷新」时拉取合并）
+  // AI 活动：返回仓库维护的可报名活动清单（assets/ai-events.json）
+  // ?refresh=1 时额外尝试「实时抓取」：GitHub 搜 hackathon/AI 赛事仓库（海外源；本机无梯子自动回退清单）
   if (pathname === '/api/ai/events' && req.method === 'GET') {
+    if (parsed.query.refresh === '1') {
+      try {
+        const live = await fetchAIEventsLive();
+        if (live.length) {
+          send(res, 200, JSON.stringify({ date: todayISO(), source: 'live', events: live }), 'application/json');
+          return;
+        }
+      } catch (e) { console.warn('[ai-events] 实时抓取失败，回退清单', e.message); }
+    }
     try {
       const f = path.join(__dirname, 'assets', 'ai-events.json');
       if (fs.existsSync(f)) {
         const arr = JSON.parse(fs.readFileSync(f, 'utf8'));
-        send(res, 200, JSON.stringify({ date: todayISO(), events: Array.isArray(arr) ? arr : [] }), 'application/json');
+        send(res, 200, JSON.stringify({ date: todayISO(), source: 'list', events: Array.isArray(arr) ? arr : [] }), 'application/json');
         return;
       }
     } catch (e) { /* 文件缺失/损坏则返回空，前端回退本地种子 */ }
-    send(res, 200, JSON.stringify({ date: todayISO(), events: [] }), 'application/json');
+    send(res, 200, JSON.stringify({ date: todayISO(), source: 'list', events: [] }), 'application/json');
     return;
   }
   // 每日 AI 学习选题：后端实时抓取真实热门 AI 话题（?refresh=1 强制重新抓取一批）
