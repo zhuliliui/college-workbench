@@ -54,16 +54,24 @@ Pages.study = function () {
   }
   const byDate = {};
   s.tasks.forEach((t) => { if (t.due) { const k = D.fmtDate(D.parseLDT(t.due)); (byDate[k] = byDate[k] || []).push(t); } });
+  // 自动重置到今日（避免昨日视图滞留）
+  if (STUDY_VIEW.date < today) { STUDY_VIEW.date = today; STUDY_VIEW.month = today.slice(0, 7); }
+
   const dayCells = monthCells(STUDY_VIEW.month).map((cell) => {
     const dateStr = cell.other ? '' : (STUDY_VIEW.month + '-' + D.pad(cell.d));
-    let cls = 'cal-cell', dot = '', selStyle = '';
+    let cls = 'cal-cell', status = '', selStyle = '';
     if (!cell.other) {
       const ts = byDate[dateStr];
-      if (ts && ts.length) { const all = ts.every((t) => t.done); cls += all ? ' green' : ' red'; dot = '<div class="dot"></div>'; }
-      else dot = '<div class="dot" style="background:transparent"></div>';
+      if (ts && ts.length) {
+        const doneCount = ts.filter((t) => t.done).length;
+        const pendingCount = ts.length - doneCount;
+        const all = doneCount === ts.length;
+        cls += all ? ' green' : ' red';
+        status = `<div class="cal-status"><span class="ok">${doneCount}✓</span><span class="no">${pendingCount}✗</span></div>`;
+      } else status = '<div class="dot" style="background:transparent"></div>';
       if (dateStr === STUDY_VIEW.date) selStyle = ' style="outline:2px solid var(--primary);outline-offset:-2px"';
-    } else dot = '<div class="dot" style="background:transparent"></div>';
-    return `<div class="${cls} ${cell.other ? 'other' : ''}"${selStyle}${dateStr ? ` data-act="day" data-date="${dateStr}"` : ''}><div class="d">${cell.d}</div>${dot}</div>`;
+    } else status = '<div class="dot" style="background:transparent"></div>';
+    return `<div class="${cls} ${cell.other ? 'other' : ''}"${selStyle}${dateStr ? ` data-act="day" data-date="${dateStr}"` : ''}><div class="d">${cell.d}</div>${status}</div>`;
   }).join('');
 
   function itemHtml(t) {
@@ -82,7 +90,7 @@ Pages.study = function () {
   }
 
   const weekHead = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'].map((w) =>
-    `<div class="cal-cell" style="background:transparent;border:none;color:var(--text-soft);font-weight:700;aspect-ratio:auto;min-height:auto">${w}</div>`).join('');
+    `<div class="cal-cell cal-weekday" style="background:transparent;border:none;color:var(--text-soft);font-weight:700;aspect-ratio:auto;min-height:auto">${w}</div>`).join('');
 
   const monthCard = `
   <div class="card">

@@ -17,7 +17,7 @@ Pages.ddl = function () {
   const soon = tasks.filter((d) => !d.done && D.hoursLeft(d.due) <= 48).length;
 
   const stats = `
-  <div class="grid grid-3">
+  <div class="stats-row">
   <div class="stat accent"><div class="label"><img class="ic" src="assets/icons/hk-37.png" alt=""/>总 DDL 任务</div><div class="value">${total}</div></div>
   <div class="stat"><div class="label"><img class="ic" src="assets/icons/hk-41.png" alt=""/>即将到期</div><div class="value" style="color:var(--warn)">${soon}</div><div class="hint">48 小时内</div></div>
   <div class="stat"><div class="label"><img class="ic" src="assets/icons/hk-38.png" alt=""/>已完成</div><div class="value" style="color:var(--success)">${doneCount}</div></div>

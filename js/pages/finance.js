@@ -103,7 +103,7 @@ window.Pages = window.Pages || {};
   <div class="muted-text">每一笔都记下来，钱才知道去了哪</div>
   </div>
 
-  <div class="grid grid-3" style="margin-top:14px">
+  <div class="stats-row" style="margin-top:14px">
   <div class="stat"><div class="label"><img src="assets/icons/hk-23.png" alt="" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px"/>今日支出</div><div class="value" style="color:var(--danger)">${D.money(todayExp)}</div></div>
   <div class="stat"><div class="label"><img src="assets/icons/hk-23.png" alt="" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px"/>本月支出</div><div class="value" style="color:var(--danger)">${D.money(monthExp)}</div></div>
   <div class="stat"><div class="label"><img src="assets/icons/hk-02.png" alt="" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px"/>本月收入</div><div class="value" style="color:var(--success)">${D.money(monthInc)}</div></div>

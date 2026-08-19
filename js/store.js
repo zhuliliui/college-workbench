@@ -87,6 +87,8 @@
         aiEvents: [],             // AI活动·用户自建 [{id,title,cat,date,url,benefit,tutorial,org}]
         aiEventsDate: '',          // 已从后端加载活动的日期（同日不重复拉取）
       },
+      // 各页面卡片折叠状态（刷新后保持折叠）
+      collapsed: {},
       // 云端同步配置（默认码云 Gitee 私有仓库备份，国内直连免代理；亦可切 GitHub）
       cloud: {
         provider: 'gitee',

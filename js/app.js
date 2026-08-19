@@ -36,6 +36,7 @@
   UI.$all('.bn-item').forEach((el) => el.classList.toggle('active', el.dataset.nav === id));
   (window.Pages[pageId] || window.Pages.dashboard)();
   wireCommon();
+  if (window.UI && window.UI.applyCollapsedStates) window.UI.applyCollapsedStates();
   closeSidebar();
   window.scrollTo(0, 0);
   }
@@ -428,7 +429,13 @@
   const cbtn = e.target.closest && e.target.closest('.collapse-btn');
   if (cbtn) {
   const card = cbtn.closest('.card');
-  if (card) card.classList.toggle('collapsed');
+  if (card) {
+    card.classList.toggle('collapsed');
+    const titleEl = card.querySelector('.card-head .title');
+    const title = titleEl ? titleEl.textContent.trim() : '';
+    const key = (location.hash || '#') + '|' + title;
+    Store.update((st) => { st.collapsed = st.collapsed || {}; st.collapsed[key] = card.classList.contains('collapsed'); });
+  }
   return;
   }
   if (window.PageHandler) window.PageHandler(e);

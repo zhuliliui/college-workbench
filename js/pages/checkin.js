@@ -305,6 +305,18 @@ function renderFocusPlan(s) {
     </div>`;
   }).join('') : `<div class="empty soft"><div class="t">还没有打卡项目</div><div class="s">去「自律成长」添加</div></div>`;
 
+  // 今日到期的学习/复习计划任务（复习计划页创建）
+  const todayTasks = (s.tasks || []).filter((t) => t.due && D.fmtDate(D.parseLDT(t.due)) === today);
+  const planHtml = todayTasks.length ? todayTasks.map((t) => `
+    <div class="fp-item ${t.done ? 'done' : ''}">
+      <button class="fp-check" data-act="f-done-plan" data-id="${t.id}" aria-label="完成">${t.done ? '<img class="ic" src="assets/icons/hk-38.png" alt=""/>' : ''}</button>
+      <div class="fp-body"><div class="fp-name">${t.category ? `<span class="tag">${UI.esc(t.category)}</span>` : ''} ${UI.esc(t.name)}</div></div>
+      <div class="fp-ops">
+        <button class="btn btn-soft btn-icon" data-act="f-start-plan" data-id="${t.id}" title="开始"><img class="ic" src="assets/icons/hk-09.png" alt=""/></button>
+        <button class="btn btn-soft btn-icon" data-act="f-edit-plan" data-id="${t.id}" title="编辑"><img class="ic" src="assets/icons/hk-32.png" alt=""/></button>
+      </div>
+    </div>`).join('') : `<div class="muted-text">今天没有到期任务</div>`;
+
   return `
   <div class="card focus-plan-card">
     <div class="card-head">
@@ -314,7 +326,9 @@ function renderFocusPlan(s) {
       <button class="collapse-btn" title="折叠">▾</button>
     </div>
     <div class="card-body">
-      <div class="fp-section">临时任务</div>
+      <div class="fp-section">学习任务</div>
+      <div class="fp-list">${planHtml}</div>
+      <div class="fp-section mt12">临时任务</div>
       <div class="fp-add-line">
         <input class="input" id="fTempInput" placeholder="临时任务" autocomplete="off"/>
         <button class="btn fp-add-btn" data-act="f-add-temp"><img class="ic" src="assets/icons/hk-32.png" alt=""/> 新增</button>

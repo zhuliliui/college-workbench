@@ -121,7 +121,21 @@
   return '¥' + (Math.round(n * 100) / 100).toLocaleString('zh-CN', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
   }
 
-  window.UI = { esc, $, $all, toast, openModal, closeModal, confirm, val };
+  // 应用已保存的卡片折叠状态
+  function applyCollapsedStates() {
+    const state = window.Store && window.Store.get ? window.Store.get() : {};
+    const map = state.collapsed || {};
+    const page = location.hash || '#';
+    $all('.card').forEach((card) => {
+      const titleEl = card.querySelector('.card-head .title');
+      const title = titleEl ? titleEl.textContent.trim() : '';
+      const key = page + '|' + title;
+      if (map[key]) card.classList.add('collapsed');
+      else card.classList.remove('collapsed');
+    });
+  }
+
+  window.UI = { esc, $, $all, toast, openModal, closeModal, confirm, val, applyCollapsedStates };
   window.D = {
   pad, todayStr, monthKey, startOfDay, parseLDT, fmtDateTime, fmtDate,
   msLeft, daysLeftText, hoursLeft, money,
