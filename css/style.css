@@ -671,6 +671,10 @@ table.tbl tr:hover td { background: var(--surface-2); }
   border-radius: 10px;
   font-size: 13px;
 }
+@media (max-width: 560px) {
+  .exam-countdown { font-size: 11px; padding: 6px 8px; gap: 4px; }
+  .exam-countdown .tag { font-size: 10px; padding: 2px 6px; }
+}
 
 /* ============ 关键词演讲挑战（首页） ============ */
 .kc-pick-card {

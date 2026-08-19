@@ -637,10 +637,10 @@ window.Pages = window.Pages || {};
   const due = bank.filter((x) => (x.next || 0) <= now && ((x.box || 0) > 0 || (x.last || 0) > 0));
   const fresh = bank.filter((x) => x.box === 0 && (x.last || 0) === 0);
   const planHtml = ebbinghausPlanHtml(bank, due, fresh);
-  // 今日新学 / 复习 切换栏
+  // 今日学习 / 复习 切换栏
   const modeBarHtml = `<div class="flash-mode-bar">
-    <button class="btn btn-sm ${flashMode === 'new' ? '' : 'btn-soft'}" data-act="flash-mode-new">📘 今日新学 <span class="tag-mini">${fresh.length}</span></button>
-    <button class="btn btn-sm ${flashMode === 'review' ? '' : 'btn-soft'}" data-act="flash-mode-review">🔄 今日复习 <span class="tag-mini">${todayReviewed()}</span></button>
+    <button class="btn btn-sm ${flashMode === 'new' ? '' : 'btn-soft'}" data-act="flash-mode-new">📘 今日学习 <span class="tag-mini">${todayLearned()}</span></button>
+    <button class="btn btn-sm ${flashMode === 'review' ? '' : 'btn-soft'}" data-act="flash-mode-review">🔄 今日复习 <span class="tag-mini">${due.length}</span></button>
   </div>`;
   if (!session || session.idx >= session.queue.length) session = buildSession(bank, flashMode);
   // 空态也要能切换模式——单独 renderFlash 调 wrapper 后再绑事件
@@ -665,10 +665,10 @@ window.Pages = window.Pages || {};
   : `<div class="flash-extra muted-text">（暂无近义词/词组，可在「词库」为该词补充）</div>`;
   const html = planHtml + modeBarHtml + `
   <div class="card">
-  <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-27.png" alt=""/>${flashMode === 'review' ? '今日复习' : '今日新学'}</div>
+  <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-27.png" alt=""/>${flashMode === 'review' ? '今日复习' : '今日学习'}</div>
   <div class="spacer"></div>
   <span class="tag">${session.idx + 1} / ${session.queue.length}</span>
-  <span class="tag" style="background:var(--primary-soft);color:var(--primary-deep)"><img src="assets/icons/hk-27.png" alt="" style="width:12px;height:12px;vertical-align:-2px;margin-right:3px"/>${flashMode === 'review' ? '今日已复习' : '今日新学'} ${flashMode === 'review' ? todayReviewed() + '/' + session.queue.length : learned + '/20'}</span></div>
+  <span class="tag" style="background:var(--primary-soft);color:var(--primary-deep)"><img src="assets/icons/hk-27.png" alt="" style="width:12px;height:12px;vertical-align:-2px;margin-right:3px"/>${flashMode === 'review' ? '今日已复习' : '今日学习'} ${flashMode === 'review' ? todayReviewed() + '/' + session.queue.length : learned + '/20'}</span></div>
   <div class="card-body">
   <div class="flash-card ${session.flipped ? 'flipped' : ''}" id="flash">
   <div class="flash-inner">
@@ -691,7 +691,7 @@ window.Pages = window.Pages || {};
   <button class="btn btn-danger btn-sm" data-act="forget"> 还没记住</button>
   <button class="btn btn-success btn-sm" data-act="remember"> 记住了</button>
   </div>
-  <div class="muted-text mt12 center">${flashMode === 'new' ? ' 一天累计学完 20 个单词，自动奖励 +1 元（当前还差 ' + left + ' 个）' : ' 复习模式：记得牢就点「记住了」（推进间隔），不打断今日新学计数'}</div>
+  <div class="muted-text mt12 center">${flashMode === 'new' ? ' 一天累计学完 20 个单词，自动奖励 +1 元（当前还差 ' + left + ' 个）' : ' 复习模式：记得牢就点「记住了」（推进间隔），不打断今日学习计数'}</div>
   </div>
   </div>` + dictateCardHtml(dList, dueWords());
   const w = wrap(body, html);
