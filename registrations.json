@@ -84,11 +84,38 @@
       {
         "id": "msakffgpubdmvx",
         "name": "qt大项目",
-        "due": "2026-08-15T00:00",
-        "done": false
+        "due": "2026-08-19T00:00",
+        "done": false,
+        "remindBefore": 120,
+        "type": "ddl"
       }
     ],
-    "tasks": [],
+    "tasks": [
+      {
+        "id": "msokb7qbv2ibkn",
+        "name": "[网络安全] One day",
+        "due": "",
+        "done": false,
+        "est": 0,
+        "category": "技能学习"
+      },
+      {
+        "id": "msij60u6r7c9fj",
+        "name": "[QT] qt大项目",
+        "due": "",
+        "done": false,
+        "est": 0,
+        "category": "技能学习"
+      },
+      {
+        "id": "msij26s49a98ae",
+        "name": "[QT] qt3天",
+        "due": "",
+        "done": false,
+        "est": 0,
+        "category": "技能学习"
+      }
+    ],
     "reminders": [
       1440,
       720,
@@ -96,7 +123,7 @@
     ],
     "push": null,
     "pushedLog": {},
-    "updatedAt": 1786035782573
+    "updatedAt": 1787065400355
   },
   "cw_mseez0504w9kj6": {
     "ddls": [

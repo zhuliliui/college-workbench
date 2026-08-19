@@ -222,6 +222,7 @@ Pages.skill = function () {
   { key: 'token', label: '🔑 Token', name: 'Token/算力' },
   { key: 'inner', label: '🧪 内测', name: '模型内测' },
   { key: 'hackathon', label: '🏆 黑客松', name: '黑客松/大赛' },
+  { key: 'tool', label: '🧰 工具', name: '工具/资源' },
   ];
   // 内置活动种子（真实可报名/长期有效；date 为 '长期有效' 或 YYYY-MM-DD 截止日）
   const AI_EVENTS_SEED = [
@@ -247,6 +248,12 @@ Pages.skill = function () {
   { title: 'Datawhale AI 夏令营 / 组队学习', cat: 'hackathon', date: '长期有效', url: 'https://github.com/datawhalechina', benefit: '免费组队学习 + 实践项目 + 开源社区', org: 'Datawhale', tutorial: '' },
   { title: '智源 BAAI：黑客松 / 大模型开放日', cat: 'hackathon', date: '长期有效', url: 'https://hub.baai.ac.cn/', benefit: '大模型开放平台 + 社区赛事', org: '智源研究院', tutorial: '' },
   { title: 'Hugging Face 社区挑战赛', cat: 'hackathon', date: '长期有效', url: 'https://huggingface.co/challenges', benefit: '模型微调/应用挑战 + 社区声望 + 奖励', org: 'Hugging Face', tutorial: 'https://huggingface.co/learn' },
+  { title: 'Cursor 无限续杯：认证学生额度到期自动续期', cat: 'student', date: '长期有效', url: 'https://cursor.com/account', benefit: '学生认证后免费额度持续循环续期（Pro 计划常用玩法），edu 邮箱可认证', org: 'Cursor', tutorial: 'https://cursor.com/education' },
+  { title: '免费 API 中转站（One API / New API 公益聚合）', cat: 'tool', date: '长期有效', url: 'https://github.com/songquanpeng/one-api', benefit: '聚合 DeepSeek / GPT / Claude 等多家模型免费额度；请自行甄别站点安全性与合规性', org: '开源社区', tutorial: 'https://github.com/songquanpeng/one-api' },
+  { title: '自备网络通道：Cloudflare WARP 官方免费版', cat: 'tool', date: '长期有效', url: 'https://one.one.one.one/', benefit: '官方免费加速/加密通道（国内可用性依网络而定），使用请遵守当地法律法规', org: 'Cloudflare', tutorial: 'https://developers.cloudflare.com/warp-client/' },
+  { title: 'TRAE AI 创造力大赛（字节 AI 编程工具赛事）', cat: 'hackathon', date: '长期有效', url: 'https://www.trae.ai/', benefit: '用 TRAE AI 编程工具做应用参赛，奖金 + 官方曝光，大学生友好', org: '字节跳动', tutorial: 'https://www.trae.ai/' },
+  { title: 'AI 先锋大赛：AI 应用创新赛事', cat: 'hackathon', date: '长期有效', url: 'https://www.baidu.com/s?wd=AI%E5%85%88%E9%94%8B%E5%A4%A7%E8%B5%9B', benefit: 'AI 应用 / 创意 / 算法赛道，报名参赛赢奖金与荣誉（赛事常新，可搜索最新报名）', org: '多方主办', tutorial: '' },
+  { title: '人工智能创意赛（高校/行业 AI 创意竞赛）', cat: 'hackathon', date: '长期有效', url: 'https://www.baidu.com/s?wd=%E4%BA%BA%E5%B7%A5%E6%99%BA%E8%83%BD%E5%88%9B%E6%84%8F%E8%B5%9B', benefit: 'AI 创意项目征集 / 落地孵化，多数面向在校生，关注教务处通知报名', org: '多方主办', tutorial: '' },
   ];
   const getAIEvents = () => {
   const s = Store.get().skill;
