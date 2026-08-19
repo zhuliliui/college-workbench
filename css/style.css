@@ -1164,6 +1164,11 @@ table.tbl tr:hover td { background: var(--surface-2); }
 .ae-cat-inner { background: rgba(147,51,234,.12); color: #7c3aed; }
 .ae-cat-hackathon { background: rgba(220,38,38,.12); color: #dc2626; }
 .ae-cat-tool { background: rgba(75,85,99,.14); color: #374151; }
+.ae-type-event { background: rgba(220,38,38,.12); color: #dc2626; }
+.ae-type-daily { background: rgba(5,150,105,.14); color: #047857; }
+.ae-type-tool { background: rgba(75,85,99,.14); color: #374151; }
+.ae-time.ae-urgent { color: var(--danger, #dc2626); font-weight: 700; }
+.ae-time.ae-soon { color: #b45309; font-weight: 600; }
 @media (max-width: 560px) {
   .ae-row { flex-direction: column; align-items: stretch; gap: 8px; }
   .ae-row .ae-ops { justify-content: flex-end; }
