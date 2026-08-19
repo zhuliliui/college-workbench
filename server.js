@@ -1036,6 +1036,12 @@ async function fetchAIEventsLive() {
     'llm+hackathon',
     'ai+competition+created:%3E2026-01-01',
     'aigc+hackathon',
+    'ai+creative+competition',
+    'llm+application+hackathon',
+    'chinese+hackathon+language:Chinese',
+    'ai+competition+language:Chinese',
+    'mlh+hackathon',
+    'devpost+hackathon',
   ];
   for (const q of queries) {
     try {

@@ -27,5 +27,14 @@
   { "title": "TRAE AI 创造力大赛（字节 AI 编程工具赛事）", "cat": "hackathon", "date": "长期有效", "url": "https://www.trae.ai/", "benefit": "用 TRAE AI 编程工具做应用参赛，奖金 + 官方曝光，大学生友好", "org": "字节跳动", "tutorial": "https://www.trae.ai/" },
   { "title": "AI 先锋大赛：AI 应用创新赛事", "cat": "hackathon", "date": "长期有效", "url": "https://www.baidu.com/s?wd=AI%E5%85%88%E9%94%8B%E5%A4%A7%E8%B5%9B", "benefit": "AI 应用 / 创意 / 算法赛道，报名参赛赢奖金与荣誉（赛事常新，可搜索最新报名）", "org": "多方主办", "tutorial": "" },
   { "title": "人工智能创意赛（高校/行业 AI 创意竞赛）", "cat": "hackathon", "date": "长期有效", "url": "https://www.baidu.com/s?wd=%E4%BA%BA%E5%B7%A5%E6%99%BA%E8%83%BD%E5%88%9B%E6%84%8F%E8%B5%9B", "benefit": "AI 创意项目征集 / 落地孵化，多数面向在校生，关注教务处通知报名", "org": "多方主办", "tutorial": "" },
-  { "title": "小米百亿 Token 补贴：开发者免费调用大模型", "cat": "token", "date": "长期有效", "url": "https://dev.mi.com/", "benefit": "小米向开发者发放百亿 Token 补贴，可免费调用大模型能力（关注小米开放平台公告）", "org": "小米", "tutorial": "https://dev.mi.com/" }
+  { "title": "小米百亿 Token 补贴：开发者免费调用大模型", "cat": "token", "date": "长期有效", "url": "https://dev.mi.com/", "benefit": "小米向开发者发放百亿 Token 补贴，可免费调用大模型能力（关注小米开放平台公告）", "org": "小米", "tutorial": "https://dev.mi.com/" },
+  { "title": "华为云开发者大赛（AI / 云原生赛道）", "cat": "hackathon", "date": "长期有效", "url": "https://developer.huaweicloud.com/devevents.html", "benefit": "AI 应用/大模型/云原生赛道，奖金 + 华为生态资源，长期举办", "org": "华为云", "tutorial": "" },
+  { "title": "讯飞 AI 开发者大赛（iFLYTEK Challenge）", "cat": "hackathon", "date": "长期有效", "url": "https://challenge.xfyun.cn/", "benefit": "星火大模型 + 行业数据集赛道，奖金池 + 算力，学生可组队", "org": "科大讯飞", "tutorial": "" },
+  { "title": "腾讯云 AI 开发者大赛", "cat": "hackathon", "date": "长期有效", "url": "https://cloud.tencent.com/act/event", "benefit": "AI 应用创新赛事，腾讯云资源 + 奖金", "org": "腾讯云", "tutorial": "" },
+  { "title": "智谱 AIIP 开发者大赛 / AI 应用赛", "cat": "hackathon", "date": "长期有效", "url": "https://open.bigmodel.cn/", "benefit": "用 GLM 模型做应用参赛，奖金 + 免费 Token 资源", "org": "智谱AI", "tutorial": "" },
+  { "title": "全国大学生 AI 创新应用大赛（计算机设计/AI 赛道）", "cat": "hackathon", "date": "长期有效", "url": "https://www.baidu.com/s?wd=%E5%85%A8%E5%9B%BD%E5%A4%A7%E5%AD%A6%E7%94%9FAI%E5%88%9B%E6%96%B0%E5%BA%94%E7%94%A8%E5%A4%A7%E8%B5%9B", "benefit": "面向在校生的 AI 应用创新赛事，获奖可保研/综测加分，关注教务处通知", "org": "教育部/多方", "tutorial": "" },
+  { "title": "MLH (Major League Hacking) 全球黑客松", "cat": "hackathon", "date": "长期有效", "url": "https://mlh.io/", "benefit": "全球大学生黑客松组织，全年多场线上/线下赛事，获奖简历加分", "org": "MLH", "tutorial": "https://mlh.io/events" },
+  { "title": "Devpost 黑客松平台（全球 AI 赛事聚合）", "cat": "hackathon", "date": "长期有效", "url": "https://devpost.com/hackathons", "benefit": "全球黑客松聚合平台，线上参赛 + 奖金 + 企业合作，实时更新", "org": "Devpost", "tutorial": "" },
+  { "title": "开源中国 OSC 黑客松 / 码云 Gitee 大赛", "cat": "hackathon", "date": "长期有效", "url": "https://gitee.com/", "benefit": "国产开源社区黑客松与大赛，国内直连，学生友好", "org": "开源中国", "tutorial": "" },
+  { "title": "CSDN 社区 AI 竞赛与创作大赛", "cat": "hackathon", "date": "长期有效", "url": "https://www.csdn.net/", "benefit": "CSDN 常办 AI 创作/算法竞赛，写文章/做项目均可参与", "org": "CSDN", "tutorial": "" }
 ]
