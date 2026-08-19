@@ -600,11 +600,11 @@ window.Pages = window.Pages || {};
         <div class="eb-stage-cnt">${cnt[i]} 词</div>
       </div>`).join('');
     const dueList = due.slice(0, 18).map((x) => `<span class="eb-due-item">${UI.esc(x.word)}</span>`).join('');
-    const dueHtml = due.length ? `
+    const dueHtml = `
       <div class="eb-due">
         <div class="eb-future-label">今日到期复习（${due.length}${due.length > 18 ? ' · 显示前18' : ''}）</div>
-        <div class="eb-due-list">${dueList}</div>
-      </div>` : '';
+        <div class="eb-due-list">${due.length ? dueList : '<span class="muted-text eb-empty">暂无到期单词</span>'}</div>
+      </div>`;
     return `
     <div class="card ebbinghaus-card">
       <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-06.png" alt=""/>艾宾浩斯复习计划</div>

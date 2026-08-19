@@ -23,9 +23,12 @@ Pages.discipline = function () {
   </div>
   </div>
   <div class="muted-text mt8">本月已打卡 <b style="color:var(--primary-deep)">${monthCount}</b> 天</div>
-  <button class="btn ${checked ? 'btn-success' : ''} btn-block mt12" data-act="check" data-id="${it.id}">
-  ${checked ? ' 今日已打卡' : '○ 今日打卡（+1元）'}
+  <div class="checkin-row flex-between mt8">
+  <span class="muted-text" style="font-size:12px">${checked ? '已打卡 ✓' : '今日还没打卡'}</span>
+  <button class="btn ${checked ? 'btn-soft' : 'btn-success'} btn-check" data-act="check" data-id="${it.id}">
+  ${checked ? '<img class="ic" src="assets/icons/hk-38.png" alt=""/> 今日已打卡' : '<img class="ic" src="assets/icons/hk-09.png" alt=""/> 今日打卡（+1元）'}
   </button>
+  </div>
   </div>`;
   }).join('') + '</div>'
   : `<div class="empty"><img class="emoji" src="assets/icons/hk-06.png" alt=""/><div class="t">还没有打卡项目</div><div class="s">添加作息、运动、阅读、技能练习等，每天打卡攒奖励</div></div>`;

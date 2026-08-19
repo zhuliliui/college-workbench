@@ -620,18 +620,25 @@ img.ic { width: 20px; height: 20px; object-fit: contain; vertical-align: middle;
   .piggy-balance { font-size: 32px; }
   .stat .value { font-size: 22px; }
 
-  /* 手机端整体紧凑化：首行添加/统计模块不再撑满全屏 */
+  /* 手机端整体紧凑化：首行添加/统计模块不再撑满全屏（按钮保留原样以容纳图标） */
   .card { padding: 13px 12px; margin-bottom: 12px; }
   .card-head { margin-bottom: 10px; gap: 8px; }
   .card-head .title { font-size: 14.5px; }
   .input, .textarea, .select { padding: 8px 10px; font-size: 14px; border-radius: 10px; }
-  .btn { padding: 8px 12px; font-size: 13px; border-radius: 11px; }
-  .btn-sm { padding: 6px 10px; font-size: 12.5px; }
   .row { gap: 8px; }
   .row > * { min-width: 100px; }
   .field label { font-size: 12px; }
   .fp-add-line, .flex-wrap { gap: 6px; }
   .stats-row .stat .label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+
+  /* AI 选题列表项：右侧 3 个图标竖排（链接 / 已读 / 删除） */
+  .ai-topic-row { align-items: center; }
+  .ai-ops { flex-direction: column; gap: 4px; }
+  .ai-ops .btn-icon { width: 30px; height: 30px; }
+  .ai-ops .ic { width: 16px; height: 16px; }
+
+  /* discipline 自律打卡卡片：今日打卡按钮由 btn-block 改为紧凑 */
+  .checkin-row .btn-check { padding: 7px 14px; font-size: 13px; border-radius: 11px; display: inline-flex; width: auto; }
 }
 
 /* 表格横向滑动 */

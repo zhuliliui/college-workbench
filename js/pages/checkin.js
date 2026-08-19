@@ -292,30 +292,28 @@ function renderFocusPlan(s) {
       </div>
     </div>`).join('') : `<div class="muted-text">还没有临时任务</div>`;
 
-  const checkinHtml = items.length ? items.map((it) => {
-    const checked = !!it.records[today];
-    const mk = D.monthKey();
-    const monthCount = Object.keys(it.records || {}).filter((dt) => dt.slice(0, 7) === mk).length;
+  // 今日到期的学习/复习计划任务自动并入打卡项目（统一显示，复用 f-done-plan 事件）
+  const todayTasks = (s.tasks || []).filter((t) => t.due && D.fmtDate(D.parseLDT(t.due)) === today);
+  const todayTaskItems = todayTasks.map((t) => ({ id: 'task:' + t.id, name: t.name, taskId: t.id, category: t.category || '学习', done: !!t.done }));
+  const mergedItems = items.concat(todayTaskItems);
+  const checkinHtml = mergedItems.length ? mergedItems.map((it) => {
+    const isTask = it.id.indexOf('task:') === 0;
+    const checked = isTask ? it.done : !!it.records[today];
+    const monthCount = isTask ? (it.done ? 1 : 0) : Object.keys(it.records || {}).filter((dt) => dt.slice(0, 7) === D.monthKey()).length;
+    const act = isTask ? 'f-done-plan' : 'f-check';
+    const startAct = isTask ? 'f-start-plan' : 'f-start-item';
+    const startId = isTask ? it.taskId : it.id;
+    const nameHtml = isTask
+      ? `<span class="tag">学习</span> ${UI.esc(it.name)}`
+      : `${it.icon ? UI.esc(it.icon) : '<img class="ic" src="assets/icons/hk-06.png" alt=""/>'} ${UI.esc(it.name)}`;
     return `<div class="fp-item ${checked ? 'done' : ''}">
-      <button class="fp-check" data-act="f-check" data-id="${it.id}" aria-label="打卡">${checked ? '<img class="ic" src="assets/icons/hk-38.png" alt=""/>' : ''}</button>
-      <div class="fp-body"><div class="fp-name">${it.icon ? UI.esc(it.icon) : '<img class="ic" src="assets/icons/hk-06.png" alt=""/>'} ${UI.esc(it.name)}</div><div class="fp-tags"><span class="fp-tag tag-soft">本月 ${monthCount} 天</span></div></div>
+      <button class="fp-check" data-act="${act}" data-id="${isTask ? it.taskId : it.id}" aria-label="完成">${checked ? '<img class="ic" src="assets/icons/hk-38.png" alt=""/>' : ''}</button>
+      <div class="fp-body"><div class="fp-name">${nameHtml}</div><div class="fp-tags">${isTask ? '<span class="fp-tag tag-soft">今日学习</span>' : `<span class="fp-tag tag-soft">本月 ${monthCount} 天</span>`}</div></div>
       <div class="fp-ops">
-        <button class="btn btn-soft btn-icon" data-act="f-start-item" data-id="${it.id}" title="开始"><img class="ic" src="assets/icons/hk-09.png" alt=""/></button>
+        <button class="btn btn-soft btn-icon" data-act="${startAct}" data-id="${startId}" title="开始"><img class="ic" src="assets/icons/hk-09.png" alt=""/></button>
       </div>
     </div>`;
-  }).join('') : `<div class="empty soft"><div class="t">还没有打卡项目</div><div class="s">去「自律成长」添加</div></div>`;
-
-  // 今日到期的学习/复习计划任务（复习计划页创建）
-  const todayTasks = (s.tasks || []).filter((t) => t.due && D.fmtDate(D.parseLDT(t.due)) === today);
-  const planHtml = todayTasks.length ? todayTasks.map((t) => `
-    <div class="fp-item ${t.done ? 'done' : ''}">
-      <button class="fp-check" data-act="f-done-plan" data-id="${t.id}" aria-label="完成">${t.done ? '<img class="ic" src="assets/icons/hk-38.png" alt=""/>' : ''}</button>
-      <div class="fp-body"><div class="fp-name">${t.category ? `<span class="tag">${UI.esc(t.category)}</span>` : ''} ${UI.esc(t.name)}</div></div>
-      <div class="fp-ops">
-        <button class="btn btn-soft btn-icon" data-act="f-start-plan" data-id="${t.id}" title="开始"><img class="ic" src="assets/icons/hk-09.png" alt=""/></button>
-        <button class="btn btn-soft btn-icon" data-act="f-edit-plan" data-id="${t.id}" title="编辑"><img class="ic" src="assets/icons/hk-32.png" alt=""/></button>
-      </div>
-    </div>`).join('') : `<div class="muted-text">今天没有到期任务</div>`;
+  }).join('') : `<div class="empty soft"><div class="t">还没有打卡项目</div><div class="s">去「自律成长」添加，或在「复习计划」创建今日学习任务</div></div>`;
 
   return `
   <div class="card focus-plan-card">
@@ -326,9 +324,7 @@ function renderFocusPlan(s) {
       <button class="collapse-btn" title="折叠">▾</button>
     </div>
     <div class="card-body">
-      <div class="fp-section">学习任务</div>
-      <div class="fp-list">${planHtml}</div>
-      <div class="fp-section mt12">临时任务</div>
+      <div class="fp-section">临时任务</div>
       <div class="fp-add-line">
         <input class="input" id="fTempInput" placeholder="临时任务" autocomplete="off"/>
         <button class="btn fp-add-btn" data-act="f-add-temp"><img class="ic" src="assets/icons/hk-32.png" alt=""/> 新增</button>
