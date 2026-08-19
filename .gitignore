@@ -26,3 +26,6 @@ _icon_gen/
 assets/icons/original/
 remove_icon_bg.py
 process_special_icons.py
+
+# CI 产物（APK 制品，不入库）
+apk-artifact.zip
