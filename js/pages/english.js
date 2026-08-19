@@ -1,5 +1,5 @@
 /* ============================================================
-  页面7 · 考研英语学习（PDF解析 / 闪卡 / 默写 / 外刊）
+  页面7 · 英语学习（PDF解析 / 闪卡 / 默写 / 外刊）
   ============================================================ */
 window.Pages = window.Pages || {};
 (function () {
@@ -2214,7 +2214,7 @@ window.Pages = window.Pages || {};
   <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-33.png" alt=""/>导入单词</div>
   <div class="spacer"></div><button class="collapse-btn" title="折叠">▾</button></div>
   <div class="card-body">
-  <div class="muted-text" style="margin-bottom:10px">支持上传考研英语词汇 PDF（如单词书导出的词汇表）。解析器以「单词 + 音标」为锚点逐条提取，<b>中文释义直接取自原书、绝不错位</b>，长释义换行也能正确归属。若仍失败（如扫描图片版），可改用「仅提取英文 + 联网补全中文」或「粘贴文本解析」。</div>
+  <div class="muted-text" style="margin-bottom:10px">支持上传英语词汇 PDF（如单词书导出的词汇表）。解析器以「单词 + 音标」为锚点逐条提取，<b>中文释义直接取自原书、绝不错位</b>，长释义换行也能正确归属。若仍失败（如扫描图片版），可改用「仅提取英文 + 联网补全中文」或「粘贴文本解析」。</div>
   <div class="seg-group" style="margin-bottom:12px">
   <label class="seg-label"><input type="radio" name="parseMode" value="bilingual" checked/> 智能解析（英/音标/中文）</label>
   <label class="seg-label"><input type="radio" name="parseMode" value="enOnly"/> 仅提取英文，联网补全中文</label>

@@ -63,7 +63,7 @@
         nextPlan: {},
         summary: {},
       },
-      // 考研英语
+      // 英语学习
       english: {
         words: [],                // 唯一个人背诵词库
         articles: [],             // 外刊收藏

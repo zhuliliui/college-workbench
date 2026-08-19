@@ -6,7 +6,7 @@
   { id: 'dashboard', emoji: '<img class="emoji" src="assets/icons/hk-07.png" alt=""/>', label: '万能工作台' },
   { id: 'checkin', emoji: '<img class="emoji" src="assets/icons/hk-09.png" alt=""/>', label: '专注打卡' },
   { id: 'skill', emoji: '<img class="emoji" src="assets/icons/hk-01.png" alt=""/>', label: '技能学习' },
-  { id: 'english', emoji: '<img class="emoji" src="assets/icons/hk-27.png" alt=""/>', label: '考研英语学习' },
+  { id: 'english', emoji: '<img class="emoji" src="assets/icons/hk-27.png" alt=""/>', label: '英语学习' },
   { id: 'study', emoji: '<img class="emoji" src="assets/icons/hk-38.png" alt=""/>', label: '学习复习计划' },
   { id: 'ddl', emoji: '<img class="emoji" src="assets/icons/hk-41.png" alt=""/>', label: '学业DDL倒计时' },
   { id: 'finance', emoji: '<img class="emoji" src="assets/icons/hk-02.png" alt=""/>', label: '记账存钱' },
@@ -17,7 +17,7 @@
   const TITLES = {
   dashboard: '万能工作台', study: '学习复习计划', ddl: '学业DDL倒计时',
   finance: '记账存钱', discipline: '自律成长', travel: '假期旅行规划',
-  review: '月度目标复盘', english: '考研英语学习', skill: '技能学习', checkin: '专注打卡计时',
+  review: '月度目标复盘', english: '英语学习', skill: '技能学习', checkin: '专注打卡计时',
   };
   // 首页与学习计划已拆分为独立页面（dashboard.js / study.js）
 
