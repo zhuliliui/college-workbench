@@ -514,6 +514,7 @@ Pages.skill = function () {
   ? x.tags.map((tg) => `<span class="tag">${UI.esc(tg)}</span>`).join('')
   : '';
   return `<div class="sk-course ${x.done ? 'done' : ''}" data-id="${x.id}">
+  <div class="sk-top">
   <div class="sk-ic">${x.icon ? UI.esc(x.icon) : '<img class="ic" src="assets/icons/hk-27.png" alt=""/>'}</div>
   <div class="sk-main">
   <div class="sk-title">${UI.esc(x.title)}</div>
@@ -521,14 +522,13 @@ Pages.skill = function () {
   ${x.desc ? `<div class="sk-desc">${UI.esc(x.desc)}</div>` : ''}
   ${x.duration ? `<div class="sk-dur"> 预估 ${UI.esc(x.duration)}</div>` : ''}
   </div>
+  </div>
   <div class="sk-ops">
-  <div class="row2">
+  <button class="sk-check" data-act="check" data-id="${x.id}" title="打卡"><img class="ic" src="assets/icons/${x.done ? 'hk-38.png' : 'hk-06.png'}" alt=""/></button>
   ${x.url ? `<button class="btn btn-soft btn-icon" data-act="link" data-id="${x.id}" title="打开外链"><img class="ic" src="assets/icons/hk-29.png" alt=""/></button>` : ''}
   <button class="btn btn-soft btn-icon sk-bili" data-act="bili" data-id="${x.id}" title="在 B 站搜相关教程"><img class="ic" src="assets/icons/hk-bili.png" alt=""/></button>
   <button class="btn btn-soft btn-icon" data-act="edit-course" data-id="${x.id}" title="编辑"><img class="ic" src="assets/icons/hk-32.png" alt=""/></button>
   <button class="btn btn-soft btn-icon" data-act="del-course" data-id="${x.id}" title="删除"><img class="ic" src="assets/icons/hk-18.png" alt=""/></button>
-  </div>
-  <button class="sk-check" data-act="check" data-id="${x.id}" title="打卡"><img class="ic" src="assets/icons/${x.done ? 'hk-38.png' : 'hk-06.png'}" alt=""/></button>
   </div>
   </div>`;
   }).join('');

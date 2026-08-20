@@ -298,9 +298,6 @@ img.ic { width: 20px; height: 20px; object-fit: contain; vertical-align: middle;
 .progress-card .progress-stats { width: 100%; }
 .progress-card .progress-stats .ring-stats { flex-wrap: nowrap; }
 .progress-card .progress-stats .ring-stat { min-width: 0; }
-.progress-card .progress-actions { display: flex; gap: 16px; justify-content: center; margin-top: 2px; }
-.progress-card .progress-actions .btn-icon { width: 44px; height: 44px; border-radius: 14px; }
-.progress-card .progress-actions .btn-icon .ic { width: 22px; height: 22px; }
 
 /* ============ 弹窗 ============ */
 .modal-mask {
@@ -963,13 +960,14 @@ table.tbl tr:hover td { background: var(--surface-2); }
 .sk-topic .ops .btn-icon { width: 32px; height: 32px; font-size: 14px; }
 
 .sk-course {
-  display: flex; align-items: flex-start; gap: 14px;
+  display: flex; flex-direction: column; gap: 12px;
   padding: 16px 18px; border-radius: var(--radius);
   background: var(--surface); border: 1px solid var(--line);
   box-shadow: var(--shadow-sm); margin-bottom: 14px;
   transition: box-shadow .2s, border-color .2s;
 }
 .sk-course.done { background: var(--surface-2); }
+.sk-course .sk-top { display: flex; align-items: flex-start; gap: 14px; }
 .sk-course .sk-ic { width: 44px; height: 44px; flex: 0 0 44px; border-radius: 12px; background: var(--primary-soft); display: grid; place-items: center; font-size: 22px; }
 .sk-course .sk-main { flex: 1; min-width: 0; }
 .sk-course .sk-title { font-size: 15.5px; font-weight: 700; color: var(--text); }
@@ -977,8 +975,7 @@ table.tbl tr:hover td { background: var(--surface-2); }
 .sk-course .sk-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
 .sk-course .sk-desc { font-size: 13px; color: var(--text-soft); margin-top: 6px; line-height: 1.6; }
 .sk-course .sk-dur { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-faint); margin-top: 8px; }
-.sk-course .sk-ops { display: flex; flex-direction: column; gap: 8px; flex: 0 0 auto; align-items: flex-end; }
-.sk-course .sk-ops .row2 { display: flex; flex-direction: column; gap: 6px; }
+.sk-course .sk-ops { display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: flex-end; }
 .sk-course .sk-check {
   width: 40px; height: 40px; border-radius: 12px;
   border: 1.5px solid var(--primary); background: #fff; color: var(--primary-deep);
@@ -988,9 +985,8 @@ table.tbl tr:hover td { background: var(--surface-2); }
 .sk-course.done .sk-check { background: var(--primary); color: #fff; border-color: var(--primary); }
 
 @media (max-width: 560px) {
-  .sk-course { flex-wrap: nowrap; gap: 8px; }
-  .sk-course .sk-ops { width: auto; flex: 0 0 40px; flex-direction: column; align-items: center; justify-content: flex-start; gap: 6px; }
-  .sk-course .sk-ops .row2 { gap: 4px; }
+  .sk-course { gap: 10px; }
+  .sk-course .sk-ops { gap: 6px; justify-content: flex-start; }
   .sk-course .sk-check { width: 34px; height: 34px; border-radius: 10px; }
 }
 

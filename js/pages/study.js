@@ -162,11 +162,6 @@ Pages.study = function () {
     <div class="card-body">
       <div class="progress-top">${ring}<div class="progress-cap">完成率</div></div>
       <div class="progress-stats">${stats}</div>
-      <div class="progress-actions">
-        <button class="btn btn-soft btn-icon" data-act="add" title="新增任务"><img class="ic" src="assets/icons/hk-32.png" alt=""/></button>
-        <button class="btn btn-soft btn-icon" data-act="view-all" title="查看全部任务"><img class="ic" src="assets/icons/hk-37.png" alt=""/></button>
-        <button class="btn btn-soft btn-icon" data-act="today" title="返回今天"><img class="ic" src="assets/icons/hk-38.png" alt=""/></button>
-      </div>
     </div>
   </div>
 
