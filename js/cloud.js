@@ -153,6 +153,7 @@
 
   // 每天 23 点自动上传备份（页面需处于打开状态；每分钟检查一次到点即传）
   // - 已配置云端才启用；当天已成功自动备份过则跳过（st.cloud.autoBackupDate 记录）
+  // - 错过补传：打开页面时若发现「昨天(或更早)没备份成功」，立即补一次（例如昨晚页面关了）
   // - 成功静默（记录日期即可）；失败只提示 1 次（sessionStorage 防重复）
   let _autoRunning = false;
   function scheduleAutoBackup() {
@@ -161,20 +162,23 @@
   if (!configured()) return; // 未配置云端（无 owner/repo/token）不启用
   const now = new Date();
   const today = D.todayStr();
+  const yesterday = D.todayStr(new Date(now.getTime() - 86400000));
   const st = Store.get().cloud || {};
-  if (now.getHours() < 23) return; // 未到 23 点
   if (st.autoBackupDate === today) return; // 今天已自动备份过
+  const atTime = now.getHours() >= 23; // 已到 23 点
+  const missed = st.autoBackupDate !== yesterday; // 昨天(或更早/从未)没备份成功 → 打开页面立即补传
+  if (!atTime && !missed) return; // 未到点且昨天已备份成功 → 等 23 点再传
   try {
     await upload();
     Store.update((c2) => { c2.cloud = c2.cloud || {}; c2.cloud.autoBackupDate = today; });
   } catch (e) {
     // 失败：整个会话只提示 1 次，避免反复弹窗；成功后自动清标记
     try {
-    if (!sessionStorage.getItem('cw_auto_backup_warned')) { sessionStorage.setItem('cw_auto_backup_warned', '1'); UI.toast('自动备份失败：' + (e && e.message ? e.message : '网络错误') + '（每天 23 点会自动重试）', 'warn'); }
+    if (!sessionStorage.getItem('cw_auto_backup_warned')) { sessionStorage.setItem('cw_auto_backup_warned', '1'); UI.toast('自动备份失败：' + (e && e.message ? e.message : '网络错误') + '（会自动重试）', 'warn'); }
     } catch (e2) { /* 隐私模式忽略 */ }
   }
   };
-  tryUpload();
+  tryUpload(); // 打开页面立即检查一次（含错过补传）
   setInterval(tryUpload, 60000); // 每分钟检查一次（到 23 点即触发）
   }
 
