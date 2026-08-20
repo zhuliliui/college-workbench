@@ -30,9 +30,42 @@ Pages.dashboard = function () {
   const today = D.todayStr();
   const now = new Date();
 
+  // —— 今日计划自动清空与归档 ——
+  // 规则：① 无截止日期的任务，仅在「添加当天」显示，过 24 点（第二天）自动清空并存入「历史计划存档」；
+  //       ② 有截止日期的任务，按截止日期清空（到期/过期后移出今日计划并归档）；
+  //       ③ 归档的任务不再参与今日统计，可在底部「历史计划存档」回看。
+  const archiveRolledOverTasks = () => {
+    Store.update((st) => {
+      st.tasks = st.tasks || [];
+      st.taskArchive = st.taskArchive || [];
+      const keep = [];
+      st.tasks.forEach((t) => {
+        const added = t.addedDate || '';          // 旧数据无 addedDate → 视为「非今天添加」，次日即归档
+        const noDue = !t.due;
+        let stillToday;
+        if (noDue) {
+          stillToday = (added === today);
+        } else {
+          const dueStr = D.fmtDate(D.parseLDT(t.due));
+          stillToday = (added === today) || (dueStr >= today); // 截止当天及之前都留在今日，过期即归档
+        }
+        if (stillToday) keep.push(t);
+        else st.taskArchive.push(Object.assign({}, t, { planDate: added || today, archivedDate: today }));
+      });
+      st.tasks = keep;
+    });
+  };
+  archiveRolledOverTasks();
+  // 归档可能已改写 tasks，重新取一次
+  const liveTasks = Store.get().tasks;
+  const isTodayPlan = (t) => {
+    const added = t.addedDate || '';
+    if (!t.due) return added === today;
+    const dueStr = D.fmtDate(D.parseLDT(t.due));
+    return (added === today) || (dueStr >= today);
+  };
   // 今日学习任务统计
-  const isToday = (t) => !t.due || D.fmtDate(D.parseLDT(t.due)) === today;
-  const todayTasks = s.tasks.filter(isToday);
+  const todayTasks = liveTasks.filter(isTodayPlan);
   const todayDone = todayTasks.filter((t) => t.done).length;
   const todayTotal = todayTasks.length;
 
@@ -281,6 +314,39 @@ Pages.dashboard = function () {
   </div>`;
   }
 
+  // 历史计划存档（按添加日分组，今天/昨天/前天/具体日期）
+  const relLabel = (d) => {
+    if (!d) return '';
+    const diff = Math.round((new Date(today + 'T00:00:00') - new Date(d + 'T00:00:00')) / 86400000);
+    if (diff === 0) return d + '（今天）';
+    if (diff === 1) return d + '（昨天）';
+    if (diff === 2) return d + '（前天）';
+    if (diff === 3) return d + '（大前天）';
+    return d;
+  };
+  const archive = (Store.get().taskArchive || []).slice();
+  let archiveHtml = '';
+  if (archive.length) {
+    const groups = {};
+    archive.forEach((t) => { const k = t.planDate || today; (groups[k] = groups[k] || []).push(t); });
+    const groupHtml = Object.keys(groups).sort((a, b) => b.localeCompare(a)).map((k) => {
+      const rows = groups[k].map((t) => `<div class="item ${t.done ? 'done' : ''}">
+        <div class="body"><div class="name">${UI.esc(t.name)}</div>
+        <div class="meta">${t.category ? `<span class="tag">${UI.esc(t.category)}</span>` : ''}<span>${t.due ? D.fmtDateTime(D.parseLDT(t.due)) : '无截止'}</span>${t.done ? '<span class="tag muted">已完成</span>' : '<span class="tag warn">未做</span>'}</div></div>
+      </div>`).join('');
+      return `<div class="archive-day"><div class="archive-day-head"><img class="ic" src="assets/icons/hk-33.png" alt=""/> ${relLabel(k)} · ${groups[k].length} 项</div><div class="list home-list">${rows}</div></div>`;
+    }).join('');
+    archiveHtml = `<div class="card mt16">
+      <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-33.png" alt=""/>历史计划存档</div><div class="spacer"></div><span class="tag muted">${archive.length} 项</span><button class="collapse-btn" title="折叠">▾</button></div>
+      <div class="card-body">${groupHtml}</div>
+    </div>`;
+  } else {
+    archiveHtml = `<div class="card mt16">
+      <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-33.png" alt=""/>历史计划存档</div><div class="spacer"></div><button class="collapse-btn" title="折叠">▾</button></div>
+      <div class="card-body"><div class="empty soft"><div class="t">还没有历史计划</div><div class="s">过期的今日计划会自动归档到这里</div></div></div>
+    </div>`;
+  }
+
   c.innerHTML = `
   <!-- 欢迎横幅 -->
   <div class="welcome-banner">
@@ -356,7 +422,8 @@ Pages.dashboard = function () {
   </div>
   </div>
 
-  ${renderChallenge()}`;
+  ${renderChallenge()}
+  ${archiveHtml}`;
 
   window.PageHandler = (e) => {
   const b = e.target.closest('[data-act], [data-nav]');

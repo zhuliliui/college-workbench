@@ -263,7 +263,7 @@ Pages.study = function () {
         const data = { name, category: UI.val('#tCat'), est: parseInt(UI.val('#tEst')) || 0, due: UI.val('#tDue') };
         Store.update((st) => {
           if (t) Object.assign(st.tasks.find((x) => x.id === editId), data);
-          else st.tasks.unshift(Object.assign({ id: Store.uid(), done: false, createdAt: new Date().toISOString() }, data));
+          else st.tasks.unshift(Object.assign({ id: Store.uid(), done: false, createdAt: new Date().toISOString(), addedDate: D.todayStr() }, data));
         });
         UI.closeModal(); Pages.study();
       } }],

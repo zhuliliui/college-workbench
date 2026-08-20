@@ -959,6 +959,7 @@ Pages.skill = function () {
   due: '',
   done: !!saved.done,
   createdAt: new Date().toISOString(),
+  addedDate: D.todayStr(),
   skillTopicId: tp.id,
   skillCourseId: saved.id,
   };

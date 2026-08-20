@@ -14,6 +14,7 @@
       version: 1,
       // 复习计划（万能工作台首页 + 月度日历联动数据源）
       tasks: [],
+      taskArchive: [],            // 历史计划存档：过期的今日计划自动归档到这里 {…task, planDate, archivedDate}
       weakNotes: [],
       dailySummary: {},            // { 'YYYY-MM-DD': text }
       // 学业 DDL

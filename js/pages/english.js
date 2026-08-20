@@ -555,14 +555,16 @@ window.Pages = window.Pages || {};
   function buildSession(bank, mode) {
     const now = Date.now();
     const _m = mode || flashMode;
+    let q;
     if (_m === 'review') {
       // 复习模式：只取「已学过且到期」的词（box>0 或 last>0 且 next<=now）
-      const due = bank.filter((x) => (x.next || 0) <= now && ((x.box || 0) > 0 || (x.last || 0) > 0));
-      return { queue: due.slice(), idx: 0, flipped: false };
+      q = bank.filter((x) => (x.next || 0) <= now && ((x.box || 0) > 0 || (x.last || 0) > 0));
+    } else {
+      // 今日新学：只取从未学过的词（box=0 且 last=0），一轮上限 20
+      q = bank.filter((x) => x.box === 0 && (x.last || 0) === 0).slice(0, 20);
     }
-    // 今日新学：只取从未学过的词（box=0 且 last=0），一轮上限 20
-    const fresh = bank.filter((x) => x.box === 0 && (x.last || 0) === 0).slice(0, 20);
-    return { queue: fresh, idx: 0, flipped: false };
+    // 用队列 + 计数模型：会了 shift 出队、不会 push 到队尾循环，直到全学会
+    return { queue: q.slice(), total: q.length, learned: 0, flipped: false };
   }
 
   // ---------- 艾宾浩斯复习计划（记忆曲线可视化）----------
@@ -622,7 +624,7 @@ window.Pages = window.Pages || {};
     <button class="btn btn-sm ${flashMode === 'new' ? '' : 'btn-soft'}" data-act="flash-mode-new">📘 今日学习 <span class="tag-mini">${todayLearned()}</span></button>
     <button class="btn btn-sm ${flashMode === 'review' ? '' : 'btn-soft'}" data-act="flash-mode-review">🔄 今日复习 <span class="tag-mini">${due.length}</span></button>
   </div>`;
-  if (!session || session.idx >= session.queue.length) session = buildSession(bank, flashMode);
+  if (!session || session.queue.length === 0) session = buildSession(bank, flashMode);
   // 空态也要能切换模式——单独 renderFlash 调 wrapper 后再绑事件
   if (!session.queue.length) {
     const emptyMsg = flashMode === 'review'
@@ -632,10 +634,11 @@ window.Pages = window.Pages || {};
     bindFlashModeActions(wEmpty, body, bank);
     return;
   }
-  const w0 = session.queue[session.idx];
+  const w0 = session.queue[0];
   const dList = todayWords();
-  const learned = todayLearned();
-  const left = 20 - (learned % 20);
+  const gLearned = todayLearned();
+  const learned = session.learned;
+  const left = 20 - (gLearned % 20);
   const extraHtml = (w0.phrases || w0.syn || w0.mnemonic)
   ? `<div class="flash-extra">
   ${w0.phrases ? '<div><b>词组：</b>' + UI.esc(w0.phrases) + '</div>' : ''}
@@ -647,8 +650,8 @@ window.Pages = window.Pages || {};
   <div class="card">
   <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-27.png" alt=""/>${flashMode === 'review' ? '今日复习' : '今日学习'}</div>
   <div class="spacer"></div>
-  <span class="tag">${session.idx + 1} / ${session.queue.length}</span>
-  <span class="tag" style="background:var(--primary-soft);color:var(--primary-deep)"><img src="assets/icons/hk-27.png" alt="" style="width:12px;height:12px;vertical-align:-2px;margin-right:3px"/>${flashMode === 'review' ? '今日已复习' : '今日学习'} ${flashMode === 'review' ? todayReviewed() + '/' + session.queue.length : learned + '/20'}</span></div>
+  <span class="tag">${session.total - session.queue.length + 1} / ${session.total}</span>
+  <span class="tag" style="background:var(--primary-soft);color:var(--primary-deep)"><img src="assets/icons/hk-27.png" alt="" style="width:12px;height:12px;vertical-align:-2px;margin-right:3px"/>${flashMode === 'review' ? '今日已复习' : '今日学习'} ${flashMode === 'review' ? todayReviewed() + '/' + session.total : learned + '/' + session.total}</span></div>
   <div class="card-body">
   <div class="flash-card ${session.flipped ? 'flipped' : ''}" id="flash">
   <div class="flash-inner">
@@ -732,15 +735,15 @@ window.Pages = window.Pages || {};
   if (act === 'remember') x.box = Math.min(5, x.box + 1); else x.box = Math.max(0, x.box - 1);
   x.reps = (x.reps || 0) + 1; x.last = Date.now(); x.next = Date.now() + IV[x.box];
   });
-  if (act === 'remember') {
-  // 记住了：今日新学计入「今日已学」与奖励；复习模式计入「今日已复习」不计奖励
-  if (flashMode === 'new') recordStudy(w0.word); else recordReview(w0.word);
-  session.idx++; session.flipped = false;
-  if (session.idx >= session.queue.length) { session = null; UI.toast(flashMode === 'review' ? '本轮复习完成' : '本轮新学完成', 'love'); }
-  } else {
-  // 没记住：不计入「已学」，原卡原地重来（不前进、不计奖励）
-  session.flipped = false;
-  }
+      if (act === 'remember') {
+        // 记住了：移出当前组（出队），今日新学计入「已学」与奖励；复习模式计入「已复习」
+        if (flashMode === 'new') recordStudy(w0.word); else recordReview(w0.word);
+        session.queue.shift(); session.learned++; session.flipped = false;
+        if (session.queue.length === 0) { session = null; UI.toast(flashMode === 'review' ? '本轮复习完成' : '本轮新学完成', 'love'); }
+      } else {
+        // 不会：放到当前组最后，循环学习，直到记住（仍留在本组，不计「已学」）
+        session.queue.push(session.queue.shift()); session.flipped = false;
+      }
   renderFlash(body, bank);
   } catch (err) {
   console.error('[flash] remember/forget 失败', err);
@@ -782,13 +785,13 @@ window.Pages = window.Pages || {};
   const isEC = quiz.mode === 'ec';
   const ok = judgeQuiz(userInput, w0q, isEC);
   quiz.feedback = { ok: !!ok, input: userInput };
-  if (ok) {
-  // 答对：计入「今日已学/已复习」与奖励
-  if (isEC) recordStudy(w0q.word); else recordReview(w0q.word);
-  quiz.idx++;
-  quiz.feedback = null; quiz.revealed = false; quiz.answer = '';
-  if (quiz.idx >= quiz.list.length) { quiz.done = true; UI.toast('本轮默写完成 🎉', 'love'); }
-  } else {
+      if (ok) {
+        // 答对：仍计入「今日已学/已复习」与奖励，但【不】写进「默写单词」朗读清单（addDictate/addList=false）
+        if (isEC) recordStudy(w0q.word, false); else recordReview(w0q.word, false);
+        quiz.idx++;
+        quiz.feedback = null; quiz.revealed = false; quiz.answer = '';
+        if (quiz.idx >= quiz.list.length) { quiz.done = true; UI.toast('本轮默写完成 🎉', 'love'); }
+      } else {
   UI.toast('答错了，看下方正确答案', 'warn');
   }
   refreshQuizCard(body, bank);
@@ -927,12 +930,15 @@ window.Pages = window.Pages || {};
     const isEC = quiz.mode === 'ec';
     const fb = quiz.feedback;
     const fbHtml = fb ? (fb.ok
-      ? `<div class="mt16" style="background:rgba(60,150,90,.12);border:1px solid var(--success);border-radius:12px;padding:12px;text-align:left;color:var(--success);font-weight:700">✓ 回答正确！<span class="muted-text" style="font-weight:400">${UI.esc(w0.word)} ${UI.esc(w0.phonetic)}</span></div>`
-      : `<div class="mt16" style="background:rgba(200,60,60,.08);border:1px solid var(--danger);border-radius:12px;padding:12px;text-align:left">
-        <div style="color:var(--danger);font-weight:700">✗ 答错了</div>
-        <div class="mt4"><b style="color:var(--primary-deep)">${UI.esc(w0.word)}</b> <span class="muted-text">${UI.esc(w0.phonetic)} ${UI.esc(w0.pos)}</span></div>
-        <div class="mt4">${UI.esc(w0.cn)}</div>
-        <div class="muted-text mt4">你的答案：${UI.esc(fb.input || '')}</div>
+      ? `<div class="quiz-fb ok">
+        <div class="quiz-fb-hd">✓ 回答正确</div>
+        <div class="quiz-fb-row"><b>${UI.esc(w0.word)}</b> <span class="muted-text">${UI.esc(w0.phonetic)}</span></div>
+      </div>`
+      : `<div class="quiz-fb no">
+        <div class="quiz-fb-hd">✗ 答错了，正确答案如下</div>
+        <div class="quiz-fb-row"><b style="color:var(--primary-deep)">${UI.esc(w0.word)}</b> <span class="muted-text">${UI.esc(w0.phonetic)} ${UI.esc(w0.pos)}</span></div>
+        <div class="quiz-fb-row">${UI.esc(w0.cn)}</div>
+        <div class="quiz-fb-row muted-text">你的答案：${UI.esc(fb.input || '')}</div>
       </div>`) : '';
     return `
     <div class="card mt16" id="quizCard">
@@ -1028,7 +1034,9 @@ window.Pages = window.Pages || {};
 
   function todayStr() { const d = new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
   // 记录今日学完一个单词；跨天自动清零；每满 20 个自动奖励 +1 元（虚拟存钱罐）
-  function recordStudy(word) {
+  // addDictate=false 时不把单词写进「今日已背」清单（用于默写练习，避免污染「默写单词」朗读列表）
+  function recordStudy(word, addDictate) {
+  if (addDictate === undefined) addDictate = true;
   const today = todayStr();
   let learned = 0;
   Store.update((st) => {
@@ -1038,7 +1046,7 @@ window.Pages = window.Pages || {};
   if (!d.reviewWords) d.reviewWords = [];
   if (!d.words) d.words = [];
   d.learned += 1;
-  if (word && !d.words.includes(word)) d.words.push(word); // 记录今日已背单词，供「默写」模块朗读
+  if (addDictate && word && !d.words.includes(word)) d.words.push(word); // 记录今日已背单词，供「默写」模块朗读
   st.english.daily = d;
   learned = d.learned;
   });
@@ -1052,14 +1060,16 @@ window.Pages = window.Pages || {};
   return learned;
   }
   // 记录今日复习过一个词（复习模式点「记住了」，不计奖励）
-  function recordReview(word) {
+  // addList=false 时不把单词写进「复习词」清单（用于默写练习，避免污染「默写单词-复习」朗读列表）
+  function recordReview(word, addList) {
+  if (addList === undefined) addList = true;
   const today = todayStr();
   Store.update((st) => {
   const d = st.english.daily || { date: '', learned: 0, words: [], reviewed: 0, reviewWords: [] };
   if (d.date !== today) { d.date = today; d.learned = 0; d.words = []; d.reviewed = 0; d.reviewWords = []; }
   d.reviewed = (d.reviewed || 0) + 1;
   if (!d.reviewWords) d.reviewWords = [];
-  if (word && !d.reviewWords.includes(word)) d.reviewWords.push(word);
+  if (addList && word && !d.reviewWords.includes(word)) d.reviewWords.push(word);
   st.english.daily = d;
   });
   }
