@@ -27,11 +27,15 @@ function detectWindowsProxy() {
   if (process.platform !== 'win32') return '';
   try {
     const { execSync } = require('child_process');
-    const out = execSync('reg query "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" /v ProxyEnable /v ProxyServer', { encoding: 'utf8', timeout: 3000 });
+    // reg query 的 /v 一次只能查一个值名；不带 /v 一次取全部值再解析（2026-08-20 修复语法错误）
+    const out = execSync('reg query "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings"', { encoding: 'utf8', timeout: 3000 });
     let enabled = false, server = '';
     for (const line of out.split('\n')) {
-      if (/ProxyEnable/i.test(line)) enabled = /0x1\b/i.test(line);
-      if (/ProxyServer/i.test(line)) { const p = line.trim().split(/\s+/); server = (p[p.length - 1] || '').trim(); }
+      const t = line.replace(/\r$/, '');
+      const em = t.match(/^\s*ProxyEnable\s+REG_DWORD\s+(0x[0-9a-f]+|\d+)\s*$/i);
+      if (em) enabled = parseInt(em[1], 16) === 1;
+      const sm = t.match(/^\s*ProxyServer\s+REG_SZ\s+(.+?)\s*$/i);
+      if (sm) server = sm[1].trim();
     }
     if (enabled && server) {
       if (server.includes('=')) {
@@ -560,7 +564,7 @@ function parseRss(xml) {
   return items;
 }
 async function fetchRSS(url) {
-  const r = await fetch(url, { signal: AbortSignal.timeout(15000), headers: BROWSER_HEADERS });
+  const r = await fetch(url, { signal: AbortSignal.timeout(40000), headers: BROWSER_HEADERS });
   if (!r.ok) throw new Error('HTTP ' + r.status);
   return await r.text();
 }
@@ -712,20 +716,20 @@ async function buildArticle(it) {
         // 聚合链接（Google News 等）：其页面不是原文，直接走 r.jina.ai 全文（jina 会跟随跳转抓取真实原文）
         if (/news\.google\.com|r\.jina\.ai/i.test(it.link)) {
           try {
-            const j = await fetch('https://r.jina.ai/' + it.link, { signal: AbortSignal.timeout(12000) }).then((x) => x.text());
+            const j = await fetch('https://r.jina.ai/' + it.link, { signal: AbortSignal.timeout(30000) }).then((x) => x.text());
             if (j && j.length > 80 && !/<!DOCTYPE|<html|<head/i.test(j)) return j;
           } catch (e) {}
           return '';
         }
         // 优先：直接抓取文章网页，从 JSON-LD articleBody / <article> 抽正文（不依赖第三方）
         try {
-          const html = await fetch(it.link, { signal: AbortSignal.timeout(9000), headers: BROWSER_HEADERS }).then((x) => x.text());
+          const html = await fetch(it.link, { signal: AbortSignal.timeout(30000), headers: BROWSER_HEADERS }).then((x) => x.text());
           const ex = extractArticleFromHtml(html);
           if (ex && ex.length > text.length) return ex;
         } catch (e) {}
         // 兜底：r.jina.ai 全文（其不可达/返回错误页时跳过）
         try {
-          const j = await fetch('https://r.jina.ai/' + it.link, { signal: AbortSignal.timeout(9000) }).then((x) => x.text());
+          const j = await fetch('https://r.jina.ai/' + it.link, { signal: AbortSignal.timeout(30000) }).then((x) => x.text());
           if (j && j.length > text.length && !/<!DOCTYPE|<html|<head/i.test(j)) return j;
         } catch (e) {}
         return '';
@@ -812,7 +816,7 @@ const CN_DAILY_LIST = 'https://language.chinadaily.com.cn/';
 async function fetchCnDailyArticles(max) {
   const out = [];
   try {
-    const html = await fetch(CN_DAILY_LIST, { signal: AbortSignal.timeout(12000), headers: BROWSER_HEADERS }).then((r) => r.text());
+    const html = await fetch(CN_DAILY_LIST, { signal: AbortSignal.timeout(40000), headers: BROWSER_HEADERS }).then((r) => r.text());
     const links = [];
     const re = /href="(\/\/language\.chinadaily\.com\.cn\/a\/\d{6}\/\d{2}\/[^"]+\.html)"/g;
     let m;
@@ -827,7 +831,7 @@ async function fetchCnDailyArticles(max) {
   return out;
 }
 async function buildCnDailyArticle(url) {
-  const html = await fetch(url, { signal: AbortSignal.timeout(12000), headers: BROWSER_HEADERS }).then((r) => r.text());
+  const html = await fetch(url, { signal: AbortSignal.timeout(30000), headers: BROWSER_HEADERS }).then((r) => r.text());
   const tMatch = html.match(/<title>([^<]+)<\/title>/);
   let title = tMatch ? tMatch[1].replace(/_中国日报网.*|_China Daily.*/g, '').trim() : '';
   const h1 = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/);
@@ -898,7 +902,7 @@ let aiTopics = loadAITopics();
 
 const HN_AI_KW = ['ai', 'llm', 'gpt', 'openai', 'anthropic', 'claude', 'gemini', 'deepseek', 'llama', 'chatgpt', 'machine learning', 'neural', 'diffusion', 'transformer', 'agent', 'rag', 'mcp', 'fine-tun', 'embedding', 'prompt', 'copilot', 'mistral', 'qwen', 'grok', 'vibe coding'];
 async function fetchText(url, ms) {
-  const r = await fetch(url, { signal: AbortSignal.timeout(ms || 9000), headers: { 'User-Agent': 'Mozilla/5.0' } });
+  const r = await fetch(url, { signal: AbortSignal.timeout(ms || 30000), headers: { 'User-Agent': 'Mozilla/5.0' } });
   if (!r.ok) throw new Error('HTTP ' + r.status);
   return await r.text();
 }
@@ -1041,7 +1045,7 @@ async function fetchNewsnow(max) {
   const out = [];
   await Promise.all(NEWSNOW_SOURCES.map(async (src) => {
     try {
-      const r = await fetch('https://newsnow.busiyi.world/api/s?id=' + src.id, { signal: AbortSignal.timeout(9000), headers: { 'User-Agent': 'Mozilla/5.0' } });
+      const r = await fetch('https://newsnow.busiyi.world/api/s?id=' + src.id, { signal: AbortSignal.timeout(30000), headers: { 'User-Agent': 'Mozilla/5.0' } });
       const j = await r.json();
       for (const it of (j.items || []).slice(0, 10)) {
         const title = String(it.title || '').trim();
