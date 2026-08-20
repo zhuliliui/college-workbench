@@ -52,7 +52,8 @@ Pages.study = function () {
     return cells;
   }
   const byDate = {};
-  s.tasks.forEach((t) => { if (t.due) { const k = D.fmtDate(D.parseLDT(t.due)); (byDate[k] = byDate[k] || []).push(t); } });
+  s.tasks.forEach((t) => { const k = t.due ? D.fmtDate(D.parseLDT(t.due)) : (t.addedDate || ''); if (k) (byDate[k] = byDate[k] || []).push(t); });
+  (Store.get().taskArchive || []).forEach((t) => { const k = t.planDate || ''; if (k) (byDate[k] = byDate[k] || []).push(t); });
 
   const dayCells = monthCells(STUDY_VIEW.month).map((cell) => {
     const dateStr = cell.other ? '' : (STUDY_VIEW.month + '-' + D.pad(cell.d));
@@ -71,19 +72,22 @@ Pages.study = function () {
     return `<div class="${cls} ${cell.other ? 'other' : ''}"${selStyle}${dateStr ? ` data-act="day" data-date="${dateStr}"` : ''}><div class="d">${cell.d}</div>${status}</div>`;
   }).join('');
 
-  function itemHtml(t) {
+  function itemHtml(t, readOnly) {
     const dueTxt = t.due ? ' ' + D.fmtDateTime(D.parseLDT(t.due)) : ' 无截止';
     const estTxt = t.est ? ' ' + t.est + ' 分钟' : ' 未估时';
-    return `<div class="item ${t.done ? 'done' : ''}" data-id="${t.id}">
-    <button class="check" data-act="toggle" data-id="${t.id}" aria-label="完成">${t.done ? '<img class="ic" src="assets/icons/hk-38.png" alt=""/>' : ''}</button>
-    <div class="body">
-      <div class="name">${UI.esc(t.name)}</div>
-      <div class="meta">${t.category ? `<span class="tag">${UI.esc(t.category)}</span>` : ''}<span>${dueTxt}</span><span>${estTxt}</span></div>
-    </div>
-    <div class="ops">
+    const nameColor = t.done ? 'var(--success)' : 'var(--danger)';
+    const checkHtml = readOnly ? '' : `<button class="check" data-act="toggle" data-id="${t.id}" aria-label="完成">${t.done ? '<img class="ic" src="assets/icons/hk-38.png" alt=""/>' : ''}</button>`;
+    const opsHtml = readOnly ? '' : `<div class="ops">
       <button class="btn btn-soft btn-icon" data-act="edit" data-id="${t.id}" title="编辑"><img class="ic" src="assets/icons/hk-32.png" alt=""/></button>
       <button class="btn btn-soft btn-icon" data-act="del" data-id="${t.id}" title="删除"><img class="ic" src="assets/icons/hk-18.png" alt=""/></button>
-    </div></div>`;
+    </div>`;
+    return `<div class="item ${t.done ? 'done' : ''}" data-id="${t.id}">
+    ${checkHtml}
+    <div class="body">
+      <div class="name" style="color:${nameColor}">${UI.esc(t.name)}</div>
+      <div class="meta">${t.category ? `<span class="tag">${UI.esc(t.category)}</span>` : ''}<span>${dueTxt}</span><span>${estTxt}</span></div>
+    </div>
+    ${opsHtml}</div>`;
   }
 
   const weekHead = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'].map((w) =>
@@ -110,12 +114,14 @@ Pages.study = function () {
     </div>
   </div>`;
 
-  // ---------- 今日计划 ----------
-  const vt = STUDY_VIEW.date === today ? todayTasks
-    : tasks.filter((t) => t.due && D.fmtDate(D.parseLDT(t.due)) === STUDY_VIEW.date);
+  // ---------- 选中日期的当日计划（含历史归档 planDate 落在该日的任务） ----------
+  const vtArch = (Store.get().taskArchive || []).filter((t) => (t.planDate || '') === STUDY_VIEW.date).map((t) => Object.assign({}, t, { _archived: true }));
+  const vtLive = STUDY_VIEW.date === today ? todayTasks
+    : tasks.filter((t) => { if (t.due) return D.fmtDate(D.parseLDT(t.due)) === STUDY_VIEW.date; return (t.addedDate || '') === STUDY_VIEW.date; });
+  const vt = vtLive.concat(vtArch);
   const vd = vt.filter((t) => t.done).length;
   const planListHtml = vt.length
-    ? '<div class="list">' + vt.map(itemHtml).join('') + '</div>'
+    ? '<div class="list">' + vt.map((t) => itemHtml(t, !!t._archived)).join('') + '</div>'
     : `<div class="empty"><img class="emoji" src="assets/icons/hk-38.png" alt=""/><div class="t">${STUDY_VIEW.date} 没有学习任务</div><div class="s">在上方月历选其他日期，或点「＋ 新增」添加</div></div>`;
   const planCard = `
   <div class="card">

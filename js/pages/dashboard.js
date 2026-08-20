@@ -318,38 +318,9 @@ Pages.dashboard = function () {
   </div>`;
   }
 
-  // 历史计划存档（按添加日分组，今天/昨天/前天/具体日期）
-  const relLabel = (d) => {
-    if (!d) return '';
-    const diff = Math.round((new Date(today + 'T00:00:00') - new Date(d + 'T00:00:00')) / 86400000);
-    if (diff === 0) return d + '（今天）';
-    if (diff === 1) return d + '（昨天）';
-    if (diff === 2) return d + '（前天）';
-    if (diff === 3) return d + '（大前天）';
-    return d;
-  };
-  const archive = (Store.get().taskArchive || []).slice();
-  let archiveHtml = '';
-  if (archive.length) {
-    const groups = {};
-    archive.forEach((t) => { const k = t.planDate || today; (groups[k] = groups[k] || []).push(t); });
-    const groupHtml = Object.keys(groups).sort((a, b) => b.localeCompare(a)).map((k) => {
-      const rows = groups[k].map((t) => `<div class="item ${t.done ? 'done' : ''}">
-        <div class="body"><div class="name">${UI.esc(t.name)}</div>
-        <div class="meta">${t.category ? `<span class="tag">${UI.esc(t.category)}</span>` : ''}<span>${t.due ? D.fmtDateTime(D.parseLDT(t.due)) : '无截止'}</span>${t.done ? '<span class="tag muted">已完成</span>' : '<span class="tag warn">未做</span>'}</div></div>
-      </div>`).join('');
-      return `<div class="archive-day"><div class="archive-day-head"><img class="ic" src="assets/icons/hk-33.png" alt=""/> ${relLabel(k)} · ${groups[k].length} 项</div><div class="list home-list">${rows}</div></div>`;
-    }).join('');
-    archiveHtml = `<div class="card mt16">
-      <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-33.png" alt=""/>历史计划存档</div><div class="spacer"></div><span class="tag muted">${archive.length} 项</span><button class="collapse-btn" title="折叠">▾</button></div>
-      <div class="card-body">${groupHtml}</div>
-    </div>`;
-  } else {
-    archiveHtml = `<div class="card mt16">
-      <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-33.png" alt=""/>历史计划存档</div><div class="spacer"></div><button class="collapse-btn" title="折叠">▾</button></div>
-      <div class="card-body"><div class="empty soft"><div class="t">还没有历史计划</div><div class="s">过期的今日计划会自动归档到这里</div></div></div>
-    </div>`;
-  }
+  // 历史计划存档数据保留在 st.taskArchive（archiveRolledOverTasks 仍会归档），但不在此工作台展示；
+  // 用户可在「学习计划」月历点击对应日期查看当天任务（已完成绿色 / 未完成红色）。
+
 
   c.innerHTML = `
   <!-- 欢迎横幅 -->
@@ -427,7 +398,7 @@ Pages.dashboard = function () {
   </div>
 
   ${renderChallenge()}
-  ${archiveHtml}`;
+`;
 
   window.PageHandler = (e) => {
   const b = e.target.closest('[data-act], [data-nav]');

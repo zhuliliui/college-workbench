@@ -638,7 +638,6 @@ window.Pages = window.Pages || {};
   const dList = todayWords();
   const gLearned = todayLearned();
   const learned = session.learned;
-  const left = 20 - (gLearned % 20);
   const extraHtml = (w0.phrases || w0.syn || w0.mnemonic)
   ? `<div class="flash-extra">
   ${w0.phrases ? '<div><b>词组：</b>' + UI.esc(w0.phrases) + '</div>' : ''}
@@ -674,7 +673,7 @@ window.Pages = window.Pages || {};
   <button class="btn btn-danger btn-sm" data-act="forget"><img class="ic" src="assets/icons/hk-18.png" alt=""/> 不会</button>
   <button class="btn btn-success btn-sm" data-act="remember"><img class="ic" src="assets/icons/hk-38.png" alt=""/> 会了</button>
   </div>
-  <div class="muted-text mt12 center">${flashMode === 'new' ? ' 一天累计学完 20 个单词，自动奖励 +1 元（当前还差 ' + left + ' 个）' : ' 复习模式：记得牢就点「记住了」（推进间隔），不打断今日学习计数'}</div>
+  <div class="muted-text mt12 center">${flashMode === 'review' ? ' 复习模式：记得牢就点「记住了」（推进间隔），不打断今日学习计数' : ''}</div>
   </div>
   </div>` + renderQuizCard(bank) + dictateCardHtml(dList, dueWords());
   const w = wrap(body, html);
@@ -834,19 +833,14 @@ window.Pages = window.Pages || {};
   return `<div class="card mt16">${head}<div class="card-body"><div class="muted-text center">${emptyTxt}</div></div></div>`;
   }
   const rows = cur.map((wd, i) => `
-  <div class="dictate-row ${dictate.playing && dictate.idx === i ? 'active' : ''}" data-spk="${UI.esc(wd)}">
+  <div class="dictate-row" data-spk="${UI.esc(wd)}">
   <span class="d-idx">${i + 1}</span>
   <span class="d-word">${UI.esc(wd)}</span>
   <span class="d-spk"><img class="ic" src="assets/icons/hk-27.png" alt="听"/></span>
   </div>`).join('');
   return `<div class="card mt16" id="dictateCard">${head}
   <div class="card-body">
-  <div class="muted-text">点击「开始默写」将逐词朗读，每词间隔 12 秒，可边听边默写；也可点任意单词单独听。</div>
-  <div class="flex-wrap gap8 mt12" style="justify-content:center">
-  <button class="btn btn-sm" data-act="dictate-start"><img class="ic" src="assets/icons/hk-09.png" alt=""/> 开始</button>
-  <button class="btn btn-soft btn-sm" data-act="dictate-stop" style="display:${dictate.playing ? 'inline-block' : 'none'}"><img class="ic" src="assets/icons/hk-18.png" alt=""/> 停止</button>
-  </div>
-  <div id="dictateStatus" class="center mt12" style="min-height:22px;color:var(--primary-deep);font-weight:600"></div>
+  <div class="muted-text">点击任意单词可单独听发音，边听边默写。</div>
   <div class="dictate-list mt12">${rows}</div>
   </div></div>`;
   }
@@ -1057,7 +1051,7 @@ window.Pages = window.Pages || {};
   const readerChecked = new Set(); // 批量选中的文章 key 集合
 
   function todayStr() { const d = new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
-  // 记录今日学完一个单词；跨天自动清零；每满 20 个自动奖励 +1 元（虚拟存钱罐）
+  // 记录今日学完一个单词；跨天自动清零；每累计 20 个静默奖励 +1 元（不弹提示，功能保留）
   // addDictate=false 时不把单词写进「今日已背」清单（用于单词练习，避免污染「默写单词」朗读列表）
   function recordStudy(word, addDictate) {
   if (addDictate === undefined) addDictate = true;
@@ -1074,13 +1068,9 @@ window.Pages = window.Pages || {};
   st.english.daily = d;
   learned = d.learned;
   });
-  if (learned % 20 === 0) {
-  Store.earn(1, '今日学完 ' + learned + ' 个单词');
-  UI.toast(' 今日已学满 ' + learned + ' 词，奖励 +1 元 ', 'love');
-  } else {
-  const left = 20 - (learned % 20);
-  UI.toast('已学 ' + learned + ' 词，再学 ' + left + ' 词得 +1 元', 'ok');
-  }
+  // 每累计学完 20 个单词，静默奖励 +1 元（不弹任何提示，功能保留）
+  if (learned > 0 && learned % 20 === 0) { try { Store.earn(1, '今日学完 ' + learned + ' 个单词'); } catch (e) {} }
+  UI.toast('已学 ' + learned + ' 词', 'ok');
   return learned;
   }
   // 记录今日复习过一个词（复习模式点「记住了」，不计奖励）
