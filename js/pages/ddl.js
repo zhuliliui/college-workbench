@@ -45,7 +45,6 @@ Pages.ddl = function () {
   <div class="muted-text">剩余</div>
   <div style="font-size:30px;font-weight:800;color:${d.done ? 'var(--success)' : level === 'danger' ? 'var(--danger)' : level === 'warn' ? '#caa23a' : 'var(--primary-deep)'}">${big}</div>
   </div>
-  <div class="progress ${barCls} mt8"><span data-bar="${d.id}" style="width:${pct}%"></span></div>
   <div class="flex-between mt8 gap8 prog-edit">
   <input type="range" min="0" max="100" value="${pct}" data-prog="${d.id}" class="prog-range" ${d.done ? 'disabled' : ''}/>
   <span class="prog-val" style="font-size:13px;font-weight:700;color:var(--primary-deep);white-space:nowrap">${pct}%</span>
@@ -94,7 +93,6 @@ Pages.ddl = function () {
       <div class="body">
         <div class="name">${UI.esc(d.name)} ${d.done ? '<span class="tag success">已完成</span>' : level === 'danger' ? '<span class="tag danger">紧急</span>' : level === 'warn' ? '<span class="tag warn">预警</span>' : ''}</div>
         <div class="meta"><span>截止 ${d.due ? D.fmtDateTime(D.parseLDT(d.due)) : '未设置'}</span><span>剩余 ${left}</span></div>
-        <div class="progress mt8"><span data-bar="${d.id}" style="width:${pct}%"></span></div>
       </div>
       <div class="ops">
         <input type="range" min="0" max="100" value="${pct}" data-prog="${d.id}" class="prog-range" ${d.done ? 'disabled' : ''}/>

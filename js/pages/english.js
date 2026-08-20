@@ -591,20 +591,12 @@ window.Pages = window.Pages || {};
   }
   function ebbinghausPlanHtml(bank, due, fresh) {
     const cnt = ebStageCounts(bank);
-    const now = Date.now();
-    const fb = ebFutureBuckets(bank, now);
     let top = 0; for (let i = 5; i >= 0; i--) { if (cnt[i] > 0) { top = i; break; } }
     const ladder = IV_LABEL.map((lab, i) => `
       <div class="eb-stage ${i === top ? 'active' : ''}">
         <div class="eb-stage-iv">${lab}</div>
         <div class="eb-stage-cnt">${cnt[i]} 词</div>
       </div>`).join('');
-    const dueList = due.map((x) => `<span class="eb-due-item">${UI.esc(x.word)}</span>`).join('');
-    const dueHtml = `
-      <div class="eb-due">
-        <div class="eb-future-label">今日到期复习（${due.length}）</div>
-        <div class="eb-due-list">${due.length ? dueList : '<span class="muted-text eb-empty">暂无到期单词</span>'}</div>
-      </div>`;
     return `
     <div class="card ebbinghaus-card">
       <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-06.png" alt=""/>艾宾浩斯复习计划</div>
@@ -615,7 +607,6 @@ window.Pages = window.Pages || {};
       <div class="card-body">
         <div class="eb-desc">按遗忘曲线安排间隔复习：学完后在 <b>10分钟 / 1天 / 2天 / 4天 / 7天 / 15天</b> 回看，记得越牢，间隔越长。</div>
         <div class="eb-ladder">${ladder}</div>
-        ${dueHtml}
       </div>
     </div>`;
   }
@@ -756,6 +747,53 @@ window.Pages = window.Pages || {};
   UI.toast('操作失败，请重试', 'warn');
   }
   return;
+  }
+  // ---------- 默写练习（q-*）事件 ----------
+  if (act === 'q-speak' || act === 'q-reveal' || act === 'q-next' || act === 'q-switch' || act === 'q-restart') {
+  const w0q = currentQuizWord();
+  if (act === 'q-speak') {
+  if (w0q) speak(w0q.word);
+  return;
+  }
+  if (act === 'q-switch') {
+  if (quiz) { quiz.mode = quiz.mode === 'ec' ? 'ce' : 'ec'; quiz.idx = 0; quiz.feedback = null; quiz.revealed = false; quiz.answer = ''; }
+  refreshQuizCard(body, bank);
+  return;
+  }
+  if (act === 'q-restart') {
+  quiz = { mode: (quiz && quiz.mode) || 'ec', idx: 0, list: bank.slice().sort(() => Math.random() - 0.5), revealed: false, answer: '', done: false, feedback: null };
+  refreshQuizCard(body, bank);
+  return;
+  }
+  if (act === 'q-reveal') {
+  if (!w0q) return;
+  // 直接显示正确答案：把答案填入输入框并标红
+  const inp = body.querySelector('#quizInput');
+  if (inp && !inp.value) inp.value = quiz.mode === 'ec' ? (w0q.cn || '') : (w0q.word || '');
+  quiz.feedback = { ok: false, input: '(已显示)', revealed: true };
+  refreshQuizCard(body, bank);
+  return;
+  }
+  if (act === 'q-next') {
+  if (!w0q) return;
+  const inpEl = body.querySelector('#quizInput');
+  const userInput = inpEl ? inpEl.value : (quiz.answer || '');
+  quiz.answer = userInput;
+  const isEC = quiz.mode === 'ec';
+  const ok = judgeQuiz(userInput, w0q, isEC);
+  quiz.feedback = { ok: !!ok, input: userInput };
+  if (ok) {
+  // 答对：计入「今日已学/已复习」与奖励
+  if (isEC) recordStudy(w0q.word); else recordReview(w0q.word);
+  quiz.idx++;
+  quiz.feedback = null; quiz.revealed = false; quiz.answer = '';
+  if (quiz.idx >= quiz.list.length) { quiz.done = true; UI.toast('本轮默写完成 🎉', 'love'); }
+  } else {
+  UI.toast('答错了，看下方正确答案', 'warn');
+  }
+  refreshQuizCard(body, bank);
+  return;
+  }
   }
   }
   // 点击卡片本身即可翻转（无需只点按钮）

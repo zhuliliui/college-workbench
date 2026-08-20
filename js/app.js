@@ -23,6 +23,7 @@
 
   const ROUTE = { dashboard: 'dashboard', study: 'study' };
   let current = 'dashboard';
+  let _collapseObserver = null;
 
   function route() {
   let id = (location.hash || '').replace('#/', '').replace('#', '') || 'dashboard';
@@ -36,7 +37,16 @@
   UI.$all('.bn-item').forEach((el) => el.classList.toggle('active', el.dataset.nav === id));
   (window.Pages[pageId] || window.Pages.dashboard)();
   wireCommon();
-  if (window.UI && window.UI.applyCollapsedStates) window.UI.applyCollapsedStates();
+  // 路由后异步应用折叠状态（保险：DOM 已渲染完成）
+  setTimeout(() => { if (window.UI && window.UI.applyCollapsedStates) window.UI.applyCollapsedStates(); }, 0);
+  // 监听 #content 子节点变化，新插入的 .card 立即应用折叠（防止异步渲染导致漏应用）
+  if (!_collapseObserver) {
+    _collapseObserver = new MutationObserver(() => {
+      if (window.UI && window.UI.applyCollapsedStates) window.UI.applyCollapsedStates();
+    });
+    const _ct = document.getElementById('content');
+    if (_ct) _collapseObserver.observe(_ct, { childList: true, subtree: true });
+  }
   closeSidebar();
   window.scrollTo(0, 0);
   }

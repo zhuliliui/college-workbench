@@ -33,7 +33,6 @@ Pages.study = function () {
 
   const stats = `
   <div class="ring-stats">
-  <div class="ring-stat"><div class="v">${pct}%</div><div class="l">完成率</div></div>
   <div class="ring-stat"><div class="v">${done}</div><div class="l">已完成</div></div>
   <div class="ring-stat"><div class="v">${total}</div><div class="l">总任务</div></div>
   <div class="ring-stat"><div class="v">${pending}</div><div class="l">待完成</div></div>
