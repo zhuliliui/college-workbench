@@ -151,6 +151,33 @@
   throw new Error('云端数据格式异常，无法识别。' + info + '。请重新上传一份备份覆盖它');
   }
 
+  // 每天 23 点自动上传备份（页面需处于打开状态；每分钟检查一次到点即传）
+  // - 已配置云端才启用；当天已成功自动备份过则跳过（st.cloud.autoBackupDate 记录）
+  // - 成功静默（记录日期即可）；失败只提示 1 次（sessionStorage 防重复）
+  let _autoRunning = false;
+  function scheduleAutoBackup() {
+  if (_autoRunning) return; _autoRunning = true;
+  const tryUpload = async () => {
+  if (!configured()) return; // 未配置云端（无 owner/repo/token）不启用
+  const now = new Date();
+  const today = D.todayStr();
+  const st = Store.get().cloud || {};
+  if (now.getHours() < 23) return; // 未到 23 点
+  if (st.autoBackupDate === today) return; // 今天已自动备份过
+  try {
+    await upload();
+    Store.update((c2) => { c2.cloud = c2.cloud || {}; c2.cloud.autoBackupDate = today; });
+  } catch (e) {
+    // 失败：整个会话只提示 1 次，避免反复弹窗；成功后自动清标记
+    try {
+    if (!sessionStorage.getItem('cw_auto_backup_warned')) { sessionStorage.setItem('cw_auto_backup_warned', '1'); UI.toast('自动备份失败：' + (e && e.message ? e.message : '网络错误') + '（每天 23 点会自动重试）', 'warn'); }
+    } catch (e2) { /* 隐私模式忽略 */ }
+  }
+  };
+  tryUpload();
+  setInterval(tryUpload, 60000); // 每分钟检查一次（到 23 点即触发）
+  }
+
   // 验证配置并返回默认分支
   async function testConfig(owner, repo, token, prov) {
   const a = ADAPTERS[prov] || ADAPTERS.gitee;
@@ -165,5 +192,5 @@
   return { ok: true, branch: j.default_branch || a.defaultBranch };
   }
 
-  window.Cloud = { configured, getHead, upload, download, testConfig, cfg, provider, adapters: ADAPTERS };
+  window.Cloud = { configured, getHead, upload, download, testConfig, cfg, provider, adapters: ADAPTERS, scheduleAutoBackup };
 })();

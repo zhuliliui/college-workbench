@@ -95,6 +95,15 @@ Pages.skill = function () {
     { title: 'AI 落地百行千业：从客服到医疗，2026 大模型行业应用案例集', tags: ['行业应用','落地','案例','大模型'], url: 'https://www.36kr.com/' },
   ];
 
+  // 后端不可达提示降噪：整个浏览器会话（sessionStorage）只提示 1 次，避免反复弹 UI
+  function warnBackendOnce(msg) {
+  try {
+  if (sessionStorage.getItem('cw_backend_warned')) return;
+  sessionStorage.setItem('cw_backend_warned', '1');
+  } catch (e) { /* 隐私模式可能禁用 sessionStorage */ }
+  UI.toast(msg, 'warn');
+  }
+
   // 远程种子（可持续更新，不必重打包）：优先拉取，失败/超时静默回落内置种子
   let TOPIC_SEED = AI_TOPIC_SEED.slice();
   let _seedSynced = false;
@@ -157,7 +166,7 @@ Pages.skill = function () {
         st.skill.topicPool = pool.slice(-100);
       });
       return true;
-    } catch (e) { UI.toast('后端连接失败：' + (e && e.message ? e.message : '网络错误') + '，已用本地选题', 'warn'); return false; }
+    } catch (e) { warnBackendOnce('后端连接失败，已用本地选题'); return false; }
   }
 
   function render() {
@@ -831,10 +840,10 @@ Pages.skill = function () {
       return;
       }
     }
-    // 后端不可达 / 返回空：明确告知用户，回退本地库
-    UI.toast('后端不可达（' + backend + '），已用本地选题填充', 'warn');
+    // 后端不可达 / 返回空：整个会话只提示 1 次，回退本地库
+    warnBackendOnce('后端不可达，已用本地选题填充');
     } catch (e) {
-    UI.toast('后端连接失败：' + (e && e.message ? e.message : '网络错误') + '，已用本地选题填充', 'warn');
+    warnBackendOnce('后端连接失败，已用本地选题填充');
     }
   }
   // 无后端或后端失败：把「本地种子池(topicPool)」与「内置静态种子(TOPIC_SEED)」合并为同一个库再抽取

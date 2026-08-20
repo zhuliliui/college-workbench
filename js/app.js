@@ -344,6 +344,7 @@
   <div style="font-size:12px;color:var(--text-faint)">云端仓库（${UI.esc(provLabel)}）</div>
   <div style="font-weight:700;margin:2px 0">${UI.esc(c.owner)}/${UI.esc(c.repo)}</div>
   <div style="font-size:12px;color:var(--text-faint)">上次同步：${UI.esc(last)}</div>
+  <div style="font-size:12px;color:var(--text-faint)">自动备份：每天 23 点（页面打开时）${c.autoBackupDate ? ' · 最近 ' + UI.esc(c.autoBackupDate) + ' 已自动备份' : ''}</div>
   </div>
   <div style="display:flex;flex-direction:column;gap:10px">
   <button class="btn" data-sync="up">上传到 ${UI.esc(provLabel)}（备份）</button>
@@ -454,6 +455,7 @@
   navigator.serviceWorker.register('sw.js').catch(() => {});
   }
   route();
+  if (window.Cloud && Cloud.scheduleAutoBackup) Cloud.scheduleAutoBackup(); // 每天 23 点自动备份云端（需页面打开）
   if (window.AppUpdater) window.AppUpdater.ready(); // 标记当前包正常（热更新防回滚）
   }
 
