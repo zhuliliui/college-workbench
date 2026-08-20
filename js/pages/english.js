@@ -1068,8 +1068,7 @@ window.Pages = window.Pages || {};
   learned = d.learned;
   });
   // 每累计学完 20 个单词，静默奖励 +1 元（不弹任何提示，功能保留）
-  if (learned > 0 && learned % 20 === 0) { try { Store.earn(1, '今日学完 ' + learned + ' 个单词'); } catch (e) {} }
-  UI.toast('已学 ' + learned + ' 词', 'ok');
+  if (learned > 0 && learned % 20 === 0) { try { Store.earn(1); } catch (e) {} }
   return learned;
   }
   // 记录今日复习过一个词（复习模式点「记住了」，不计奖励）

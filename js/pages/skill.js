@@ -157,7 +157,7 @@ Pages.skill = function () {
         st.skill.topicPool = pool.slice(-100);
       });
       return true;
-    } catch (e) { return false; }
+    } catch (e) { UI.toast('后端连接失败：' + (e && e.message ? e.message : '网络错误') + '，已用本地选题', 'warn'); return false; }
   }
 
   function render() {
@@ -491,8 +491,10 @@ Pages.skill = function () {
     <button class="btn btn-sm btn-refresh" data-act="ai-refresh">⟳ 刷新一批选题</button>
     <button class="collapse-btn" title="折叠">▾</button>
   </div>
-  <div class="card-body">${html}</div>
-  <button class="ai-add-btn" data-act="ai-add" title="新增选题">＋</button>
+  <div class="card-body">
+    ${html}
+    <button class="ai-add-btn" data-act="ai-add" title="新增选题">＋</button>
+  </div>
   </div>`;
   }
 
@@ -824,7 +826,11 @@ Pages.skill = function () {
       return;
       }
     }
-    } catch (e) { /* 后端失败则回退本地池/种子 */ }
+    // 后端不可达 / 返回空：明确告知用户，回退本地库
+    UI.toast('后端不可达（' + backend + '），已用本地选题填充', 'warn');
+    } catch (e) {
+    UI.toast('后端连接失败：' + (e && e.message ? e.message : '网络错误') + '，已用本地选题填充', 'warn');
+    }
   }
   // 无后端或后端失败：把「本地种子池(topicPool)」与「内置静态种子(TOPIC_SEED)」合并为同一个库再抽取
   // 实时抓取的真实热点优先，内置种子补足；合并后写回 topicPool 持久化 → 从此只有一个库

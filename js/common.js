@@ -11,8 +11,16 @@
   function $(sel, root) { return (root || document).querySelector(sel); }
   function $all(sel, root) { return Array.from((root || document).querySelectorAll(sel)); }
 
+  // ---------- 全局静默开关 ----------
+  // true=静默（仅警告/错误与确认弹窗可见），false=显示所有提示
+  // 暴露到 window.SILENT_MODE 以便控制台/调试实时切换；此处改 false 即可恢复全部提示
+  const SILENT_MODE = true;
+  window.SILENT_MODE = SILENT_MODE;
+
   // ---------- Toast ----------
   function toast(msg, type) {
+  // 静默开关：true 时屏蔽成功类提示（'ok' / 'love'），警告/错误（'warn'）与无类型始终显示
+  if (SILENT_MODE && (type === 'ok' || type === 'love')) return;
   let root = document.getElementById('toastRoot');
   if (!root) { root = document.createElement('div'); root.id = 'toastRoot'; document.body.appendChild(root); }
   const t = document.createElement('div');
