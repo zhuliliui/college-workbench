@@ -28,7 +28,7 @@ Pages.study = function () {
   <defs><linearGradient id="rg" x1="0" y1="0" x2="1" y2="1">
   <stop offset="0" stop-color="#a7c4ab"/><stop offset="1" stop-color="#5e8268"/></linearGradient></defs>
   </svg>
-  <div class="center"><div class="pct">${pct}%</div><div class="cap">完成率</div></div>
+  <div class="center"><div class="pct">${pct}%</div></div>
   </div>`;
 
   const stats = `
@@ -156,10 +156,18 @@ Pages.study = function () {
   c.innerHTML = `
   ${STUDY_VIEW.mode === 'day' ? monthCard + planCard : allCard}
 
-  <div class="card">
+  <div class="card progress-card">
     <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-32.png" alt=""/>今日进度</div>
     <div class="spacer"></div><button class="collapse-btn" title="折叠">▾</button></div>
-    <div class="card-body"><div class="ring-wrap">${ring}${stats}</div></div>
+    <div class="card-body">
+      <div class="progress-top">${ring}<div class="progress-cap">完成率</div></div>
+      <div class="progress-stats">${stats}</div>
+      <div class="progress-actions">
+        <button class="btn btn-soft btn-icon" data-act="add" title="新增任务"><img class="ic" src="assets/icons/hk-32.png" alt=""/></button>
+        <button class="btn btn-soft btn-icon" data-act="view-all" title="查看全部任务"><img class="ic" src="assets/icons/hk-37.png" alt=""/></button>
+        <button class="btn btn-soft btn-icon" data-act="today" title="返回今天"><img class="ic" src="assets/icons/hk-38.png" alt=""/></button>
+      </div>
+    </div>
   </div>
 
   <div class="grid grid-2">

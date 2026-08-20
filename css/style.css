@@ -290,6 +290,18 @@ img.ic { width: 20px; height: 20px; object-fit: contain; vertical-align: middle;
 .ring-stat .v { font-size: 22px; font-weight: 800; color: var(--text); }
 .ring-stat .l { font-size: 12px; color: var(--text-soft); }
 
+/* 学习计划·今日进度卡片：垂直布局（不影响其他模块的 .ring-wrap） */
+.progress-card .card-body { display: flex; flex-direction: column; align-items: center; gap: 18px; }
+.progress-card .progress-top { display: flex; flex-direction: column; align-items: center; }
+.progress-card .progress-top .ring { margin: 0 auto; }
+.progress-card .progress-top .progress-cap { margin-top: 6px; font-size: 12.5px; color: var(--text-soft); font-weight: 600; }
+.progress-card .progress-stats { width: 100%; }
+.progress-card .progress-stats .ring-stats { flex-wrap: nowrap; }
+.progress-card .progress-stats .ring-stat { min-width: 0; }
+.progress-card .progress-actions { display: flex; gap: 16px; justify-content: center; margin-top: 2px; }
+.progress-card .progress-actions .btn-icon { width: 44px; height: 44px; border-radius: 14px; }
+.progress-card .progress-actions .btn-icon .ic { width: 22px; height: 22px; }
+
 /* ============ 弹窗 ============ */
 .modal-mask {
   position: fixed; inset: 0; background: rgba(74,68,88,.34);
