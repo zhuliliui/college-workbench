@@ -675,7 +675,7 @@ window.Pages = window.Pages || {};
   </div>
   <div class="muted-text mt12 center">${flashMode === 'review' ? ' 复习模式：记得牢就点「记住了」（推进间隔），不打断今日学习计数' : ''}</div>
   </div>
-  </div>` + renderQuizCard(bank) + dictateCardHtml(dList, dueWords());
+  </div>` + renderQuizCard(bank) + dictateCardHtml(dList);
   const w = wrap(body, html);
   // 原生环境：异步检测 TTS 引擎状态，反映在「发音」按钮上（Google 引擎 → 绿色对勾，无引擎 → ✗ 可跳系统设置）
   try {
@@ -724,8 +724,6 @@ window.Pages = window.Pages || {};
   if (act === 'dictate-stop') return stopDictate();
   if (act === 'flash-mode-new') { flashMode = 'new'; session = null; renderFlash(body, bank); return; }
   if (act === 'flash-mode-review') { flashMode = 'review'; session = null; renderFlash(body, bank); return; }
-  if (act === 'dictate-src-new') { dictateSrc = 'new'; renderFlash(body, bank); return; }
-  if (act === 'dictate-src-review') { dictateSrc = 'review'; renderFlash(body, bank); return; }
   if (act === 'remember' || act === 'forget') {
   try {
   Store.update((st) => {
@@ -815,32 +813,33 @@ window.Pages = window.Pages || {};
   const act = b.dataset.act;
   if (act === 'flash-mode-new') { flashMode = 'new'; session = null; renderFlash(body, bank); return; }
   if (act === 'flash-mode-review') { flashMode = 'review'; session = null; renderFlash(body, bank); return; }
-  if (act === 'dictate-src-new') { dictateSrc = 'new'; renderFlash(body, bank); return; }
-  if (act === 'dictate-src-review') { dictateSrc = 'review'; renderFlash(body, bank); return; }
   });
   }
   // ---------- 默写当日已背单词（逐词朗读，每词间隔 12s）----------
-  // 默写卡片：支持「今日已背」与「复习（到期词）」两个词源切换
-  function dictateCardHtml(newList, reviewList) {
-  const cur = dictateSrc === 'review' ? reviewList : newList;
+  // 默写卡片：仅显示「今日已背」单词（今日学习「会了」的词），逐词朗读每词间隔 12 秒
+  function dictateCardHtml(newList) {
+  const cur = newList;
   const head = `<div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-09.png" alt=""/>默写单词</div>
   <div class="spacer"></div>
-  <button class="btn btn-sm ${dictateSrc === 'new' ? '' : 'btn-soft'}" data-act="dictate-src-new"><img class="ic" src="assets/icons/hk-39.png" alt=""/> 已背 ${newList.length}</button>
-  <button class="btn btn-sm ${dictateSrc === 'review' ? '' : 'btn-soft'}" data-act="dictate-src-review"><img class="ic" src="assets/icons/hk-10.png" alt=""/> 复习 ${reviewList.length}</button>
+  <span class="tag">今日已背 ${newList.length}</span>
   </div>`;
   if (!cur.length) {
-  const emptyTxt = dictateSrc === 'review' ? '当前没有到期待复习的单词，先去「复习」闪卡把到期词过一遍吧～' : '今天还没背过单词哦，先在上面闪卡点「记住了」几个吧～';
-  return `<div class="card mt16">${head}<div class="card-body"><div class="muted-text center">${emptyTxt}</div></div></div>`;
+  return `<div class="card mt16">${head}<div class="card-body"><div class="muted-text center">今天还没背过单词哦，先在上面闪卡点「会了」记下几个吧～</div></div></div>`;
   }
   const rows = cur.map((wd, i) => `
-  <div class="dictate-row" data-spk="${UI.esc(wd)}">
+  <div class="dictate-row ${dictate.playing && dictate.idx === i ? 'active' : ''}" data-spk="${UI.esc(wd)}">
   <span class="d-idx">${i + 1}</span>
   <span class="d-word">${UI.esc(wd)}</span>
   <span class="d-spk"><img class="ic" src="assets/icons/hk-27.png" alt="听"/></span>
   </div>`).join('');
   return `<div class="card mt16" id="dictateCard">${head}
   <div class="card-body">
-  <div class="muted-text">点击任意单词可单独听发音，边听边默写。</div>
+  <div class="muted-text">点击「开始默写」将逐词朗读，每词间隔 12 秒，可边听边默写；也可点任意单词单独听。</div>
+  <div class="flex-wrap gap8 mt12" style="justify-content:center">
+  <button class="btn btn-sm" data-act="dictate-start"><img class="ic" src="assets/icons/hk-09.png" alt=""/> 开始</button>
+  <button class="btn btn-soft btn-sm" data-act="dictate-stop" style="display:${dictate.playing ? 'inline-block' : 'none'}"><img class="ic" src="assets/icons/hk-18.png" alt=""/> 停止</button>
+  </div>
+  <div id="dictateStatus" class="center mt12" style="min-height:22px;color:var(--primary-deep);font-weight:600"></div>
   <div class="dictate-list mt12">${rows}</div>
   </div></div>`;
   }
@@ -853,8 +852,8 @@ window.Pages = window.Pages || {};
   }
   // 开始逐词朗读（取最新清单；播放途中新增单词不打断当前序列）
   function startDictate() {
-  const list = dictateSrc === 'review' ? dueWords() : todayWords();
-  if (!list || !list.length) { UI.toast(dictateSrc === 'review' ? '当前没有到期待复习的单词' : '今天还没有已背单词', 'warn'); return; }
+  const list = todayWords();
+  if (!list || !list.length) { UI.toast('今天还没有已背单词', 'warn'); return; }
   stopDictate();
   dictate.playing = true;
   dictate.idx = 0;
@@ -877,7 +876,7 @@ window.Pages = window.Pages || {};
   const rows = document.querySelectorAll('.dictate-row');
   rows.forEach((r, i) => r.classList.toggle('active', i === dictate.idx));
   const status = UI.$('#dictateStatus');
-  if (status) status.textContent = '正在朗读：' + wd + '（' + (dictate.idx + 1) + ' / ' + dictate.list.length + '）· 下个词 20 秒后';
+  if (status) status.textContent = '正在朗读：' + wd + '（' + (dictate.idx + 1) + ' / ' + dictate.list.length + '）· 下个词 12 秒后';
   dictate.idx++;
   dictate.timer = setTimeout(playDictateWord, 12000);
   }
@@ -912,9 +911,9 @@ window.Pages = window.Pages || {};
     // 中→英：用户写英文，严格判（忽略大小写空格）
     return inp === norm(w0.word);
   }
-  // 单词练习词表：仅取「今日已背 / 今日复习」的单词（今日学习过的词自动加入），无则空态引导
+  // 单词练习词表：仅取「今日已背」的单词（今日学习「会了」的词自动加入），无则空态引导
   function quizPool(bank) {
-    const strs = todayWords().concat(todayReviewedWords());
+    const strs = todayWords();
     const seen = new Set(); const out = [];
     strs.forEach((w) => {
       if (seen.has(w)) return;
