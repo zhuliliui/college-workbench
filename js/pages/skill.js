@@ -697,6 +697,11 @@ Pages.skill = function () {
     { label: '保存地址', onClick: () => {
       const v = (UI.val('#aeBackendUrl') || '').trim().replace(/\/$/, '');
       if (v && !/^https?:\/\//i.test(v)) { UI.toast('地址需以 http:// 或 https:// 开头', 'warn'); return; }
+      // 混合内容防呆：HTTPS 页面（云端部署）禁止调用 http:// 后端，浏览器会直接拦截
+      if (v && location.protocol === 'https:' && /^http:\/\//i.test(v)) {
+        UI.toast('当前是 HTTPS 安全页，浏览器会拦截 http:// 后端。请改用：① 浏览器直接打开 ' + v + '（HTTP 页可用）或 ② 填 HTTPS 后端（如 Railway）', 'warn');
+        return;
+      }
       Store.update((st) => { if (!st.cal) st.cal = {}; st.cal.backendUrl = v; if (v) { if (!st.english) st.english = {}; st.english.readerBackend = v; } });
       UI.closeModal(); UI.toast(v ? '已保存：将实时读取 ' + v : '已恢复自动识别', 'ok'); Pages.skill();
     } }
