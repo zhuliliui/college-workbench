@@ -856,7 +856,7 @@ table.tbl tr:hover td { background: var(--surface-2); }
 .archive-day .home-list .item.done .name { text-decoration: line-through; color: var(--text-soft); }
 
 /* 默写练习答题反馈框（美化 + 与下方按钮保持间距） */
-.quiz-fb { margin: 6px 0 22px; border-radius: 14px; padding: 14px 16px; text-align: left; font-size: 14px; line-height: 1.65; box-shadow: 0 3px 12px rgba(0,0,0,.06); box-sizing: border-box; }
+.quiz-fb { margin: 0 0 28px; border-radius: 14px; padding: 14px 16px; text-align: left; font-size: 14px; line-height: 1.65; box-shadow: 0 3px 12px rgba(0,0,0,.06); box-sizing: border-box; }
 .quiz-fb-hd { font-weight: 800; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
 .quiz-fb-row { margin-top: 4px; }
 .quiz-fb.ok { background: linear-gradient(135deg, #eafaf0, #f4fbf6); border: 1px solid var(--success); color: #1f7a43; }

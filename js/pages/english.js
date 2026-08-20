@@ -738,6 +738,11 @@ window.Pages = window.Pages || {};
       if (act === 'remember') {
         // 记住了：移出当前组（出队），今日新学计入「已学」与奖励；复习模式计入「已复习」
         if (flashMode === 'new') recordStudy(w0.word); else recordReview(w0.word);
+        // 今日学习的单词自动加入「单词练习」词表（即时可见，无需重开一轮）
+        if (flashMode === 'new') {
+          if (!quiz) quiz = { mode: 'ec', idx: 0, list: [], revealed: false, answer: '', done: false, feedback: null };
+          if (!quiz.list.some((q) => q.word === w0.word)) quiz.list.push(w0);
+        }
         session.queue.shift(); session.learned++; session.flipped = false;
         if (session.queue.length === 0) { session = null; UI.toast(flashMode === 'review' ? '本轮复习完成' : '本轮新学完成', 'love'); }
       } else {
@@ -751,7 +756,7 @@ window.Pages = window.Pages || {};
   }
   return;
   }
-  // ---------- 默写练习（q-*）事件 ----------
+  // ---------- 单词练习（q-*）事件 ----------
   if (act === 'q-speak' || act === 'q-reveal' || act === 'q-next' || act === 'q-switch' || act === 'q-restart') {
   const w0q = currentQuizWord();
   if (act === 'q-speak') {
@@ -764,7 +769,7 @@ window.Pages = window.Pages || {};
   return;
   }
   if (act === 'q-restart') {
-  quiz = { mode: (quiz && quiz.mode) || 'ec', idx: 0, list: bank.slice().sort(() => Math.random() - 0.5), revealed: false, answer: '', done: false, feedback: null };
+  quiz = { mode: (quiz && quiz.mode) || 'ec', idx: 0, list: quizPool(bank), revealed: false, answer: '', done: false, feedback: null };
   refreshQuizCard(body, bank);
   return;
   }
@@ -790,7 +795,7 @@ window.Pages = window.Pages || {};
         if (isEC) recordStudy(w0q.word, false); else recordReview(w0q.word, false);
         quiz.idx++;
         quiz.feedback = null; quiz.revealed = false; quiz.answer = '';
-        if (quiz.idx >= quiz.list.length) { quiz.done = true; UI.toast('本轮默写完成 🎉', 'love'); }
+        if (quiz.idx >= quiz.list.length) { quiz.done = true; UI.toast('本轮单词练习完成 🎉', 'love'); }
       } else {
   UI.toast('答错了，看下方正确答案', 'warn');
   }
@@ -896,7 +901,7 @@ window.Pages = window.Pages || {};
   if (stopBtn) stopBtn.style.display = 'none';
   }
 
-  // ---------- 默写练习（已并入闪卡模块，显示在「默写单词」上方） ----------
+  // ---------- 单词练习（已并入闪卡模块，显示在「默写单词」上方） ----------
   function currentQuizWord() {
     if (!quiz || !quiz.list || quiz.idx >= quiz.list.length) return null;
     return quiz.list[quiz.idx];
@@ -913,15 +918,34 @@ window.Pages = window.Pages || {};
     // 中→英：用户写英文，严格判（忽略大小写空格）
     return inp === norm(w0.word);
   }
+  // 单词练习词表：仅取「今日已背 / 今日复习」的单词（今日学习过的词自动加入），无则空态引导
+  function quizPool(bank) {
+    const strs = todayWords().concat(todayReviewedWords());
+    const seen = new Set(); const out = [];
+    strs.forEach((w) => {
+      if (seen.has(w)) return;
+      const obj = bank.find((b) => b.word === w);
+      if (obj) { seen.add(w); out.push(obj); }
+    });
+    return out;
+  }
   function renderQuizCard(bank) {
     if (!bank.length) return '';
-    if (!quiz || quiz.done) quiz = { mode: 'ec', idx: 0, list: bank.slice().sort(() => Math.random() - 0.5), revealed: false, answer: '', done: false, feedback: null };
+    if (!quiz || quiz.done) quiz = { mode: 'ec', idx: 0, list: quizPool(bank), revealed: false, answer: '', done: false, feedback: null };
+    if (quiz.list.length === 0) {
+      return `<div class="card mt16" id="quizCard">
+        <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-38.png" alt=""/>单词练习</div><div class="spacer"></div></div>
+        <div class="card-body center">
+          <div class="empty"><img class="emoji" src="assets/icons/hk-27.png" alt=""/><div class="t">今天还没学单词</div><div class="s">先在上方闪卡点「会了」记下几个单词，这里会自动加入练习～</div></div>
+        </div>
+      </div>`;
+    }
     const total = quiz.list.length;
     if (quiz.idx >= total) {
       return `<div class="card mt16" id="quizCard">
-        <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-38.png" alt=""/>默写练习</div><div class="spacer"></div></div>
+        <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-38.png" alt=""/>单词练习</div><div class="spacer"></div></div>
         <div class="card-body center">
-          <div class="empty"><img class="emoji" src="assets/icons/hk-06.png" alt=""/><div class="t">本轮自测完成</div><div class="s">共 ${total} 词 · 点击下方重来</div></div>
+          <div class="empty"><img class="emoji" src="assets/icons/hk-06.png" alt=""/><div class="t">本轮练习完成</div><div class="s">共 ${total} 词 · 点击下方重来</div></div>
           <div class="center mt12"><button class="btn btn-sm" data-act="q-restart">再来一轮</button></div>
         </div>
       </div>`;
@@ -942,7 +966,7 @@ window.Pages = window.Pages || {};
       </div>`) : '';
     return `
     <div class="card mt16" id="quizCard">
-      <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-38.png" alt=""/>默写练习</div>
+      <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-38.png" alt=""/>单词练习</div>
       <div class="spacer"></div><span class="tag">${quiz.idx + 1} / ${total}</span>
       <button class="btn btn-soft btn-sm" data-act="q-switch">切换 ${isEC ? '中→英' : '英→中'}</button></div>
       <div class="card-body center">
@@ -1034,7 +1058,7 @@ window.Pages = window.Pages || {};
 
   function todayStr() { const d = new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
   // 记录今日学完一个单词；跨天自动清零；每满 20 个自动奖励 +1 元（虚拟存钱罐）
-  // addDictate=false 时不把单词写进「今日已背」清单（用于默写练习，避免污染「默写单词」朗读列表）
+  // addDictate=false 时不把单词写进「今日已背」清单（用于单词练习，避免污染「默写单词」朗读列表）
   function recordStudy(word, addDictate) {
   if (addDictate === undefined) addDictate = true;
   const today = todayStr();
@@ -1060,7 +1084,7 @@ window.Pages = window.Pages || {};
   return learned;
   }
   // 记录今日复习过一个词（复习模式点「记住了」，不计奖励）
-  // addList=false 时不把单词写进「复习词」清单（用于默写练习，避免污染「默写单词-复习」朗读列表）
+  // addList=false 时不把单词写进「复习词」清单（用于单词练习，避免污染「默写单词-复习」朗读列表）
   function recordReview(word, addList) {
   if (addList === undefined) addList = true;
   const today = todayStr();

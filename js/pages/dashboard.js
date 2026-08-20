@@ -50,7 +50,11 @@ Pages.dashboard = function () {
           stillToday = (added === today) || (dueStr >= today); // 截止当天及之前都留在今日，过期即归档
         }
         if (stillToday) keep.push(t);
-        else st.taskArchive.push(Object.assign({}, t, { planDate: added || today, archivedDate: today }));
+        else {
+          // 去重：同一任务仅归档一次，避免重复归档
+          const dup = st.taskArchive.some((a) => a.id && a.id === t.id);
+          if (!dup) st.taskArchive.push(Object.assign({}, t, { planDate: added || today, archivedDate: today }));
+        }
       });
       st.tasks = keep;
     });
