@@ -1433,6 +1433,14 @@ function getLanIps() {
   return out;
 }
 
+// ---------- 全局异常兜底（2026-08-21：VBS 无守护，崩溃不会自动重启；未捕获异常只记录不退出）----------
+process.on('uncaughtException', (e) => {
+  console.error('[uncaughtException]', e && (e.stack || e.message));
+  // 端口被占说明已有实例在跑，本进程没有存在意义，退出释放资源
+  if (e && e.code === 'EADDRINUSE') { process.exit(1); }
+});
+process.on('unhandledRejection', (e) => { console.error('[unhandledRejection]', e && (e.stack || e.message)); });
+
 server.listen(PORT, () => {
   console.log('工作台后端启动：http://localhost:' + PORT);
   console.log('日历订阅：http://localhost:' + PORT + '/api/ddl/calendar.ics?clientId=<clientId>');
