@@ -1207,14 +1207,20 @@ window.Pages = window.Pages || {};
     }
     }
   } catch (e) { /* 后端不可达，不阻塞页面 */ }
-  return; // 有后端就不走离线种子
   }
-  // 无后端：回退离线外媒精选种子（每日首次）
+  // 无论是否有后端，每日都从内置双语种子补入中英对照文章（最多 2 篇，按英文指纹去重）。
+  // 2026-08-21：后端实例若无 LLM_API_KEY（仅英文）时，保证文库始终有「外媒/国内权威中英对照」可读；
+  // 有后端时每日本文库混入「实时外刊（英文）+ 双语精选（中英对照）」两类内容。
   if (eng.lastAutoDate === today) return;
   const seed = (typeof window !== 'undefined' && window.REALNEWS_SEED) || [];
   if (!seed.length) { Store.update((s) => { s.english.lastAutoDate = today; }); return; }
   const have = new Set((eng.articles || []).filter((x) => !x.offline).map((a) => enFp(a.text, 60) || enFp(a.title, 40)));
-  const sorted = seed.slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+  // 中英对照种子优先（外媒双语 / 人民日报·北京周报权威译本），其次才选纯英文
+  const sorted = seed.slice().sort((a, b) => {
+  const aCn = hasChinese(a) ? 1 : 0, bCn = hasChinese(b) ? 1 : 0;
+  if (aCn !== bCn) return bCn - aCn;
+  return String(b.date || '').localeCompare(String(a.date || ''));
+  });
   const picks = [];
   for (const a of sorted) {
   if (picks.length >= 2) break;
