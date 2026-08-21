@@ -8,6 +8,8 @@ let _kcCur = null;
 let _kcT1 = false; let _kcT2 = false;
 let _kcInt1 = null; let _kcInt2 = null;
 let _kcLeft1 = 300; let _kcLeft2 = 300;
+let _kcEndAt1 = 0; let _kcEndAt2 = 0; // 结束时间戳：切后台/锁屏后按真实时间校准，倒计时不再“卡住”
+let _kcWake = null; // Wake Lock 句柄：演讲计时中防手机锁屏
 let _kcAudioCtx = null; // 闹钟 AudioContext（需在用户手势内预热解锁，到点才响得了）
 let _kcActiveTab = 1;
 let _kcSpinInt = null;
@@ -180,8 +182,21 @@ Pages.dashboard = function () {
   return Math.max(1, parseInt(v) || 5);
   };
   const kcStop = (phase) => {
-  if (phase === 1) { _kcT1 = false; if (_kcInt1) { clearInterval(_kcInt1); _kcInt1 = null; } }
-  else if (phase === 2) { _kcT2 = false; if (_kcInt2) { clearInterval(_kcInt2); _kcInt2 = null; } }
+  if (phase === 1) { _kcT1 = false; _kcEndAt1 = 0; if (_kcInt1) { clearInterval(_kcInt1); _kcInt1 = null; } }
+  else if (phase === 2) { _kcT2 = false; _kcEndAt2 = 0; if (_kcInt2) { clearInterval(_kcInt2); _kcInt2 = null; } }
+  if (!_kcT1 && !_kcT2) kcWakeRelease(); // 两个阶段都停了才释放防锁屏
+  };
+  // 演讲计时中请求屏幕常亮（防止手机息屏/锁屏导致计时挂起）；浏览器不支持时静默忽略
+  const kcWakeLock = async () => {
+  try {
+  if (navigator.wakeLock && navigator.wakeLock.request && !_kcWake) {
+    _kcWake = await navigator.wakeLock.request('screen');
+    _kcWake.addEventListener('release', () => { _kcWake = null; });
+  }
+  } catch (e) { /* 不支持/被系统拒绝：忽略，计时仍按时间戳校准 */ }
+  };
+  const kcWakeRelease = () => {
+  try { if (_kcWake) { _kcWake.release().catch(() => {}); _kcWake = null; } } catch (e) {}
   };
   const kcStopAll = () => { kcStop(1); kcStop(2); if (_kcSpinInt) { clearInterval(_kcSpinInt); _kcSpinInt = null; } };
   const kcSpeak = (text) => {
@@ -459,14 +474,18 @@ Pages.dashboard = function () {
   kcEnsureAudio(); // 用户手势内预热音频，保证倒计时到点能响铃
   const running = phase === 1 ? _kcT1 : _kcT2;
   if (running) { kcStop(phase); Pages.dashboard(); return; }
-  if (phase === 1) { _kcT1 = true; _kcLeft1 = kcGetMin(1) * 60; }
-  else { _kcT2 = true; _kcLeft2 = kcGetMin(2) * 60; }
+  const nowMs = Date.now();
+  if (phase === 1) { _kcT1 = true; _kcLeft1 = kcGetMin(1) * 60; _kcEndAt1 = nowMs + _kcLeft1 * 1000; }
+  else { _kcT2 = true; _kcLeft2 = kcGetMin(2) * 60; _kcEndAt2 = nowMs + _kcLeft2 * 1000; }
+  kcWakeLock(); // 计时中防锁屏
   Pages.dashboard();
   const dispId = phase === 1 ? 'kcDisp1' : 'kcDisp2';
   const phaseName = phase === 1 ? '整理' : '汇报';
   const tick = () => {
-  if (phase === 1) _kcLeft1--; else _kcLeft2--;
-  const left = phase === 1 ? _kcLeft1 : _kcLeft2;
+  // 时间戳校准：切后台/锁屏导致 setInterval 挂起时，恢复后按真实流逝时间重算，不倒计时“卡住”
+  const endAt = phase === 1 ? _kcEndAt1 : _kcEndAt2;
+  const left = Math.max(0, Math.ceil((endAt - Date.now()) / 1000));
+  if (phase === 1) _kcLeft1 = left; else _kcLeft2 = left;
   if (left <= 0) {
   kcStop(phase);
   kcAlarm(); // 闹钟响铃 + 震动提醒
@@ -505,3 +524,17 @@ Pages.dashboard = function () {
   }
   };
 };
+
+// 页面恢复可见（切回/解锁）时立即按时间戳校准演讲倒计时显示，无需等下一 tick
+(function () {
+  if (typeof document === 'undefined' || !document.addEventListener) return;
+  document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  if (!_kcT1 && !_kcT2) return;
+  const now = Date.now();
+  if (_kcT1 && _kcEndAt1) _kcLeft1 = Math.max(0, Math.ceil((_kcEndAt1 - now) / 1000));
+  if (_kcT2 && _kcEndAt2) _kcLeft2 = Math.max(0, Math.ceil((_kcEndAt2 - now) / 1000));
+  const d1 = UI.$ && UI.$('#kcDisp1'); if (d1) d1.textContent = kcFmt(_kcLeft1);
+  const d2 = UI.$ && UI.$('#kcDisp2'); if (d2) d2.textContent = kcFmt(_kcLeft2);
+  });
+})();
