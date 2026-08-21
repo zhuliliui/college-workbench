@@ -1113,6 +1113,44 @@ window.Pages = window.Pages || {};
   const _persisted = (Store.get().english && Store.get().english.reader);
   readerArticle = (_persisted && _persisted.text) ? _persisted : OFFLINE_ARTICLES[0];
   // 从后端外刊库列表批量入库（按「标题+link」去重）；max 限制最多入库篇数；返回是否成功入库至少 1 篇
+  // 判断文章是否含中文翻译（chapters.paras.cn / translation / tailCn / cn）
+  function hasChinese(a) {
+    if (!a || typeof a !== 'object') return false;
+    if (Array.isArray(a.chapters)) {
+      for (const ch of a.chapters) {
+        if (ch && typeof ch.cn === 'string' && /[\u4e00-\u9fa5]/.test(ch.cn)) return true;
+        if (ch && Array.isArray(ch.paras)) {
+          for (const p of ch.paras) {
+            if (p && typeof p === 'object' && typeof p.cn === 'string' && p.cn.trim() && /[\u4e00-\u9fa5]/.test(p.cn)) return true;
+          }
+        }
+      }
+    }
+    if (a.translation && typeof a.translation === 'object' && !Array.isArray(a.translation) && Object.keys(a.translation).length) return true;
+    if (typeof a.tailCn === 'string' && a.tailCn.trim()) return true;
+    if (typeof a.cn === 'string' && a.cn.trim()) return true;
+    return false;
+  }
+  // 将本地（旧版）的中文翻译按 label/段落对齐回填到新文章（后端返回无 cn 时保留本地中文）
+  function mergeCnFromPrev(newArt, prev) {
+    if (newArt.chapters && prev.chapters && Array.isArray(newArt.chapters) && Array.isArray(prev.chapters)) {
+      newArt.chapters.forEach((nc) => {
+        if (!nc) return;
+        const pc = (prev.chapters || []).find((c) => c && c.label === nc.label);
+        if (pc && Array.isArray(pc.paras) && Array.isArray(nc.paras)) {
+          nc.paras.forEach((p, j) => {
+            const pp = pc.paras[j];
+            if (p && typeof p === 'object' && pp && typeof pp === 'object' && typeof pp.cn === 'string' && pp.cn.trim() && !p.cn) p.cn = pp.cn;
+          });
+        }
+        if (!nc.cn && pc && typeof pc.cn === 'string' && pc.cn.trim()) nc.cn = pc.cn;
+      });
+    }
+    if (!newArt.translation && prev.translation) newArt.translation = prev.translation;
+    if (!newArt.tailCn && prev.tailCn) newArt.tailCn = prev.tailCn;
+    if (!newArt.cn && prev.cn) newArt.cn = prev.cn;
+    return newArt;
+  }
   function importFromBackendList(arts, max) {
   const eng = Store.get().english;
   if (!eng || !Array.isArray(arts)) return false;
@@ -1134,7 +1172,11 @@ window.Pages = window.Pages || {};
   if (i >= 0) {
   const prev = l[i];
   const keepTitle = (prev.title || '').trim();
-  l[i] = Object.assign({}, art, { offline: false, read: !!prev.read });
+  const newArt = Object.assign({}, art, { offline: false, read: !!prev.read });
+  // 中文保护（2026-08-21）：后端实例若无 LLM_API_KEY（如 Railway 默认实例）返回纯英文，
+  // 若本地已有中文翻译则回填保留，避免「手机导入中英对照备份后被英文覆盖」。
+  if (!hasChinese(newArt) && hasChinese(prev)) mergeCnFromPrev(newArt, prev);
+  l[i] = newArt;
   if (keepTitle) l[i].title = prev.title; // 保留用户改过的标题
   } else l.unshift(Object.assign({ source: a.source || 'realnews', category: a.category || '', date: a.date || todayStr(), link: a.link || '', offline: false, read: false }, art));
   });
@@ -1190,7 +1232,10 @@ window.Pages = window.Pages || {};
   if (i >= 0) {
   const prev = l[i];
   const keepTitle = (prev.title || '').trim();
-  l[i] = Object.assign({}, art, { offline: false, read: !!l[i].read });
+  const newArt = Object.assign({}, art, { offline: false, read: !!l[i].read });
+  // 中文保护：种子若无中文而本地已有中文 → 回填保留
+  if (!hasChinese(newArt) && hasChinese(prev)) mergeCnFromPrev(newArt, prev);
+  l[i] = newArt;
   if (keepTitle) l[i].title = prev.title; // 保留用户改过的标题
   } else l.unshift(Object.assign({ source: a.source || 'realnews', category: a.category || '', date: a.date || today, link: a.link || '', offline: false, read: false }, art));
   });
