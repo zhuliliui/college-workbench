@@ -17,6 +17,9 @@ update/
 # 后端运行时生成的数据（由 server.js 实时抓取写入，不入库）
 data/journal.json
 data/ai-topics.json
+# DDL 推送注册数据（含 ServerChan/PushPlus token，仅存本地，严禁入库）
+registrations.json
+server.log
 update-last-version.txt
 .update-push-tmp/
 .workbuddy/
