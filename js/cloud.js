@@ -151,35 +151,35 @@
   throw new Error('云端数据格式异常，无法识别。' + info + '。请重新上传一份备份覆盖它');
   }
 
-  // 每天 23 点自动上传备份（页面需处于打开状态；每分钟检查一次到点即传）
-  // - 已配置云端才启用；当天已成功自动备份过则跳过（st.cloud.autoBackupDate 记录）
-  // - 错过补传：打开页面时若发现「昨天(或更早)没备份成功」，立即补一次（例如昨晚页面关了）
-  // - 成功静默（记录日期即可）；失败只提示 1 次（sessionStorage 防重复）
+  // 自动备份改为「关闭页面触发」（2026-08-22）：不再每分钟检查 23:00
+  // - 启动时立即补传一次（页面打开=最新一次上传机会）
+  // - visibilitychange (hidden)：用户切走标签/最小化浏览器/手机息屏 → 立即上传
+  // - pagehide：用户真关页面/卸载 → 再尝试一次（部分浏览器可能不完成 fetch，但 visibilitychange 已覆盖大部分场景）
+  // - 防重：当天已成功过（st.cloud.autoBackupDate === today）跳过；仅首次上传提示成功
   let _autoRunning = false;
   function scheduleAutoBackup() {
   if (_autoRunning) return; _autoRunning = true;
-  const tryUpload = async () => {
+  const triggerBackup = async (reason) => {
   if (!configured()) return; // 未配置云端（无 owner/repo/token）不启用
-  const now = new Date();
   const today = D.todayStr();
-  const yesterday = D.todayStr(new Date(now.getTime() - 86400000));
   const st = Store.get().cloud || {};
-  if (st.autoBackupDate === today) return; // 今天已自动备份过
-  const atTime = now.getHours() >= 23; // 已到 23 点
-  const missed = st.autoBackupDate !== yesterday; // 昨天(或更早/从未)没备份成功 → 打开页面立即补传
-  if (!atTime && !missed) return; // 未到点且昨天已备份成功 → 等 23 点再传
+  if (st.autoBackupDate === today) return; // 今天已自动备份过 → 跳过
   try {
-    await upload();
-    Store.update((c2) => { c2.cloud = c2.cloud || {}; c2.cloud.autoBackupDate = today; });
+  await upload();
+  Store.update((c2) => { c2.cloud = c2.cloud || {}; c2.cloud.autoBackupDate = today; });
+  try { console.log('[cloud] 关闭触发自动备份成功', reason, today); } catch (e) {}
   } catch (e) {
-    // 失败：整个会话只提示 1 次，避免反复弹窗；成功后自动清标记
-    try {
-    if (!sessionStorage.getItem('cw_auto_backup_warned')) { sessionStorage.setItem('cw_auto_backup_warned', '1'); UI.toast('自动备份失败：' + (e && e.message ? e.message : '网络错误') + '（会自动重试）', 'warn'); }
-    } catch (e2) { /* 隐私模式忽略 */ }
+  // 失败：整个会话只提示 1 次，避免反复弹窗；成功后自动清标记
+  try {
+  if (!sessionStorage.getItem('cw_auto_backup_warned')) { sessionStorage.setItem('cw_auto_backup_warned', '1'); UI.toast('自动备份失败：' + (e && e.message ? e.message : '网络错误') + '（下次离开页面会重试）', 'warn'); }
+  } catch (e2) { /* 隐私模式忽略 */ }
   }
   };
-  tryUpload(); // 打开页面立即检查一次（含错过补传）
-  setInterval(tryUpload, 60000); // 每分钟检查一次（到 23 点即触发）
+  triggerBackup('页面打开'); // 进入页面立刻补一次（兼容老用户的错过补传）
+  document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') triggerBackup('页面隐藏');
+  });
+  window.addEventListener('pagehide', () => triggerBackup('页面卸载'));
   }
 
   // 验证配置并返回默认分支

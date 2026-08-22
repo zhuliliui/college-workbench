@@ -455,7 +455,7 @@
   navigator.serviceWorker.register('sw.js').catch(() => {});
   }
   route();
-  if (window.Cloud && Cloud.scheduleAutoBackup) Cloud.scheduleAutoBackup(); // 每天 23 点自动备份云端（需页面打开）
+  if (window.Cloud && Cloud.scheduleAutoBackup) Cloud.scheduleAutoBackup(); // 离开页面（切走/关页面）触发自动备份
   if (window.AppUpdater) window.AppUpdater.ready(); // 标记当前包正常（热更新防回滚）
   }
 

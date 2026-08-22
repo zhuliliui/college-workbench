@@ -173,18 +173,6 @@ window.Pages = window.Pages || {};
   </div>
 
   <div class="card">
-  <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-23.png" alt=""/>本月最大开销</div>
-  <div class="spacer"></div><button class="collapse-btn" title="折叠">▾</button></div>
-  <div class="card-body">
-  ${maxExp ? `<div class="flex-between">
-  <div><div class="name" style="font-weight:700">${UI.esc(maxExp.category)}</div>
-  <div class="muted-text">${maxExp.date}${maxExp.note ? ' · ' + UI.esc(maxExp.note) : ''}</div></div>
-  <div style="font-size:26px;font-weight:800;color:var(--danger)">${D.money(maxExp.amount)}</div>
-  </div>` : `<div class="empty"><img class="emoji" src="assets/icons/hk-02.png" alt=""/><div class="t">本月暂无支出</div></div>`}
-  </div>
-  </div>
-
-  <div class="card">
   <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-18.png" alt=""/>收支记录</div>
   <div class="spacer"></div><button class="collapse-btn" title="折叠">▾</button></div>
   <div class="card-body">

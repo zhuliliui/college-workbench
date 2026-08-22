@@ -265,7 +265,7 @@ img.ic { width: 20px; height: 20px; object-fit: contain; vertical-align: middle;
 .item .name { font-weight: 600; font-size: 14.5px; }
 .item.done .name, .item.done .meta { opacity: .45; text-decoration: line-through; }
 .item .meta { font-size: 12.5px; color: var(--text-soft); display: flex; gap: 10px; flex-wrap: wrap; margin-top: 3px; }
-.item .ops { display: flex; gap: 6px; flex: 0 0 auto; }
+.item .ops { display: flex; gap: 4px; flex: 0 0 auto; flex-direction: column; align-items: center; } /* 图标默认竖排在文字右侧（2026-08-22）*/
 .item .ops .btn-icon { width: 32px; height: 32px; font-size: 14px; }
 
 /* 空状态 */
@@ -625,7 +625,7 @@ img.ic { width: 20px; height: 20px; object-fit: contain; vertical-align: middle;
 }
 @media (max-width: 560px) {
   .item { flex-wrap: wrap; }
-  .item .ops { width: 100%; justify-content: flex-end; }
+  .item .ops { width: auto; justify-content: center; }
   .piggy-balance { font-size: 32px; }
   .stat .value { font-size: 22px; }
 
@@ -2140,3 +2140,13 @@ img.ic, img.emoji, img.e, .stat-icon img {
     font-size: 12px;
   }
 }
+
+/* 月度复盘反思评价·日期历史 chip（2026-08-22）*/
+.date-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.date-chips .chip {
+  padding: 4px 10px; border-radius: 999px; background: var(--surface-2);
+  border: 1px solid var(--line); font-size: 12px; cursor: pointer; color: var(--text-soft);
+  transition: background .15s, border-color .15s, color .15s;
+}
+.date-chips .chip:hover { background: #fff; border-color: var(--primary); }
+.date-chips .chip.on { background: var(--primary-soft, #e7f3ea); border-color: var(--primary); color: var(--primary-deep); font-weight: 600; }
