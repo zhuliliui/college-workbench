@@ -196,6 +196,7 @@
   // - 会话内只尝试一次（sessionStorage 防重复）
   async function autoImportIfNewer() {
   if (!configured()) return false;
+  if (Store.get().cloud && Store.get().cloud.autoImport === false) return false; // 用户在弹窗关闭了自动导入
   try {
   if (sessionStorage.getItem('cw_auto_import_done')) return false; // 本会话已检查过
   sessionStorage.setItem('cw_auto_import_done', '1');
@@ -220,6 +221,7 @@
   if (_autoRunning) return; _autoRunning = true;
   const triggerBackup = async (reason) => {
   if (!configured()) return; // 未配置云端（无 owner/repo/token）不启用
+  if (Store.get().cloud && Store.get().cloud.autoUpload === false) return; // 用户在弹窗关闭了自动上传
   const now = Date.now();
   if (now - _lastAutoAt < 5 * 60 * 1000) return; // 5 分钟内已上传过 → 跳过
   _lastAutoAt = now; // 先占位，避免并发重复

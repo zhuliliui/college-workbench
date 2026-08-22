@@ -93,11 +93,11 @@ Pages.ddl = function () {
       <div class="body">
         <div class="name">${UI.esc(d.name)} ${d.done ? '<span class="tag success">已完成</span>' : level === 'danger' ? '<span class="tag danger">紧急</span>' : level === 'warn' ? '<span class="tag warn">预警</span>' : ''}</div>
         <div class="meta"><span>截止 ${d.due ? D.fmtDateTime(D.parseLDT(d.due)) : '未设置'}</span><span>剩余 ${left}</span></div>
-      </div>
-      <div class="ops">
-        <input type="range" min="0" max="100" value="${pct}" data-prog="${d.id}" class="prog-range" ${d.done ? 'disabled' : ''}/>
-        <button class="btn btn-soft btn-icon" data-act="edit" data-id="${d.id}" title="编辑"><img class="ic" src="assets/icons/hk-32.png" alt=""/></button>
-        <button class="btn btn-soft btn-icon" data-act="del" data-id="${d.id}" title="删除"><img class="ic" src="assets/icons/hk-18.png" alt=""/></button>
+        <div class="ops">
+          <input type="range" min="0" max="100" value="${pct}" data-prog="${d.id}" class="prog-range" ${d.done ? 'disabled' : ''}/>
+          <button class="btn btn-soft btn-icon" data-act="edit" data-id="${d.id}" title="编辑"><img class="ic" src="assets/icons/hk-32.png" alt=""/></button>
+          <button class="btn btn-soft btn-icon" data-act="del" data-id="${d.id}" title="删除"><img class="ic" src="assets/icons/hk-18.png" alt=""/></button>
+        </div>
       </div>
     </div>`;
   }

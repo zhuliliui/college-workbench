@@ -1303,8 +1303,8 @@ table.tbl tr:hover td { background: var(--surface-2); }
 .exam-meta { font-size: 13px; color: var(--text-soft); margin-top: 5px; }
 .exam-del { flex: 0 0 auto; width: 36px; height: 36px; border-radius: 50%; }
 .exam-del .ic { width: 18px; height: 18px; opacity: .7; }
-.ddl-item .ops { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; flex-direction: row; } /* 学业DDL清单保持横向（覆盖全局竖排）*/
-.ddl-item .prog-range { width: 96px; }
+.ddl-item .ops { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; flex-direction: row; width: 100%; margin-top: 8px; } /* 学业DDL：图标排布在文字下一行（2026-08-23）*/
+.ddl-item .prog-range { width: 96px; flex: 1; min-width: 60px; }
 .prog-range { accent-color: var(--primary); }
 @media (max-width: 560px) {
   .exam-card { padding: 14px 14px; gap: 12px; }

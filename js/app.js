@@ -344,9 +344,16 @@
   <div style="font-size:12px;color:var(--text-faint)">云端仓库（${UI.esc(provLabel)}）</div>
   <div style="font-weight:700;margin:2px 0">${UI.esc(c.owner)}/${UI.esc(c.repo)}</div>
   <div style="font-size:12px;color:var(--text-faint)">上次同步：${UI.esc(last)}</div>
-  <div style="font-size:12px;color:var(--text-faint)">自动备份：每天 23 点（页面打开时）${c.autoBackupDate ? ' · 最近 ' + UI.esc(c.autoBackupDate) + ' 已自动备份' : ''}</div>
+  <div style="font-size:12px;color:var(--text-faint);margin-top:4px;line-height:1.7">自动同步（<b>${c.autoUpload !== false ? '开' : '关'}</b>）：离开页面自动上传 · 打开页面自动导入最新（仅云端比本地新时）</div>
+  </div>
+  <div style="background:#eef4ff;border:1px solid #d4e2ff;border-radius:12px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:#1e40af;line-height:1.8">
+  <b>多设备提醒：</b>每台设备的本地数据相互独立。自动上传是「离开页面时把<b>本设备</b>数据覆盖到云端」——多台设备都用自动上传，<b>后离开的会覆盖先离开的</b>。建议：<b>只在一台设备开启自动上传</b>（如电脑），其他设备用「手动上传」或只开自动导入。
   </div>
   <div style="display:flex;flex-direction:column;gap:10px">
+  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+  <label style="font-size:13px;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="sAutoUp" ${c.autoUpload !== false ? 'checked' : ''}/> 离开页面自动上传</label>
+  <label style="font-size:13px;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="sAutoImp" ${c.autoImport !== false ? 'checked' : ''}/> 打开页面自动导入</label>
+  </div>
   <button class="btn" data-sync="up">上传到 ${UI.esc(provLabel)}（备份）</button>
   <button class="btn btn-soft" data-sync="down">从 ${UI.esc(provLabel)} 恢复（导入）</button>
   <div style="display:flex;gap:8px">
@@ -419,6 +426,11 @@
   }
   };
   });
+  // 自动上传/自动导入开关：实时保存到 st.cloud
+  const upChk = mask.querySelector('#sAutoUp');
+  const impChk = mask.querySelector('#sAutoImp');
+  if (upChk) upChk.addEventListener('change', () => { const v = upChk.checked; Store.update((st) => { st.cloud = st.cloud || {}; st.cloud.autoUpload = v; }); UI.toast(v ? '已开启离开页面自动上传' : '已关闭自动上传', 'ok'); });
+  if (impChk) impChk.addEventListener('change', () => { const v = impChk.checked; Store.update((st) => { st.cloud = st.cloud || {}; st.cloud.autoImport = v; }); UI.toast(v ? '已开启打开页面自动导入' : '已关闭自动导入', 'ok'); });
   }
 
   // ---- 初始化 ----
