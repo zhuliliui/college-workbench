@@ -33,8 +33,10 @@ Pages.discipline = function () {
   }).join('') + '</div>'
   : `<div class="empty"><img class="emoji" src="assets/icons/hk-06.png" alt=""/><div class="t">还没有打卡项目</div><div class="s">添加作息、运动、阅读、技能练习等，每天打卡攒奖励</div></div>`;
 
-  // 每日打分
-  const sc = d.scores[today] || { score: 0, reason: '', pros: '', cons: '' };
+  // 每日打分（按日期：默认今天，可切换历史日期查看/编辑）
+  const selDate = (UI.$('#scDate') && UI.$('#scDate').value) || today;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(selDate)) { UI.toast('日期格式不正确', 'warn'); Pages.discipline(); return; }
+  const sc = d.scores[selDate] || { score: 0, reason: '', pros: '', cons: '' };
   let stars = '';
   for (let i = 1; i <= 10; i++) stars += `<span class="star" data-score="${i}" style="font-size:26px;cursor:pointer;color:${i <= sc.score ? 'var(--primary)' : '#e3daf3'}">★</span>`;
 
@@ -61,9 +63,12 @@ Pages.discipline = function () {
   </div>
 
   <div class="card">
-  <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-32.png" alt=""/>每日自律打分 · ${today}</div>
-  <div class="spacer"></div><button class="collapse-btn" title="折叠">▾</button></div>
+  <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-32.png" alt=""/>每日自律打分 · ${selDate}</div>
+  <div class="spacer"></div>
+  <input class="input" id="scDate" type="date" value="${selDate}" style="max-width:160px" onchange="Pages.discipline()"/>
+  <button class="collapse-btn" title="折叠">▾</button></div>
   <div class="card-body">
+  <div class="muted-text" style="font-size:12px;margin-bottom:6px">按日期保存，可切换日期查看/编辑历史打分</div>
   <div class="center" id="starBox">${stars}</div>
   <div class="center muted-text mt8">当前评分：<b style="color:var(--primary-deep)" id="scoreVal">${sc.score}</b> / 10</div>
   <div class="field mt12"><label>打分理由</label><textarea class="textarea" id="scReason" placeholder="今天为什么打这个分？">${UI.esc(sc.reason)}</textarea></div>
@@ -71,7 +76,7 @@ Pages.discipline = function () {
   <div class="field"><label>当日优点</label><textarea class="textarea" id="scPros" placeholder="做得好的地方">${UI.esc(sc.pros)}</textarea></div>
   <div class="field"><label>当日不足</label><textarea class="textarea" id="scCons" placeholder="需要改进的地方">${UI.esc(sc.cons)}</textarea></div>
   </div>
-  <button class="btn btn-sm" data-act="save-score">保存今日打分</button>
+  <button class="btn btn-sm" data-act="save-score">保存当日打分</button>
   </div>
   </div>
 
@@ -101,8 +106,11 @@ Pages.discipline = function () {
   }
   if (act === 'save-score') {
   const score = parseInt(UI.$('#scoreVal').textContent) || 0;
-  Store.update((st) => { st.discipline.scores[today] = { score, reason: UI.$('#scReason').value, pros: UI.$('#scPros').value, cons: UI.$('#scCons').value }; });
-  UI.toast('已保存今日打分', 'ok'); return;
+  try {
+  Store.update((st) => { st.discipline.scores[selDate] = { score, reason: UI.$('#scReason').value, pros: UI.$('#scPros').value, cons: UI.$('#scCons').value }; });
+  UI.toast('已保存 ' + selDate + ' 打分', 'ok');
+  } catch (err) { console.error('[discipline] 保存打分失败', err); UI.toast('保存失败：' + (err && err.message ? err.message : '未知错误'), 'warn'); }
+  return;
   }
   };
 

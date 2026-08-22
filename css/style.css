@@ -1303,7 +1303,7 @@ table.tbl tr:hover td { background: var(--surface-2); }
 .exam-meta { font-size: 13px; color: var(--text-soft); margin-top: 5px; }
 .exam-del { flex: 0 0 auto; width: 36px; height: 36px; border-radius: 50%; }
 .exam-del .ic { width: 18px; height: 18px; opacity: .7; }
-.ddl-item .ops { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+.ddl-item .ops { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; flex-direction: row; } /* 学业DDL清单保持横向（覆盖全局竖排）*/
 .ddl-item .prog-range { width: 96px; }
 .prog-range { accent-color: var(--primary); }
 @media (max-width: 560px) {

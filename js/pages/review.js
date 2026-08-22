@@ -12,8 +12,8 @@ Pages.review = function () {
 
   // 选中的月份（目标/已完成/未完成/月度总结 共用）
   const selMonth = (UI.$('#revMonth') && UI.$('#revMonth').value) || D.monthKey();
-  // 选中的日期（反思评价专用，按日）
-  const selDate = (UI.$('#revDate') && UI.$('#revDate').value) || D.todayStr();
+  // 选中的日期（反思评价专用，按日；与上方月份选择联动：当月默认今天，其他月默认该月1号）
+  const selDate = (UI.$('#revDate') && UI.$('#revDate').value) || (selMonth === D.monthKey() ? D.todayStr() : selMonth + '-01');
   // 输入合法校验
   if (!/^\d{4}-\d{2}$/.test(selMonth)) {
     UI.toast('月份格式不正确，已重置为当前月', 'warn');
@@ -48,10 +48,10 @@ Pages.review = function () {
 
   // ---- 反思评价（按日期）---- 键: 'YYYY-MM-DD'
   const rev = (k) => (m[k] && m[k][selDate]) || '';
-  // 历史日期汇总：三项中有任一内容的日期，按时间倒序
+  // 历史日期汇总：三项中有任一内容的日期，按时间倒序（仅显示所选月份内，与月份选择联动）
   const dateSet = new Set();
   ['harvest', 'undoneReason', 'nextPlan'].forEach((k) => {
-  Object.keys((m[k] && m[k]) || {}).forEach((d) => { if (/^\d{4}-\d{2}-\d{2}$/.test(d) && m[k][d]) dateSet.add(d); });
+  Object.keys((m[k] && m[k]) || {}).forEach((d) => { if (/^\d{4}-\d{2}-\d{2}$/.test(d) && d.slice(0, 7) === selMonth && m[k][d]) dateSet.add(d); });
   });
   const allDates = Array.from(dateSet).sort((a, b) => b.localeCompare(a));
   const historyHtml = allDates.length ? '<div class="date-chips">' + allDates.slice(0, 12).map((d) =>

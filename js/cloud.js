@@ -38,6 +38,11 @@
   body: JSON.stringify(Object.assign({ access_token: token }, body)),
   });
   },
+  // 大文件内容读取（contents API 超 1MB 不返回 content 时，用 git blob API 取完整内容）
+  async getBlob(o, r, sha, token) {
+  const u = `https://gitee.com/api/v5/repos/${enc(o)}/${enc(r)}/git/blobs/${enc(sha)}?access_token=${enc(token)}`;
+  return fetch(u, { headers: { 'Accept': 'application/json' } });
+  },
   },
   github: {
   label: 'GitHub',
@@ -58,6 +63,11 @@
   headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', 'Accept': 'application/vnd.github+json' },
   body: JSON.stringify(body),
   });
+  },
+  // 大文件内容读取（contents API 超 1MB 返回空 content 时用 git blob API）
+  async getBlob(o, r, sha, token) {
+  const u = `https://api.github.com/repos/${enc(o)}/${enc(r)}/git/blobs/${enc(sha)}`;
+  return fetch(u, { headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json' } });
   },
   },
   };
@@ -107,12 +117,11 @@
   try { msg = (await r.json()).message || ''; } catch (e) {}
   throw new Error('上传失败 HTTP ' + r.status + (msg ? '：' + msg : ''));
   }
-  // 上传成功后立即回读验证，防止平台返回成功但实际写入空文件
+  // 上传成功后立即回读验证，防止平台返回成功但实际写入空文件（大文件走 blob 兜底）
   try {
-  const h2 = await getHead();
-  if (!h2 || !h2.exists) throw new Error('上传后回读失败：文件不存在');
-  if (!h2.content || !h2.content.trim()) throw new Error('上传后回读失败：云端文件内容为空（size=' + (h2.size || 0) + '）');
-  const json2 = b64dec(String(h2.content).replace(/\s/g, ''));
+  const { raw: r2 } = await getContent();
+  if (!r2 || !r2.trim()) throw new Error('上传后回读失败：云端文件内容为空');
+  const json2 = b64dec(r2);
   if (!json2 || !json2.trim()) throw new Error('上传后回读失败：解码后为空');
   if (!Store.importJSON(json2)) throw new Error('上传后回读失败：数据无法导入');
   } catch (e) {
@@ -122,13 +131,29 @@
   return true;
   }
 
-  // 从云端恢复：下载 JSON 并导入
-  async function download() {
+  // 读取云端备份完整内容（base64 文本）：contents API 超 1MB 不返回 content 时，用 git blob API 兜底
+  async function getContent() {
   if (!configured()) throw new Error('请先配置云端');
   const h = await getHead();
   if (!h || !h.exists) throw new Error('云端暂无备份文件');
-  const hasContent = !!(h.content && h.content.trim());
-  const raw = String(h.content || '').replace(/\s/g, '');
+  if (h.content && h.content.trim()) return { raw: String(h.content).replace(/\s/g, ''), sha: h.sha, size: h.size };
+  // 大文件：content 为空 → 用 blob API 取完整内容
+  if (h.sha) {
+  const c = cfg(), a = adapter();
+  const r = await a.getBlob(c.owner, c.repo, h.sha, c.token);
+  if (r.ok) {
+    const j = await r.json();
+    if (j && j.content) return { raw: String(j.content).replace(/\s/g, ''), sha: h.sha, size: j.size || h.size };
+  }
+  }
+  throw new Error('云端备份文件内容读取失败（文件过大或接口异常，size=' + (h.size || '未知') + '）');
+  }
+
+  // 从云端恢复：下载 JSON 并导入
+  async function download() {
+  if (!configured()) throw new Error('请先配置云端');
+  const { raw, sha, size } = await getContent();
+  const hasContent = !!(raw && raw.trim());
   // 尝试 1：当作 base64（标准备份格式）解码后导入
   try {
   const json = b64dec(raw);
@@ -158,9 +183,9 @@
   '平台=' + provider(),
   'branch=' + branch(),
   'path=' + filePath(),
-  'size=' + (h.size == null ? '未知' : h.size),
+  'size=' + (size == null ? '未知' : size),
   'content=' + (hasContent ? '非空' : '为空'),
-  'sha=' + (h.sha ? h.sha.slice(0, 12) : '无'),
+  'sha=' + (sha ? sha.slice(0, 12) : '无'),
   'preview=' + (raw ? raw.slice(0, 60) : '（空）'),
   ].join(' | ');
   throw new Error('云端数据格式异常，无法识别。' + info + '。请重新上传一份备份覆盖它');
@@ -174,9 +199,7 @@
   try {
   if (sessionStorage.getItem('cw_auto_import_done')) return false; // 本会话已检查过
   sessionStorage.setItem('cw_auto_import_done', '1');
-  const h = await getHead();
-  if (!h || !h.exists || !h.content) return false;
-  const raw = String(h.content).replace(/\s/g, '');
+  const { raw } = await getContent();
   let cloudSync = '';
   try { const st = JSON.parse(b64dec(raw)); cloudSync = (st.cloud && st.cloud.lastSync) || ''; } catch (e) { return false; }
   if (!cloudSync) return false;
@@ -188,31 +211,29 @@
   } catch (e) { /* 网络失败/未配置：静默，下次打开再试 */ return false; }
   }
 
-  // 自动备份改为「关闭页面触发」（2026-08-22）：不再每分钟检查 23:00
-  // - 启动时立即补传一次（页面打开=最新一次上传机会）
-  // - visibilitychange (hidden)：用户切走标签/最小化浏览器/手机息屏 → 立即上传
-  // - pagehide：用户真关页面/卸载 → 再尝试一次（部分浏览器可能不完成 fetch，但 visibilitychange 已覆盖大部分场景）
-  // - 防重：当天已成功过（st.cloud.autoBackupDate === today）跳过；仅首次上传提示成功
+  // 自动备份改为「关闭页面触发」（2026-08-22 v2）：每次离开页面都上传（不再按天限次）
+  // - 页面打开立即补传一次；visibilitychange(hidden) + pagehide 触发
+  // - 防抖：5 分钟内不重复上传（避免频繁切后台/刷新触发多次 API 调用）
   let _autoRunning = false;
+  let _lastAutoAt = 0;
   function scheduleAutoBackup() {
   if (_autoRunning) return; _autoRunning = true;
   const triggerBackup = async (reason) => {
   if (!configured()) return; // 未配置云端（无 owner/repo/token）不启用
-  const today = D.todayStr();
-  const st = Store.get().cloud || {};
-  if (st.autoBackupDate === today) return; // 今天已自动备份过 → 跳过
+  const now = Date.now();
+  if (now - _lastAutoAt < 5 * 60 * 1000) return; // 5 分钟内已上传过 → 跳过
+  _lastAutoAt = now; // 先占位，避免并发重复
   try {
   await upload();
-  Store.update((c2) => { c2.cloud = c2.cloud || {}; c2.cloud.autoBackupDate = today; });
-  try { console.log('[cloud] 关闭触发自动备份成功', reason, today); } catch (e) {}
+  try { console.log('[cloud] 关闭触发自动备份成功', reason, new Date().toISOString()); } catch (e) {}
   } catch (e) {
-  // 失败：整个会话只提示 1 次，避免反复弹窗；成功后自动清标记
+  // 失败：整个会话只提示 1 次，避免反复弹窗
   try {
   if (!sessionStorage.getItem('cw_auto_backup_warned')) { sessionStorage.setItem('cw_auto_backup_warned', '1'); UI.toast('自动备份失败：' + (e && e.message ? e.message : '网络错误') + '（下次离开页面会重试）', 'warn'); }
   } catch (e2) { /* 隐私模式忽略 */ }
   }
   };
-  triggerBackup('页面打开'); // 进入页面立刻补一次（兼容老用户的错过补传）
+  triggerBackup('页面打开'); // 进入页面立刻补传一次（兼容老用户的错过补传）
   document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') triggerBackup('页面隐藏');
   });
