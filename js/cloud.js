@@ -132,11 +132,26 @@
   // 尝试 1：当作 base64（标准备份格式）解码后导入
   try {
   const json = b64dec(raw);
-  if (Store.importJSON(json)) return true;
+  if (Store.importJSON(json)) {
+    // 导入成功后，把本地 lastSync 同步为备份里的云端同步时间，避免下次自动导入重复执行
+    try {
+    const st = JSON.parse(json);
+    const cloudSync = (st.cloud && st.cloud.lastSync) || new Date().toISOString();
+    Store.update((c2) => { c2.cloud = c2.cloud || {}; c2.cloud.lastSync = cloudSync; });
+    } catch (e) {}
+    return true;
+  }
   } catch (e) { /* 解码失败，继续尝试其它格式 */ }
   // 尝试 2：文件本身可能就是明文 JSON（未做 base64 包装）
   try {
-  if (Store.importJSON(raw)) return true;
+  if (Store.importJSON(raw)) {
+    try {
+    const st = JSON.parse(raw);
+    const cloudSync = (st.cloud && st.cloud.lastSync) || new Date().toISOString();
+    Store.update((c2) => { c2.cloud = c2.cloud || {}; c2.cloud.lastSync = cloudSync; });
+    } catch (e) {}
+    return true;
+  }
   } catch (e) { /* 继续 */ }
   // 两种格式都失败 → 抛出详细诊断信息
   const info = [
@@ -149,6 +164,28 @@
   'preview=' + (raw ? raw.slice(0, 60) : '（空）'),
   ].join(' | ');
   throw new Error('云端数据格式异常，无法识别。' + info + '。请重新上传一份备份覆盖它');
+  }
+
+  // 打开网页自动导入最新备份（2026-08-22）：仅在「云端备份比本地新」时导入，避免覆盖本地更新
+  // - 读取云端备份里的 cloud.lastSync 与本地 lastSync 比较；云端更新才下载导入
+  // - 会话内只尝试一次（sessionStorage 防重复）
+  async function autoImportIfNewer() {
+  if (!configured()) return false;
+  try {
+  if (sessionStorage.getItem('cw_auto_import_done')) return false; // 本会话已检查过
+  sessionStorage.setItem('cw_auto_import_done', '1');
+  const h = await getHead();
+  if (!h || !h.exists || !h.content) return false;
+  const raw = String(h.content).replace(/\s/g, '');
+  let cloudSync = '';
+  try { const st = JSON.parse(b64dec(raw)); cloudSync = (st.cloud && st.cloud.lastSync) || ''; } catch (e) { return false; }
+  if (!cloudSync) return false;
+  const localSync = (Store.get().cloud || {}).lastSync || '';
+  if (localSync && cloudSync <= localSync) return false; // 云端不新 → 跳过
+  await download();
+  try { UI.toast('已自动导入云端最新备份', 'ok'); } catch (e) {}
+  return true;
+  } catch (e) { /* 网络失败/未配置：静默，下次打开再试 */ return false; }
   }
 
   // 自动备份改为「关闭页面触发」（2026-08-22）：不再每分钟检查 23:00
@@ -196,5 +233,5 @@
   return { ok: true, branch: j.default_branch || a.defaultBranch };
   }
 
-  window.Cloud = { configured, getHead, upload, download, testConfig, cfg, provider, adapters: ADAPTERS, scheduleAutoBackup };
+  window.Cloud = { configured, getHead, upload, download, autoImportIfNewer, testConfig, cfg, provider, adapters: ADAPTERS, scheduleAutoBackup };
 })();

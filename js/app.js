@@ -456,6 +456,7 @@
   }
   route();
   if (window.Cloud && Cloud.scheduleAutoBackup) Cloud.scheduleAutoBackup(); // 离开页面（切走/关页面）触发自动备份
+  if (window.Cloud && Cloud.autoImportIfNewer) Cloud.autoImportIfNewer(); // 打开页面自动导入云端最新备份（云端比本地新才导入）
   if (window.AppUpdater) window.AppUpdater.ready(); // 标记当前包正常（热更新防回滚）
   }
 
