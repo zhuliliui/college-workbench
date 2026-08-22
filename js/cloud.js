@@ -213,29 +213,38 @@
   }
 
   // 自动备份改为「关闭页面触发」（2026-08-22 v2）：每次离开页面都上传（不再按天限次）
-  // - 页面打开立即补传一次；visibilitychange(hidden) + pagehide 触发
-  // - 防抖：5 分钟内不重复上传（避免频繁切后台/刷新触发多次 API 调用）
+  // - 页面打开立即补传一次；visibilitychange(hidden) + pagehide 兜底
+  // - 数据变更（cw:changed）后 8 秒防抖自动上传：页面打开时 fetch 一定成功，
+  //   手机 PWA 切后台/关进程不再依赖（浏览器后台会冻结 JS，visibilitychange 的上传会被拖到进程关闭才发出）
+  // - 兜底防抖：离开类触发 5 分钟内不重复；数据变更走独立 8 秒防抖（force 跳过 5 分钟限制）
   let _autoRunning = false;
   let _lastAutoAt = 0;
+  let _debTimer = null;
   function scheduleAutoBackup() {
   if (_autoRunning) return; _autoRunning = true;
-  const triggerBackup = async (reason) => {
+  const triggerBackup = async (reason, force) => {
   if (!configured()) return; // 未配置云端（无 owner/repo/token）不启用
   if (Store.get().cloud && Store.get().cloud.autoUpload === false) return; // 用户在弹窗关闭了自动上传
   const now = Date.now();
-  if (now - _lastAutoAt < 5 * 60 * 1000) return; // 5 分钟内已上传过 → 跳过
+  if (!force && now - _lastAutoAt < 5 * 60 * 1000) return; // 兜底防抖：5 分钟内已上传过 → 跳过
   _lastAutoAt = now; // 先占位，避免并发重复
   try {
   await upload();
-  try { console.log('[cloud] 关闭触发自动备份成功', reason, new Date().toISOString()); } catch (e) {}
+  try { console.log('[cloud] 自动备份成功', reason, new Date().toISOString()); } catch (e) {}
   } catch (e) {
   // 失败：整个会话只提示 1 次，避免反复弹窗
   try {
-  if (!sessionStorage.getItem('cw_auto_backup_warned')) { sessionStorage.setItem('cw_auto_backup_warned', '1'); UI.toast('自动备份失败：' + (e && e.message ? e.message : '网络错误') + '（下次离开页面会重试）', 'warn'); }
+  if (!sessionStorage.getItem('cw_auto_backup_warned')) { sessionStorage.setItem('cw_auto_backup_warned', '1'); UI.toast('自动备份失败：' + (e && e.message ? e.message : '网络错误') + '（会再次尝试）', 'warn'); }
   } catch (e2) { /* 隐私模式忽略 */ }
   }
   };
+  const onChanged = () => {
+  if (Store.get().cloud && Store.get().cloud.autoUpload === false) return;
+  clearTimeout(_debTimer);
+  _debTimer = setTimeout(() => { triggerBackup('数据变更', true); }, 8000); // 改动后 8 秒自动上传
+  };
   triggerBackup('页面打开'); // 进入页面立刻补传一次（兼容老用户的错过补传）
+  window.addEventListener('cw:changed', onChanged); // 数据一改就自动备份（最可靠）
   document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') triggerBackup('页面隐藏');
   });
