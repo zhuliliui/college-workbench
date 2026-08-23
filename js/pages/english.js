@@ -1042,7 +1042,7 @@ window.Pages = window.Pages || {};
   ];
 
   let _artIdx = 0;
-  let readerMode = 'both'; // 'both' | 'en' | 'cn'
+  let readerMode = (Store.get().english && Store.get().english.readerMode) || 'both'; // 'both'(默认中英对照) | 'en' | 'cn'；用户切换后持久化
   let readerChapter = 0; // 章节切换 tab：0=全部；1..N=对应篇章
   let readerArticle = null;
   let readerFilter = 'all'; // 我的外刊列表筛选：all | read | unread（默认「全部」）
@@ -1697,18 +1697,27 @@ window.Pages = window.Pages || {};
   <div class="lib-list">${items || '<div class="muted-text">' + emptyHint + '</div>'}</div>
   </div>`;
   }
-  // 标记当前文章为已读：自建文章直接置 read；内置精选记入 readSet；随后归入「已读」
+  // 标记当前文章为已读/未读（切换式，2026-08-23）：再按一次回到未读
   function markCurrentRead(body) {
   if (!readerArticle || !readerArticle.title) { UI.toast('请先打开一篇文章', 'warn'); return; }
   const key = getLibKey(readerArticle);
+  const st0 = Store.get();
+  const libItem = (st0.english.articles || []).find((a) => getLibKey(a) === key);
+  const wasRead = libItem ? !!libItem.read : ((st0.english.readSet || []).indexOf(key) >= 0);
+  const nowRead = !wasRead;
   Store.update((s) => {
   const lib = s.english.articles || [];
   const i = lib.findIndex((a) => getLibKey(a) === key);
-  if (i >= 0) { lib[i].read = true; }
-  else { (s.english.readSet = s.english.readSet || []); if (s.english.readSet.indexOf(key) < 0) s.english.readSet.push(key); }
+  if (i >= 0) { lib[i].read = nowRead; }
+  else {
+  s.english.readSet = s.english.readSet || [];
+  const ri = s.english.readSet.indexOf(key);
+  if (nowRead) { if (ri < 0) s.english.readSet.push(key); }
+  else if (ri >= 0) s.english.readSet.splice(ri, 1);
+  }
   });
-  readerArticle.read = true;
-  UI.toast('已标记为已读，已归入「已读」', 'ok');
+  readerArticle.read = nowRead;
+  UI.toast(nowRead ? '已标记为已读，已归入「已读」' : '已标记为未读，已归入「未读」', 'ok');
   paintReader(body);
   }
   // 「 实时外刊」：优先从已配置的联网后端**强制爬取**最新外刊（POST /api/reader/fetch 立即抓 2 篇入库，
@@ -1792,6 +1801,12 @@ window.Pages = window.Pages || {};
   const _pvContent = document.getElementById('content');
   const _pvToc = document.querySelector('.rd-toc');
   const _pv = { c: _pvContent ? _pvContent.scrollTop : 0, t: _pvToc ? _pvToc.scrollTop : 0 };
+  // 校正当前文章的已读状态（用于「已读/未读」按钮文案与切换）
+  if (readerArticle && readerArticle.title) {
+  const _st0 = Store.get();
+  const _li = (_st0.english.articles || []).find((a) => getLibKey(a) === getLibKey(readerArticle));
+  readerArticle.read = _li ? !!_li.read : ((_st0.english.readSet || []).indexOf(getLibKey(readerArticle)) >= 0);
+  }
   const modeBtn = (mode, label) => `<button class="btn btn-sm ${readerMode === mode ? '' : 'btn-soft'}" data-mode="${mode}">${label}</button>`;
   // 联网设置与「顶部提醒按钮」同步：统一以 cal.backendUrl 为唯一入口，旧版 english.readerBackend 兜底显示
   const _st = Store.get();
@@ -1851,7 +1866,7 @@ window.Pages = window.Pages || {};
   <button class="btn btn-sm ${readerMode === 'both' ? '' : 'btn-soft'}" data-mode="both">中英对照</button>
   <button class="btn btn-sm ${readerMode === 'en' ? '' : 'btn-soft'}" data-mode="en">仅英文</button>
   <button class="btn btn-sm btn-soft" data-act="edit"> 修改</button>
-  <button class="btn btn-sm btn-soft" data-act="markread"> 已读</button>
+  <button class="btn btn-sm btn-soft" data-act="markread"> ${(readerArticle && readerArticle.read) ? ' 未读' : ' 已读'}</button>
   </div>
   <div class="reader" id="reader">${renderReaderContent()}</div>
   </section>
@@ -1905,7 +1920,7 @@ window.Pages = window.Pages || {};
   const ch = e.target.closest('[data-chapter]');
   if (ch) { readerChapter = parseInt(ch.dataset.chapter, 10) || 0; paintReader(body); return; }
   const m = e.target.closest('[data-mode]');
-  if (m) { readerMode = m.dataset.mode; paintReader(body); return; }
+  if (m) { readerMode = m.dataset.mode; Store.update((s) => { s.english.readerMode = readerMode; }); paintReader(body); return; }
   const wd = e.target.closest('[data-w]');
   if (wd) showWordPop(wd, wd.dataset.w);
   });
@@ -2091,12 +2106,10 @@ window.Pages = window.Pages || {};
   let initMode;
   if (opts.isEdit && old) {
   if (old.lang === 'zh') initMode = 'zh';
-  else if (old.translation && Object.keys(old.translation).length) initMode = 'bilingual';
+  else if ((old.chapters && old.chapters.some((c) => c.paras && c.paras.some((p) => p.cn))) || (old.translation && Object.keys(old.translation).length)) initMode = 'interleaved';
   else initMode = 'en';
   } else {
-  if (srcEn && !srcCn) initMode = 'en';
-  else if (!srcEn && srcCn) initMode = 'zh';
-  else initMode = 'interleaved'; // 新建默认「英文中文交替」（用户主流程）
+  initMode = 'interleaved'; // 新建默认「英文中文交替」（2026-08-23 撤销 bilingual 后唯一智能推断）
   }
   const srcIl = (opts.isEdit && old) ? serializeInterleaved(old) : ((initMode === 'interleaved' && srcEn) ? (srcEn + (srcCn ? '\n\n' + srcCn : '')) : '');
   let curMode = initMode;
@@ -2109,12 +2122,7 @@ window.Pages = window.Pages || {};
   const fileEn = document.querySelector('#fileEn');
   const fileCn = document.querySelector('#fileCn');
   const fileSingle = document.querySelector('#fileSingle');
-  if (mode === 'bilingual') {
-  if (enWrap) enWrap.style.display = ''; if (cnWrap) cnWrap.style.display = '';
-  if (ilWrap) ilWrap.style.display = 'none';
-  if (fileEn) fileEn.parentElement.style.display = ''; if (fileCn) fileCn.parentElement.style.display = '';
-  if (fileSingle) fileSingle.parentElement.style.display = 'none';
-  } else if (mode === 'interleaved') {
+  if (mode === 'interleaved') {
   if (enWrap) enWrap.style.display = 'none'; if (cnWrap) cnWrap.style.display = 'none';
   if (ilWrap) ilWrap.style.display = '';
   if (fileEn) fileEn.parentElement.style.display = 'none'; if (fileCn) fileCn.parentElement.style.display = 'none';
@@ -2133,7 +2141,6 @@ window.Pages = window.Pages || {};
   <div class="field"><label>标题</label><input class="input" id="artT" value="${UI.esc(srcTitle)}" placeholder="文章标题（用于查重：标题相同视为同一篇，更新不新增）"/></div>
   <div class="seg-group" style="margin:10px 0">
   <label class="seg-label"><input type="radio" name="pasteMode" value="interleaved" ${initMode === 'interleaved' ? 'checked' : ''}/> 英文中文交替</label>
-  <label class="seg-label"><input type="radio" name="pasteMode" value="bilingual" ${initMode === 'bilingual' ? 'checked' : ''}/> 分栏中英</label>
   <label class="seg-label"><input type="radio" name="pasteMode" value="en" ${initMode === 'en' ? 'checked' : ''}/> 仅英文</label>
   <label class="seg-label"><input type="radio" name="pasteMode" value="zh" ${initMode === 'zh' ? 'checked' : ''}/> 仅中文</label>
   </div>
@@ -2173,19 +2180,6 @@ window.Pages = window.Pages || {};
   const chs = buildChaptersFromText(parsed.text);
   chs.forEach((c) => c.paras.forEach((p) => { p.cn = (parsed.translation && parsed.translation[p.en]) || ''; }));
   core = Object.assign({}, parsed, { title: finalTitle, chapters: chs });
-  } else {
-  const en = cleanupText(UI.val('#artTxt'));
-  const cn = cleanupText(UI.val('#artCn'));
-  if (!en && !cn) return UI.toast('请填写英文或中文内容', 'warn');
-  if (!en) core = { title, text: cn, translation: {}, lang: 'zh', tailCn: '' };
-  else if (!cn) core = { title, text: en, translation: {}, lang: undefined, tailCn: '' };
-  else {
-  const enParas = splitByBlank(en); const cnParas = splitByBlank(cn);
-  const map = {}; const n = Math.min(enParas.length, cnParas.length);
-  for (let i = 0; i < n; i++) map[enParas[i]] = cnParas[i];
-  const tailCn = cnParas.slice(n).join('\n\n');
-  core = { title, text: enParas.join('\n\n'), translation: map, lang: undefined, tailCn };
-  }
   }
   // 编辑：原地更新原条目（保持左侧目录顺序不变），不再「删除+置顶新增」
   if (opts.isEdit && old) {
