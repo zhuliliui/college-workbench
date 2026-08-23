@@ -335,7 +335,7 @@ function httpsPost(host, apiPath, bodyObj) {
       path: apiPath,
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) },
-      timeout: 10000,
+      timeout: 15000,
     }, (res) => {
       let chunks = '';
       res.on('data', (c) => { chunks += c; });
@@ -344,8 +344,8 @@ function httpsPost(host, apiPath, bodyObj) {
         catch (e) { resolve({ status: res.statusCode, data: chunks }); }
       });
     });
-    req.on('error', reject);
-    req.on('timeout', () => { req.destroy(); reject(new Error('push request timeout')); });
+    req.on('error', (e) => { console.warn('[push] httpsPost 失败', host, apiPath.slice(0, 24), e && e.message); reject(e); });
+    req.on('timeout', () => { req.destroy(); reject(new Error('push request timeout (' + host + ')')); });
     req.write(data);
     req.end();
   });

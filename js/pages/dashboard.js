@@ -64,12 +64,8 @@ Pages.dashboard = function () {
   archiveRolledOverTasks();
   // 归档可能已改写 tasks，重新取一次
   const liveTasks = Store.get().tasks;
-  const isTodayPlan = (t) => {
-    const added = t.addedDate || '';
-    if (!t.due) return added === today;
-    const dueStr = D.fmtDate(D.parseLDT(t.due));
-    return (added === today) || (dueStr >= today);
-  };
+  // 今日学习任务（2026-08-24 与复习计划页统一）：无截止 或 今天到期，两处显示同一批任务、完成状态互相同步
+  const isTodayPlan = (t) => !t.due || D.fmtDate(D.parseLDT(t.due)) === today;
   // 今日学习任务统计
   const todayTasks = liveTasks.filter(isTodayPlan);
   const todayDone = todayTasks.filter((t) => t.done).length;
