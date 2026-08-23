@@ -1195,30 +1195,29 @@ window.Pages = window.Pages || {};
   const today = todayStr();
   const eng = Store.get().english;
   if (!eng) return;
+  if (eng.lastAutoDate === today) return; // 2026-08-23：每天只导入一次（后端 5 篇 + 双语种子），已导入不再重复
   const backend = Store.readerBackend();
   if (backend) {
-  // 已配置后端：每次打开都拉取最新外刊并合并进本地文库（去重，不会重复灌）
+  // 已配置后端：只取「当日摘取的 5 篇」（todayArticles）；后端无当日标记时取最新 5 篇
   try {
     const r = await fetchWithTimeout(backend + '/api/reader/list', 8000);
     if (r.ok) {
     const j = await r.json().catch(() => null);
-    const arts = (j && j.articles) || [];
-    if (arts.length) importFromBackendList(arts); // 合并全部后端文章（含历史篇章），无需每日限制
-    // 当日后端摘取的 5 篇外刊：单独缓存到本地，按天保存（即便后端休眠也能离线回看今日外刊）
-    if (j && Array.isArray(j.todayArticles) && j.todayArticles.length) {
-      Store.update((s) => { s.english.readerToday = { date: today, list: j.todayArticles }; });
+    if (j) {
+      const todayArts = (Array.isArray(j.todayArticles) && j.todayArticles.length) ? j.todayArticles
+        : (Array.isArray(j.articles) ? j.articles.slice().sort((a, b) => String(b.fetchDate || b.date || '').localeCompare(String(a.fetchDate || a.date || ''))).slice(0, 5) : []);
+      // 当日后端摘取的 5 篇外刊：单独缓存到本地，按天保存（即便后端休眠也能离线回看今日外刊）
+      if (Array.isArray(j.todayArticles) && j.todayArticles.length) Store.update((s) => { s.english.readerToday = { date: today, list: j.todayArticles }; });
+      // 每日只导 5 篇（去重：已存在按标题匹配则不新增、也不覆盖本地手动修改的中英对照）
+      if (todayArts.length) importFromBackendList(todayArts, 5);
     }
     }
   } catch (e) { /* 后端不可达，不阻塞页面 */ }
   }
-  // 无论是否有后端，每日都从内置双语种子补入中英对照文章（最多 2 篇，按英文指纹去重）。
-  // 2026-08-21：后端实例若无 LLM_API_KEY（仅英文）时，保证文库始终有「外媒/国内权威中英对照」可读；
-  // 有后端时每日本文库混入「实时外刊（英文）+ 双语精选（中英对照）」两类内容。
-  if (eng.lastAutoDate === today) return;
+  // 双语种子补入中英对照文章（最多 2 篇，按英文指纹去重，中英对照优先）——与后端 5 篇同属「每日一次」
   const seed = (typeof window !== 'undefined' && window.REALNEWS_SEED) || [];
-  if (!seed.length) { Store.update((s) => { s.english.lastAutoDate = today; }); return; }
+  if (seed.length) {
   const have = new Set((eng.articles || []).filter((x) => !x.offline).map((a) => enFp(a.text, 60) || enFp(a.title, 40)));
-  // 中英对照种子优先（外媒双语 / 人民日报·北京周报权威译本），其次才选纯英文
   const sorted = seed.slice().sort((a, b) => {
   const aCn = hasChinese(a) ? 1 : 0, bCn = hasChinese(b) ? 1 : 0;
   if (aCn !== bCn) return bCn - aCn;
@@ -1230,7 +1229,7 @@ window.Pages = window.Pages || {};
   const fp = enFp(a.text, 60) || enFp(a.title, 40);
   if (fp && !have.has(fp)) picks.push(a); // 按英文指纹判断是否已存在（标题/正文被改成中英混合也算已存在）
   }
-  if (!picks.length) { Store.update((s) => { s.english.lastAutoDate = today; }); return; } // 池内文章已全部入库
+  if (picks.length) {
   Store.update((s) => {
   const l = s.english.articles || (s.english.articles = []);
   picks.forEach((a) => {
@@ -1250,8 +1249,10 @@ window.Pages = window.Pages || {};
   if (keepTitle) l[i].title = prev.title; // 保留用户改过的标题
   } else l.unshift(Object.assign({ source: a.source || 'realnews', category: a.category || '', date: a.date || today, link: a.link || '', offline: false, read: false }, art));
   });
-  s.english.lastAutoDate = today;
   });
+  }
+  }
+  Store.update((s) => { s.english.lastAutoDate = today; }); // 标记今天已导入（无论是否有新篇）
   }
   // 兼容旧备份：打开英语页时一次性把历史/异常格式文章（如中英混排挤在 text 里、字段名不同）归一化为当前结构并保存
   (function migrateArticles() {
@@ -2026,6 +2027,25 @@ window.Pages = window.Pages || {};
   function serializeInterleaved(art) {
   if (!art) return '';
   if (art.lang === 'zh') return art.text || '';
+  // 多篇章结构（chapters.paras[].en/cn）：逐段「英文+中文」交替回填编辑框（2026-08-23 修复编辑不回填）
+  if (Array.isArray(art.chapters) && art.chapters.length) {
+  const lines = [];
+  art.chapters.forEach((ch) => {
+  if (ch && Array.isArray(ch.paras)) {
+    ch.paras.forEach((p) => {
+    if (!p) return;
+    const en = (typeof p === 'object' && p.en) ? p.en : (typeof p === 'string' ? p : '');
+    if (en) lines.push(en);
+    const cn = (typeof p === 'object' && p.cn) ? p.cn : '';
+    if (cn) lines.push(cn);
+    });
+  } else if (ch && typeof ch.en === 'string') {
+  lines.push(ch.en);
+  if (ch.cn) lines.push(ch.cn);
+  }
+  });
+  if (lines.length) return lines.join('\n\n');
+  }
   const enParas = paragraphsFromText(art.text || '');
   const lines = [];
   enParas.forEach((p) => { lines.push(p); const cn = (art.translation || {})[p]; if (cn) lines.push(cn); });
