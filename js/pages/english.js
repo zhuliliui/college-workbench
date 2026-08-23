@@ -1172,10 +1172,13 @@ window.Pages = window.Pages || {};
   if (i >= 0) {
   const prev = l[i];
   const keepTitle = (prev.title || '').trim();
+  // 手动修改过（updatedAt 权威标记，2026-08-23）：任何自动合并都不再覆盖用户版
+  if (prev.updatedAt) {
+  l[i] = Object.assign({}, prev, { offline: false, read: !!prev.read });
+  } else if (hasChinese(prev) && !hasChinese(art)) {
   // 中文保护（2026-08-23 v2）：本地已有中文翻译、而后端返回无翻译 → 【完整保留本地版】，
   // 不再按段落下标回填（旧版 mergeCnFromPrev 在后端英文段落与本地中文段落数量/顺序不一致时
   // 会把中文配到错误的英文段、或让多余段落的中文消失）。
-  if (hasChinese(prev) && !hasChinese(art)) {
   l[i] = Object.assign({}, prev, { offline: false, read: !!prev.read });
   } else {
   l[i] = Object.assign({}, art, { offline: false, read: !!prev.read });
@@ -1240,8 +1243,12 @@ window.Pages = window.Pages || {};
   if (i >= 0) {
   const prev = l[i];
   const keepTitle = (prev.title || '').trim();
+  // 手动修改过（updatedAt 权威标记）→ 自动合并一律不覆盖
+  if (prev.updatedAt) {
+  l[i] = Object.assign({}, prev, { offline: false, read: !!l[i].read });
+  }
   // 中文保护（2026-08-23 v2）：本地已有中文翻译、而种子无翻译 → 完整保留本地版（避免错配/丢失）
-  if (hasChinese(prev) && !hasChinese(art)) {
+  else if (hasChinese(prev) && !hasChinese(art)) {
   l[i] = Object.assign({}, prev, { offline: false, read: !!l[i].read });
   } else {
   l[i] = Object.assign({}, art, { offline: false, read: !!l[i].read });
@@ -2197,8 +2204,22 @@ window.Pages = window.Pages || {};
   const tInput = document.querySelector('#artT');
   if (tInput && parsed.title && !tInput.value.trim()) tInput.value = parsed.title;
   const finalTitle = (tInput && tInput.value.trim()) || parsed.title || title || '我的文章';
-  const chs = buildChaptersFromText(parsed.text);
-  chs.forEach((c) => c.paras.forEach((p) => { p.cn = (parsed.translation && parsed.translation[p.en]) || ''; }));
+  // 2026-08-23 修复：直接使用 parseInterleaved 的段落对（en→cn 一一对应），
+  // 不再经 buildChaptersFromText 重建——旧逻辑会滤掉短段/拆分长段导致 cn 键失配、手动修改的中文丢失。
+  const enParas = (parsed.text || '').split(/\n{2,}/).map((s) => s.trim()).filter(Boolean);
+  const paras = enParas.map((en) => ({ en, cn: (parsed.translation || {})[en] || '' }));
+  const oldChapCount = (opts.isEdit && old && Array.isArray(old.chapters) && old.chapters.length) ? old.chapters.length : 1;
+  let chs;
+  if (paras.length <= 1 || oldChapCount <= 1) {
+  chs = [{ label: '【篇章1】', paras, en: parsed.text || '' }];
+  } else {
+  const per = Math.max(1, Math.ceil(paras.length / oldChapCount));
+  chs = [];
+  for (let i = 0; i < paras.length; i += per) {
+  const part = paras.slice(i, i + per);
+  chs.push({ label: '【篇章' + (chs.length + 1) + '】', paras: part, en: part.map((p) => p.en).join('\n\n') });
+  }
+  }
   core = Object.assign({}, parsed, { title: finalTitle, chapters: chs });
   }
   // 编辑：原地更新原条目（保持左侧目录顺序不变），不再「删除+置顶新增」
@@ -2207,7 +2228,7 @@ window.Pages = window.Pages || {};
   const lib = s.english.articles || [];
   const i = lib.findIndex((x) => getLibKey(x) === getLibKey(old));
   if (i >= 0) {
-  const patch = { title: core.title, text: core.text, translation: core.translation || {}, lang: core.lang, tailCn: core.tailCn || '' };
+  const patch = { title: core.title, text: core.text, translation: core.translation || {}, lang: core.lang, tailCn: core.tailCn || '', updatedAt: Date.now() };
   if (core.chapters) patch.chapters = core.chapters;
   Object.assign(lib[i], patch);
   }
@@ -2218,7 +2239,7 @@ window.Pages = window.Pages || {};
   const existed = (Store.get().english.articles || []).some((a) => !a.offline && sameArticle(a, Object.assign({ title, text: core.text || '', translation: core.translation }, core)));
   if (existed) dupHint = '（已存在同文《' + title + '》，已更新内容，未新增重复）';
   const readState = false;
-  upsertArticle(Object.assign({ source: 'pasted', date: todayStr(), link: '', offline: false }, core), readState);
+  upsertArticle(Object.assign({ source: 'pasted', date: todayStr(), link: '', offline: false, updatedAt: Date.now() }, core), readState);
   UI.toast('已导入文章' + dupHint, 'ok');
   }
   const readState2 = (opts.isEdit && old) ? !!old.read : false;
