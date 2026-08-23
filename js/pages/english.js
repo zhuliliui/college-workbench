@@ -1172,11 +1172,14 @@ window.Pages = window.Pages || {};
   if (i >= 0) {
   const prev = l[i];
   const keepTitle = (prev.title || '').trim();
-  const newArt = Object.assign({}, art, { offline: false, read: !!prev.read });
-  // 中文保护（2026-08-21）：后端实例若无 LLM_API_KEY（如 Railway 默认实例）返回纯英文，
-  // 若本地已有中文翻译则回填保留，避免「手机导入中英对照备份后被英文覆盖」。
-  if (!hasChinese(newArt) && hasChinese(prev)) mergeCnFromPrev(newArt, prev);
-  l[i] = newArt;
+  // 中文保护（2026-08-23 v2）：本地已有中文翻译、而后端返回无翻译 → 【完整保留本地版】，
+  // 不再按段落下标回填（旧版 mergeCnFromPrev 在后端英文段落与本地中文段落数量/顺序不一致时
+  // 会把中文配到错误的英文段、或让多余段落的中文消失）。
+  if (hasChinese(prev) && !hasChinese(art)) {
+  l[i] = Object.assign({}, prev, { offline: false, read: !!prev.read });
+  } else {
+  l[i] = Object.assign({}, art, { offline: false, read: !!prev.read });
+  }
   if (keepTitle) l[i].title = prev.title; // 保留用户改过的标题
   } else l.unshift(Object.assign({ source: a.source || 'realnews', category: a.category || '', date: a.date || todayStr(), link: a.link || '', offline: false, read: false }, art));
   });
@@ -1238,10 +1241,12 @@ window.Pages = window.Pages || {};
   if (i >= 0) {
   const prev = l[i];
   const keepTitle = (prev.title || '').trim();
-  const newArt = Object.assign({}, art, { offline: false, read: !!l[i].read });
-  // 中文保护：种子若无中文而本地已有中文 → 回填保留
-  if (!hasChinese(newArt) && hasChinese(prev)) mergeCnFromPrev(newArt, prev);
-  l[i] = newArt;
+  // 中文保护（2026-08-23 v2）：本地已有中文翻译、而种子无翻译 → 完整保留本地版（避免错配/丢失）
+  if (hasChinese(prev) && !hasChinese(art)) {
+  l[i] = Object.assign({}, prev, { offline: false, read: !!l[i].read });
+  } else {
+  l[i] = Object.assign({}, art, { offline: false, read: !!l[i].read });
+  }
   if (keepTitle) l[i].title = prev.title; // 保留用户改过的标题
   } else l.unshift(Object.assign({ source: a.source || 'realnews', category: a.category || '', date: a.date || today, link: a.link || '', offline: false, read: false }, art));
   });
