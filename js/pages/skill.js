@@ -327,7 +327,8 @@ Pages.skill = function () {
   { title: "各类大模型官方免费 Key 领取入口汇总", cat: "fan", type: "tool", start: "", end: "", deadline: "", url: "https://www.baidu.com/s?wd=%E5%A4%A7%E6%A8%A1%E5%9E%8B+%E5%85%8D%E8%B4%B9+Key+%E9%A2%86%E5%8F%96", benefit: "Google AI Studio / 硅基流动 / DeepSeek 等官方免费 Key 领取入口汇总帖，优先用官方渠道最稳", org: "汇总", tutorial: "" },
   { title: "公开测试 API Key 使用须知（限速/勿商用）", cat: "fan", type: "tool", start: "", end: "", deadline: "", url: "https://www.baidu.com/s?wd=%E5%85%AC%E5%BC%80+API+Key+%E4%BD%BF%E7%94%A8+%E6%B3%A8%E6%84%8F", benefit: "公开分享的 Key 多为个人/社区志愿提供，限流严格、勿商用、勿泄露；优先官方免费额度更安全", org: "提醒", tutorial: "" },
   { title: "免费 API 聚合网关（一个 Key 调多模型）", cat: "fan", type: "tool", start: "", end: "", deadline: "", url: "https://www.baidu.com/s?wd=%E5%85%8D%E8%B4%B9+API+%E8%81%9A%E5%90%88%E7%BD%91%E5%85%B3", benefit: "OpenRouter / 硅基流动等聚合网关统一一个 Key 调多模型，部分模型免费，适合快速试用", org: "聚合", tutorial: "" },
-  ];
+  ,
+  {"title": "第十一届华为ICT大赛 2026-2027（中国赛）", "cat": "student", "type": "event", "start": "2026-08-31", "end": "2027-05-31", "deadline": "2026-10-31", "url": "https://e.huawei.com/cn/talent/ict-academy/#/ict-contest?compId=85132004", "benefit": "免报名费，纳入中国高等教育学会全国普通高校大学生竞赛排行榜。七大赛道：实践赛（网络/云/基础软件，报名至10-31，通信专业最对口）、挑战赛（至10-31）、算子赛（至10-26）、精英赛（至11-15）、创新赛/编程赛（至11-30，AI Agent/华为云赛题）；校赛→省赛→中国总决赛→全球总决赛", "org": "华为技术有限公司", "tutorial": "https://e.huawei.com/cn/talent/ict-academy/#/ict-contest?compId=85132004"}];
   const getAIEvents = () => {
   const s = Store.get().skill;
   s.aiEvents = s.aiEvents || [];
