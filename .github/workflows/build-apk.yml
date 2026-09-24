@@ -38,9 +38,9 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
+      # 2026-09-24：移除 android-actions/setup-android@v3 —— 上游 sdkmanager 试图安装
+      # 已被 Google 下架的 'tools' 包导致必失败；ubuntu-latest 镜像自带 Android SDK，
+      # 下一步直接用预装 sdkmanager 装平台/构建工具即可。
       - name: Install Android SDK packages
         run: |
           yes | sdkmanager --licenses || true
