@@ -40,11 +40,12 @@ jobs:
 
       # 2026-09-24：移除 android-actions/setup-android@v3 —— 上游 sdkmanager 试图安装
       # 已被 Google 下架的 'tools' 包导致必失败；ubuntu-latest 镜像自带 Android SDK，
-      # 下一步直接用预装 sdkmanager 装平台/构建工具即可。
+      # 但 sdkmanager 不在 PATH，需用 $ANDROID_HOME 全路径调用。
       - name: Install Android SDK packages
         run: |
-          yes | sdkmanager --licenses || true
-          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKM" --licenses > /dev/null || true
+          "$SDKM" "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
       - name: Build Debug APK
         run: |
