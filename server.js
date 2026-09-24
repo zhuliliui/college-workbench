@@ -1056,8 +1056,57 @@ async function fetchNewsnow(max) {
   }));
   return out.slice(0, max || 60);
 }
+// 国内黑客松日历源：校园VC「2026 中国黑客松统计数据与赛事日历」（国内直连，免梯子）
+const XYVC_URL = 'https://xiaoyuanvc.com/resources/china-hackathon-statistics';
+// 解析校园VC 赛事日历页面。页面正文为固定结构：
+//   标题 / 方向 / 人群 / 模式 / 描述 / 报名截止 / 日期 / 活动时间 / 时间 / 地点 / 地点 / 报名 / 立即报名
+function parseXYVCHackathons(html) {
+  const out = [];
+  try {
+    const body = String(html || '').replace(/<script[\s\S]*?<\/script>/g, '').replace(/<style[\s\S]*?<\/style>/g, '');
+    const text = body.replace(/<[^>]+>/g, '\n').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+    const lines = text.split('\n').map((s) => String(s).trim()).filter(Boolean);
+    for (let i = 0; i < lines.length; i++) {
+      if (!/^报名截止[:：]?$/.test(lines[i])) continue;
+      const m = String(lines[i + 1] || '').match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
+      if (!m) continue;
+      const deadline = m[1] + '-' + String(m[2]).padStart(2, '0') + '-' + String(m[3]).padStart(2, '0');
+      // 块结构有两种（正在报名：标题/方向/人群/模式/描述；已截止：标题/方向/状态/描述），
+      // 前缀行数不固定 → 统一用「方向行」定位：方向行都含 AI 且较短，标题 = 方向行的上一行。
+      let dirIdx = -1;
+      for (let j = i - 1; j >= Math.max(0, i - 8); j--) {
+        const L = lines[j] || '';
+        if (L.length <= 30 && /AI/i.test(L) && !/面向|报名|活动|地点|主办|立即/.test(L)) { dirIdx = j; break; }
+      }
+      if (dirIdx < 1) continue;
+      const title = lines[dirIdx - 1] || '';
+      if (!title || title.length < 4 || /报名|立即|截止|活动|地点|主办|面向/.test(title)) continue;
+      const dir = lines[dirIdx] || '';
+      let actTime = ''; let place = '';
+      for (let j = i + 2; j < Math.min(lines.length, i + 9); j++) {
+        if (/^活动时间/.test(lines[j])) actTime = lines[j + 1] || '';
+        if (/^地点/.test(lines[j])) place = lines[j + 1] || '';
+      }
+      const bits = [];
+      if (dir) bits.push(dir);
+      for (let j = dirIdx + 1; j < i; j++) { // 状态/人群/模式/描述（行数不固定，全部收集）
+        const L = lines[j] || '';
+        if (L && !/^报名截止/.test(L)) bits.push(L);
+      }
+      if (actTime) bits.push('活动 ' + actTime);
+      if (place) bits.push(place);
+      out.push({
+        title: title.slice(0, 110),
+        deadline,
+        benefit: (bits.join(' · ') || '校园VC 中国黑客松赛事日历收录').slice(0, 130)
+      });
+    }
+  } catch (e) { /* 解析失败返回空 */ }
+  return out;
+}
+
 // AI 活动·分类实时抓取：每个类别一个真实数据源（借鉴 TrendRadar「多源+关键词+实时」思路）
-// - hackathon: GitHub 搜赛事/黑客松仓库（海外源，本机无梯子自动跳过）
+// - hackathon: ① 校园VC 国内黑客松日历（国内直连，优先）② GitHub 搜赛事仓库（海外源，需梯子，且降噪）
 // - security:  CTFtime 官方 API 即将开赛的全球 CTF 赛事（真实 start/finish 日期）
 // - fan/inner/token/student: 国内直连 AI 资讯（量子位/头条/腾讯热榜）按关键词实时分桶
 // - tool:      GitHub 热门 AI 工具仓库
@@ -1066,8 +1115,18 @@ async function fetchAIEventsLive() {
   const seen = new Set();
   const push = (e) => { const k = String(e.title || '').toLowerCase().trim(); if (!k || seen.has(k)) return; seen.add(k); out.push(e); };
 
-  // 1) 🏆 黑客松/大赛：GitHub 赛事仓库（并发查询，任一失败跳过）
-  const ghQueries = ['hackathon+created:%3E2026-01-01', 'ai+hackathon+stars:%3E5', 'llm+hackathon', 'ai+competition+created:%3E2026-01-01', 'mlh+hackathon', 'devpost+hackathon'];
+  // 1) 🏆 黑客松/大赛
+  // 1a) 国内真实黑客松：校园VC「中国黑客松赛事日历」（国内直连免梯子，优先于 GitHub）
+  try {
+    const xyList = parseXYVCHackathons(await fetchText(XYVC_URL, 12000));
+    for (const it of xyList) {
+      push({ title: it.title, cat: 'hackathon', type: 'event', start: '', end: it.deadline, deadline: it.deadline, url: XYVC_URL, benefit: it.benefit + '（来源：校园VC 中国黑客松日历，点链接查看报名入口）', org: '校园VC', tutorial: '' });
+    }
+    if (xyList.length) console.log('[ai-events] 校园VC 黑客松日历抓到 ' + xyList.length + ' 条');
+  } catch (e) { console.warn('[ai-events] 校园VC 黑客松日历抓取失败（跳过）', e.message); }
+
+  // 1b) GitHub 赛事仓库（海外源，无梯子自动跳过；只保留描述像真实赛事的，过滤纯项目噪声）
+  const ghQueries = ['hackathon+created:%3E2026-01-01', 'ai+hackathon+stars:%3E5', 'llm+hackathon', 'ai+competition+created:%3E2026-01-01', 'mlh+hackathon', 'devpost+hackathon', 'agent+hackathon', 'generative+ai+hackathon', 'ai+agent+competition', 'llm+competition', 'hackathon+2026'];
   const ghBuckets = await Promise.all(ghQueries.map(async (q) => {
     try {
       const u = 'https://api.github.com/search/repositories?q=' + q + '&sort=updated&order=desc&per_page=6';
@@ -1075,10 +1134,12 @@ async function fetchAIEventsLive() {
       return j.items || [];
     } catch (e) { return []; }
   }));
+  const ghEventKw = /hackathon|竞赛|大赛|比赛|报名|registration|contest|challenge|submit|prize|奖金|赛题|赛道/i;
   let ghN = 0;
   for (const items of ghBuckets) {
     for (const it of items) {
       const desc = (it.description || '').replace(/\s+/g, ' ').trim();
+      if (!ghEventKw.test(desc)) continue; // 降噪：描述不像赛事的项目不收录
       const updated = (it.updated_at || '').slice(0, 10);
       push({ title: (it.full_name + (desc ? ' — ' + desc.slice(0, 70) : '')).slice(0, 110), cat: 'hackathon', date: updated, url: it.html_url || '', benefit: 'GitHub 实时收录的赛事/黑客松项目（更新于 ' + updated + '），点链接查看报名与详情', org: (it.owner && it.owner.login) || '', tutorial: '' });
       if (++ghN >= 6) break;

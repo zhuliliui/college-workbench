@@ -4,4 +4,6 @@
     <string name="title_activity_main">小朱工作台</string>
     <string name="package_name">com.college.workbench</string>
     <string name="custom_url_scheme">com.college.workbench</string>
+    <string name="cw_widget_label">今日计划 · DDL</string>
+    <string name="cw_widget_desc">显示今日计划与临近 DDL，点击打开工作台</string>
 </resources>

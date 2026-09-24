@@ -205,6 +205,7 @@ img.ic { width: 20px; height: 20px; object-fit: contain; vertical-align: middle;
 .textarea { resize: vertical; min-height: 84px; line-height: 1.6; }
 .row { display: flex; gap: 12px; flex-wrap: wrap; }
 .row > * { flex: 1; min-width: 140px; }
+.ddl-form .row { align-items: flex-start; }
 
 /* ============ 标签 / 徽章 ============ */
 .tag {
@@ -637,6 +638,9 @@ img.ic { width: 20px; height: 20px; object-fit: contain; vertical-align: middle;
   .row { gap: 8px; }
   .row > * { min-width: 100px; }
   .field label { font-size: 12px; }
+  /* DDL 编辑弹窗：窄屏下字段垂直堆叠，避免日期选择框文字被截断 */
+  .modal .ddl-form .row { flex-direction: column; gap: 0; }
+  .modal .ddl-form .row > .field { min-width: 0; width: 100%; }
   .fp-add-line, .flex-wrap { gap: 6px; }
   .stats-row .stat .label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 

@@ -196,8 +196,13 @@ Pages.ddl = function () {
   Store.update((st) => { st.ddls = st.ddls.filter((x) => x.id !== id); }); maybeSyncLocal(); syncDDLCloud(true); Pages.ddl();
   });
   if (act === 'done') {
-  Store.update((st) => { const x = st.ddls.find((y) => y.id === id); x.done = true; x.progress = 100; });
-  Store.earn(1, '完成 DDL 任务');
+  // 开关式：未完成 → 完成（+1 金币）；已完成 → 取消完成（扣回 1 金币）
+  // 修复 bug：旧逻辑无条件 done=true + 金币+1，导致已完成的 DDL 再点一下又加金币
+  const cur = s.ddls.find((y) => y.id === id); if (!cur) return;
+  const willDone = !cur.done;
+  Store.update((st) => { const x = st.ddls.find((y) => y.id === id); if (!x) return; x.done = willDone; if (willDone) x.progress = 100; });
+  if (willDone) { Store.earn(1, '完成 DDL 任务'); UI.toast('完成 DDL，+1 金币', 'ok'); }
+  else { Store.deduct(1, '取消完成 DDL'); UI.toast('已取消完成，-1 金币', 'warn'); }
   syncDDLCloud(true);
   syncPush();
   maybeSyncLocal();
@@ -229,6 +234,7 @@ Pages.ddl = function () {
   UI.openModal({
   title: d ? '编辑 DDL' : '新增 DDL', icon: '<img class="ic" src="assets/icons/hk-41.png" alt=""/>',
   body: `
+  <div class="ddl-form">
   <div class="row">
   <div class="field" style="flex:2"><label>任务名称</label><input class="input" id="dName" value="${UI.esc(d ? d.name : '')}" placeholder="如：数据库大作业提交"/></div>
   <div class="field" style="flex:1"><label>类型</label><select class="input" id="dType"><option value="ddl" ${typeDef==='ddl'?'selected':''}>普通 DDL</option><option value="exam" ${typeDef==='exam'?'selected':''}>考试</option></select></div>
@@ -248,7 +254,8 @@ Pages.ddl = function () {
   </select></div>
   </div>
   <div class="field"><label>完成进度 <span id="dProgVal">${progDef}%</span></label>
-  <input class="input" id="dProg" type="range" min="0" max="100" value="${progDef}"/></div>`,
+  <input class="input" id="dProg" type="range" min="0" max="100" value="${progDef}"/></div>
+  </div>`,
   actions: [{ label: '取消', cls: 'btn-soft', onClick: UI.closeModal },
   { label: d ? '保存' : '添加', onClick: () => {
   const name = UI.val('#dName'); if (!name) return UI.toast('请填写名称', 'warn');

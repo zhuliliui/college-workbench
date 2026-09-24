@@ -1,5 +1,5 @@
 /* 大学生AI万能工作台 - Service Worker（PWA 离线缓存） */
-const CACHE = 'cw-v212';
+const CACHE = 'cw-v224';
 const ICONS = Array.from({ length: 42 }, (_, i) => 'assets/icons/hk-' + String(i + 1).padStart(2, '0') + '.png');
 const ASSETS = [
   '.',
@@ -13,6 +13,7 @@ const ASSETS = [
   'assets/apple-touch-icon.png',
   'assets/piggy.svg',
   'js/store.js',
+  'js/widget-bridge.js',
   'js/common.js',
   'js/pages/dashboard.js',
   'js/pages/checkin.js',

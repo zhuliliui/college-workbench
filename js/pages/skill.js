@@ -6,9 +6,8 @@
 window.Pages = window.Pages || {};
 // 模块级状态：AI 选题是否处于「已读热点」视图（必须在页面函数外，否则每次重渲染被重置）
 let _topicReadView = false;
-// AI 活动分类筛选 / 是否显示已结束 / 分页（模块级，重渲染不重置）
+// AI 活动分类筛选 / 分页（模块级，重渲染不重置；已结束活动自动过滤）
 let _aeCat = 'all';
-let _aeShowExpired = false;
 let _aePage = 1;
 const AE_PAGE_SIZE = 8;
   // 持久化当前专题详情（刷新后保留在课程详情页，不退回到列表）
@@ -239,16 +238,34 @@ Pages.skill = function () {
   // 内置活动种子（真实可报名/长期有效；date 为 '长期有效' 或 YYYY-MM-DD 截止日）
   // 内置活动种子（限时赛事带真实赛程 start/end/deadline；常态化/权益类 type=daily/tool 无截止）
   const AI_EVENTS_SEED = [
+  { title: "CTF · CDCTF 2026（Jeopardy）", cat: "security", type: "event", start: "2026-10-03", end: "2026-10-04", deadline: "2026-10-04", url: "https://ctftime.org/event/3293/", benefit: "CTFtime 实时收录的全球 CTF 赛事（国际高分场次）", org: "Crimson Defense", tutorial: "" },
+  { title: "CTF · CubeCTF 2026（Attack-Defense）", cat: "security", type: "event", start: "2026-10-03", end: "2026-10-03", deadline: "2026-10-03", url: "https://ctftime.org/event/3352/", benefit: "CTFtime 实时收录的全球 CTF 赛事（国际高分场次）", org: "CubeMastery", tutorial: "" },
+  { title: "CTF · Securinets CTF Quals 2026（Jeopardy）", cat: "security", type: "event", start: "2026-10-03", end: "2026-10-04", deadline: "2026-10-04", url: "https://ctftime.org/event/3364/", benefit: "CTFtime 实时收录的全球 CTF 赛事（国际高分场次）", org: "Securinets", tutorial: "" },
+  { title: "CTF · Hacker's Gambit 2026 (Round 1 – Online Qualifier)（Jeopardy）", cat: "security", type: "event", start: "2026-10-02", end: "2026-10-04", deadline: "2026-10-04", url: "https://ctftime.org/event/3380/", benefit: "CTFtime 实时收录的全球 CTF 赛事", org: "JCOE Cyber Sentinels", tutorial: "" },
+  { title: "CTF · CSS CTF 2026: Return of Nexus（Jeopardy）", cat: "security", type: "event", start: "2026-09-30", end: "2026-10-01", deadline: "2026-10-01", url: "https://ctftime.org/event/3434/", benefit: "CTFtime 实时收录的全球 CTF 赛事", org: "suɐǝpodᴉʇuɐ", tutorial: "" },
+  { title: "CTF · SCAN 2026 Final（Jeopardy）", cat: "security", type: "event", start: "2026-09-28", end: "2026-09-28", deadline: "2026-09-28", url: "https://ctftime.org/event/3417/", benefit: "CTFtime 实时收录的全球 CTF 赛事", org: "D Asset Inc.", tutorial: "" },
+  { title: "CTF · Pointer Overflow CTF - 2026（Jeopardy）", cat: "security", type: "event", start: "2026-09-27", end: "2026-12-06", deadline: "2026-12-06", url: "https://ctftime.org/event/3020/", benefit: "CTFtime 实时收录的全球 CTF 赛事", org: "UWSP Pointers", tutorial: "" },
+  { title: "CTF · SunshineCTF 2026（Jeopardy）", cat: "security", type: "event", start: "2026-09-26", end: "2026-09-28", deadline: "2026-09-28", url: "https://ctftime.org/event/3399/", benefit: "CTFtime 实时收录的全球 CTF 赛事（国际高分场次）", org: "Knightsec", tutorial: "" },
+  { title: "CTF · FAUST CTF 2026（Attack-Defense）", cat: "security", type: "event", start: "2026-09-26", end: "2026-09-26", deadline: "2026-09-26", url: "https://ctftime.org/event/3312/", benefit: "CTFtime 实时收录的全球 CTF 赛事（国际高分场次）", org: "FAUST", tutorial: "" },
+  { title: "CTF · H7CTF 2026 Quals（Jeopardy）", cat: "security", type: "event", start: "2026-09-26", end: "2026-09-27", deadline: "2026-09-27", url: "https://ctftime.org/event/3093/", benefit: "CTFtime 实时收录的全球 CTF 赛事（国际高分场次）", org: "H7Tex", tutorial: "" },
+  { title: "CTF · BCS CTF 2026（Jeopardy）", cat: "security", type: "event", start: "2026-09-25", end: "2026-09-27", deadline: "2026-09-27", url: "https://ctftime.org/event/3374/", benefit: "CTFtime 实时收录的全球 CTF 赛事", org: "bdhxgrp", tutorial: "" },
+  { title: "CTF · FlightPath2026（Jeopardy）", cat: "security", type: "event", start: "2026-09-25", end: "2026-09-27", deadline: "2026-09-27", url: "https://ctftime.org/event/3422/", benefit: "CTFtime 实时收录的全球 CTF 赛事", org: "ĀYŌDÈ", tutorial: "" },
+  { title: "CTF · NileCTF（Jeopardy）", cat: "security", type: "event", start: "2026-09-25", end: "2026-09-27", deadline: "2026-09-27", url: "https://ctftime.org/event/3449/", benefit: "CTFtime 实时收录的全球 CTF 赛事", org: "Cyb3r_Ph4nt0ms", tutorial: "" },
+  { title: "CTF · Null Origin CTF 2026: Grand finale（Jeopardy）", cat: "security", type: "event", start: "2026-09-25", end: "2026-09-25", deadline: "2026-09-25", url: "https://ctftime.org/event/3454/", benefit: "CTFtime 实时收录的全球 CTF 赛事", org: "CyberXoX", tutorial: "" },
+  { title: "CTF · BreachPoint 2026（Jeopardy）", cat: "security", type: "event", start: "2026-09-25", end: "2026-09-26", deadline: "2026-09-26", url: "https://ctftime.org/event/3451/", benefit: "CTFtime 实时收录的全球 CTF 赛事", org: "pulse_0x1337", tutorial: "" },
+  { title: "Hack-Nation 第 7 届全球 AI 黑客松（CMU 匹兹堡）", cat: "hackathon", type: "event", start: "2026-10-03", end: "2026-10-10", deadline: "2026-10-02", url: "https://www.competehub.dev/instalily.ai/competitions/luma920ef1ec4cb3ed9a57a03991ad4e3ecd", benefit: "3 万+ 美元现金与 API 积分、20 万美元 AI 工具额度；24 小时极客马拉松，OpenAI/Meta/苹果导师评审；Top1% 团队进创业实验室孵化；CMU 现场名额申请制，线上决赛 10/10", org: "Hack-Nation × MIT Clubs", tutorial: "" },
+  { title: "2026 全国大学生「人工智能+」创新创业大赛", cat: "student", type: "event", start: "2026-09-01", end: "2026-12-07", deadline: "2026-10-28", url: "http://rgzn.52jingsai.com/", benefit: "初赛线上答题免费（可考 3 次取最高分），三等奖及以上入围决赛；决赛 11/5 截止提交作品、12/7 公示获奖；电子证书免费，覆盖 AI+传统产业/公共服务等方向", org: "大赛组委会", tutorial: "http://rgzn.52jingsai.com/" },
+  { title: "2026 怀柔科学城 AI for Science·OPC 创新挑战赛 · 48H 黑客松", cat: "hackathon", type: "event", start: "2026-09-11", end: "2026-11-17", deadline: "2026-11-10", url: "https://opc.book2048.com", benefit: "五大方向独立奖金池各 10 万元；面向 AI 开发者/极客/高校学生，单人可参赛（团队≤5人）；11/15-16 怀柔科学城 48 小时封闭开发，现场统一提供算力与数据接口；优胜直通孵化体系（另有揭榜挂帅赛道 10/10 截止）", org: "怀柔科学城 OPC 创新社区", tutorial: "https://opc.book2048.com" },
   { title: "莱森地平线·多智能体 AI 黑客松", cat: "hackathon", type: "event", start: "2026-08-16", end: "2026-10-17", deadline: "2026-10-10", url: "https://www.baidu.com/s?wd=%E8%8E%B1%E6%A3%AE%E5%9C%B0%E5%B9%B3%E7%BA%BF+AI%E9%BB%91%E5%AE%A2%E6%9D%BE", benefit: "万元级一等奖 + 多智能体协作/工具调用实战，个人与团队均可报名", org: "莱森购科技", tutorial: "" },
-  { title: "REBUILD-Z × GEIA AI 黑客松（具身智能）", cat: "hackathon", type: "event", start: "2026-08-20", end: "2026-09-08", deadline: "2026-09-05", url: "https://www.competehub.dev/instalily.ai/competitions/urls6ff4f2c73b6086f5b856729f1484a141", benefit: "48 小时驻场开发，AI × 具身智能 × 跨学科，9/8-9/11 深圳", org: "REBUILD-Z / GEIA", tutorial: "" },
   { title: "2026 欧莱雅美妆科技黑客松·赛题2（信任守护师）", cat: "hackathon", type: "event", start: "2026-07-19", end: "2026-10-20", deadline: "2026-10-20", url: "https://tianchi.aliyun.com/competition", benefit: "20 万总奖金（冠军 8 万），多模态 AI 鉴真，全球高校在校生", org: "欧莱雅 × 天池", tutorial: "" },
   { title: "2026 和泰 AI 黑客松（中国台湾）", cat: "hackathon", type: "event", start: "2026-06-01", end: "2026-11-21", deadline: "2026-10-14", url: "https://ht-hackathon.tw/", benefit: "总奖金超 100 万新台币（冠军 30 万），GenAI × 出行行业真实命题（队长须具台湾地区身份）", org: "和泰集团", tutorial: "" },
-  { title: "GOAI 世界人工智能开源大赛（Datawhale 夏令营二期组队）", cat: "hackathon", type: "event", start: "2026-08-18", end: "2026-09-30", deadline: "2026-09-15", url: "https://www.baidu.com/s?wd=GOAI+%E4%B8%96%E7%95%8C%E4%BA%BA%E5%B7%A5%E6%99%BA%E8%83%BD%E5%BC%80%E6%BA%90%E5%A4%A7%E8%B5%9B", benefit: "首届总奖金 500 万（冠军 100 万），Agent Infra / AI for Research 赛道", org: "GOAI × Datawhale", tutorial: "https://ailc.datawhale.cn/" },
   { title: "讯飞 AI 开发者大赛（Skill 开发方向等）", cat: "hackathon", type: "event", start: "2026-08-01", end: "2026-12-31", deadline: "2026-11-30", url: "https://challenge.xfyun.cn/", benefit: "星火大模型 + 行业数据集多赛道，奖金池 + 算力，可组队", org: "科大讯飞", tutorial: "" },
   { title: "阿里天池 AI 竞赛（常设赛事，按赛季更新）", cat: "hackathon", type: "event", start: "", end: "", deadline: "", url: "https://tianchi.aliyun.com/competition", benefit: "常设算法/AI 赛事 + 奖金 + 免费算力，实时看官网赛程", org: "阿里云", tutorial: "https://tianchi.aliyun.com/competition" },
-  { title: "Datawhale 每月组队学习（免费开源）", cat: "hackathon", type: "daily", start: "2026-08-17", end: "2026-08-31", deadline: "2026-08-31", url: "https://www.datawhale.cn/activity", benefit: "每月滚动：Transformer实战营/具身智能/大模型算法/Codex入门等十几门，本期 8/17-8/31 报名", org: "Datawhale", tutorial: "" },
+  { title: "Datawhale 每月组队学习（免费开源）", cat: "hackathon", type: "daily", start: "", end: "", deadline: "", url: "https://www.datawhale.cn/activity", benefit: "每月开班的免费开源组队学习（LLM/扩散模型/数学等方向），零门槛、有助教答疑，随时加入新一期", org: "Datawhale", tutorial: "" },
   { title: "Hugging Face 社区挑战赛（按赛题更新）", cat: "hackathon", type: "daily", start: "", end: "", deadline: "", url: "https://huggingface.co/challenges", benefit: "模型微调/应用挑战按月更新，随时可加入当前赛题", org: "Hugging Face", tutorial: "https://huggingface.co/learn" },
   { title: "Kaggle 竞赛（全球常设）", cat: "hackathon", type: "daily", start: "", end: "", deadline: "", url: "https://www.kaggle.com/competitions", benefit: "全球数据科学/AI 竞赛常设，免费 GPU Notebook，随时加入", org: "Kaggle", tutorial: "https://www.kaggle.com/learn" },
+  { title: "欧莱雅美妆科技黑客松·赛题1（数据共情者）", cat: "hackathon", type: "event", start: "2026-07-19", end: "2026-10-20", deadline: "2026-10-20", url: "https://www.competehub.dev/zh/competitions/tianchi532503", benefit: "20 万总奖金（冠军 8 万），大模型打造消费者 AI 管家，全球高校在校生", org: "欧莱雅 × 天池", tutorial: "" },
+  { title: "第五届琶洲算法大赛·AIGC 灵光大赛（机甲·广州）", cat: "hackathon", type: "event", start: "2026-08-08", end: "2026-09-30", deadline: "2026-09-30", url: "https://www.aitop100.cn/infomation/details/34444.html", benefit: "AI 视频大赛，政府背书，现金奖励 + 荣誉证书", org: "广州市政府", tutorial: "" },
   { title: "GitHub Student Developer Pack（学生认证长期权益）", cat: "student", type: "daily", start: "", end: "", deadline: "", url: "https://education.github.com/pack", benefit: "edu 邮箱学生认证长期有效：Copilot / JetBrains / Azure / Canva 等几十项免费开发者工具", org: "GitHub", tutorial: "https://docs.github.com/zh/education/explore-the-benefits-of-github" },
   { title: "JetBrains 学生免费授权（全系 IDE）", cat: "student", type: "daily", start: "", end: "", deadline: "", url: "https://www.jetbrains.com/community/education/#students", benefit: "学生认证免费一年授权（IntelliJ/PyCharm/WebStorm 等），可续期，需 edu 邮箱或学生证", org: "JetBrains", tutorial: "https://www.jetbrains.com/community/education/#students" },
   { title: "Microsoft Azure for Students（学生免费额度）", cat: "student", type: "daily", start: "", end: "", deadline: "", url: "https://azure.microsoft.com/zh-cn/free/students/", benefit: "学生认证无需信用卡，送 $100 额度 + 免费云服务（12 个月），含 AI 服务额度", org: "Microsoft", tutorial: "https://azure.microsoft.com/zh-cn/free/students/" },
@@ -294,14 +311,6 @@ Pages.skill = function () {
   { title: "Hugging Face 免费推理 API 教程", cat: "tool", type: "tool", start: "", end: "", deadline: "", url: "https://www.baidu.com/s?wd=Hugging+Face+%E5%85%8D%E8%B4%B9+%E6%8E%A8%E7%90%86+API+%E6%95%99%E7%A8%8B", benefit: "HF Inference API 免费额度调用开源模型，Spaces 免费部署 Demo，逛模型社区零成本", org: "Hugging Face", tutorial: "https://huggingface.co/docs/api-inference/" },
   { title: "Poe 免费 AI 聊天教程", cat: "tool", type: "tool", start: "", end: "", deadline: "", url: "https://www.baidu.com/s?wd=Poe+%E5%85%8D%E8%B4%B9+AI+%E8%81%8A%E5%A4%A9+%E6%95%99%E7%A8%8B", benefit: "Quora Poe 每日免费消息额度，可切换 GPT/Claude/Gemini 等多模型，网页/App 可用", org: "Poe", tutorial: "https://poe.com/" },
   { title: "Coze/扣子 免费搭建 AI Bot 教程", cat: "tool", type: "tool", start: "", end: "", deadline: "", url: "https://www.baidu.com/s?wd=Coze+%E6%89%A3%E5%AD%90+%E5%85%8D%E8%B4%B9+%E6%90%AD%E5%BB%BA+AI+Bot+%E6%95%99%E7%A8%8B", benefit: "字节扣子/Coze 免费可视化搭建 AI 智能体，插件/工作流/知识库，可发布到多渠道", org: "Coze", tutorial: "https://www.coze.cn/" },
-  { title: "公益 API 中转站合集（免费调主流大模型）", cat: "fan", type: "tool", start: "", end: "", deadline: "", url: "https://www.baidu.com/s?wd=%E5%85%AC%E7%9B%8A+API+%E4%B8%AD%E8%BD%AC+%E7%AB%99+%E5%85%8D%E8%B4%B9", benefit: "社区免费 API 中转汇总（GitHub/论坛常更新），可免费调 GPT/Claude/Gemini 等；限流严格、勿商用，仅测试学习", org: "社区", tutorial: "" },
-  { title: "GitHub 免费 API Key 收集仓库教程", cat: "fan", type: "tool", start: "", end: "", deadline: "", url: "https://www.baidu.com/s?wd=GitHub+%E5%85%8D%E8%B4%B9+API+Key+%E6%B1%87%E6%80%BB+%E4%BB%93%E5%BA%93", benefit: "GitHub 上汇总各类免费/公开可用 API Key 与免费额度的仓库，自行甄别有效性（部分已失效）", org: "GitHub", tutorial: "https://github.com/" },
-  { title: "各类大模型官方免费 Key 领取入口汇总", cat: "fan", type: "tool", start: "", end: "", deadline: "", url: "https://www.baidu.com/s?wd=%E5%A4%A7%E6%A8%A1%E5%9E%8B+%E5%85%8D%E8%B4%B9+Key+%E9%A2%86%E5%8F%96", benefit: "Google AI Studio / 硅基流动 / DeepSeek 等官方免费 Key 领取入口汇总帖，优先用官方渠道最稳", org: "汇总", tutorial: "" },
-  { title: "公开测试 API Key 使用须知（限速/勿商用）", cat: "fan", type: "tool", start: "", end: "", deadline: "", url: "https://www.baidu.com/s?wd=%E5%85%AC%E5%BC%80+API+Key+%E4%BD%BF%E7%94%A8+%E6%B3%A8%E6%84%8F", benefit: "公开分享的 Key 多为个人/社区志愿提供，限流严格、勿商用、勿泄露；优先官方免费额度更安全", org: "提醒", tutorial: "" },
-  { title: "免费 API 聚合网关（一个 Key 调多模型）", cat: "fan", type: "tool", start: "", end: "", deadline: "", url: "https://www.baidu.com/s?wd=%E5%85%8D%E8%B4%B9+API+%E8%81%9A%E5%90%88%E7%BD%91%E5%85%B3", benefit: "OpenRouter / 硅基流动等聚合网关统一一个 Key 调多模型，部分模型免费，适合快速试用", org: "聚合", tutorial: "" },
-  { title: "吴恩达 DeepLearning.AI 免费 AI 短课程", cat: "fan", type: "daily", start: "", end: "", deadline: "", url: "https://www.deeplearning.ai/", benefit: "吴恩达团队免费短课（ChatGPT / LLM / AI Agent 等），随到随学，完成可领证书", org: "DeepLearning.AI", tutorial: "https://learn.deeplearning.ai/" },
-  { title: "2026 第二届海浪 AI 电影黑客松（阿那亚）", cat: "hackathon", type: "event", start: "2026-08-11", end: "2026-08-27", deadline: "2026-08-27", url: "https://www.aitop100.cn/infomation/details/34462.html", benefit: "48 小时阿那亚极限创作，AI 内容占比≥70%，最高 1 万元奖金 + 官方展示，报名 8/11–8/27", org: "海浪电影周 × 天猫小黑盒 × AMD", tutorial: "" },
-  { title: "AI 造物黑客松·福州首站", cat: "hackathon", type: "event", start: "2026-08-01", end: "2026-08-30", deadline: "2026-08-25", url: "https://www.competehub.dev/manifest.webmanifest/competitions/urlsb779e5bec43b662d54c0eb86d01e0be0", benefit: "8/28–8/29 福州两日两夜开发，五赛道（AI硬件/社交陪伴/私域/商业/影视），冠军 ¥2 万，报名截止 8/25", org: "MONEYAI", tutorial: "" },
   { title: "CTFtime 全球 CTF 赛事日历", cat: "security", type: "daily", start: "", end: "", deadline: "", url: "https://ctftime.org/", benefit: "全球 CTF 夺旗赛日历 + 战队排名；连后端刷新会自动拉取即将开赛的比赛（真实日期）", org: "CTFtime", tutorial: "https://ctftime.org/events/" },
   { title: "PortSwigger Web Security Academy（免费）", cat: "security", type: "daily", start: "", end: "", deadline: "", url: "https://portswigger.net/web-security", benefit: "Burp Suite 官方免费 Web 安全学院，零基础到渗透测试的系统化在线实验室", org: "PortSwigger", tutorial: "https://portswigger.net/web-security/all-labs" },
   { title: "攻防世界 XCTF（国内 CTF 练习）", cat: "security", type: "daily", start: "", end: "", deadline: "", url: "https://adworld.xctf.org.cn/", benefit: "国内最大 CTF 在线练习平台，新手区→高手区→大师区分难度刷题", org: "XCTF 联盟", tutorial: "" },
@@ -313,6 +322,11 @@ Pages.skill = function () {
   { title: "安全客（漏洞/攻防资讯）", cat: "security", type: "daily", start: "", end: "", deadline: "", url: "https://www.anquanke.com/", benefit: "安全资讯、漏洞预警、攻防技术文章与活动信息", org: "安全客", tutorial: "" },
   { title: "合天网安实验室（在线实操）", cat: "security", type: "daily", start: "", end: "", deadline: "", url: "https://www.hetianlab.com/", benefit: "浏览器里直接做安全实验（Web安全/逆向/密码学/CTF），大量免费实验", org: "合天网安", tutorial: "" },
   { title: "OWASP Top 10 + Juice Shop 靶场", cat: "security", type: "daily", start: "", end: "", deadline: "", url: "https://owasp.org/www-project-web-security-testing-guide/", benefit: "Web 安全测试标准指南 + OWASP Juice Shop 免费开源漏洞练习应用", org: "OWASP", tutorial: "https://owasp.org/www-project-juice-shop/" },
+  { title: "公益 API 中转站合集（免费调主流大模型）", cat: "fan", type: "tool", start: "", end: "", deadline: "", url: "https://www.baidu.com/s?wd=%E5%85%AC%E7%9B%8A+API+%E4%B8%AD%E8%BD%AC+%E7%AB%99+%E5%85%8D%E8%B4%B9", benefit: "社区免费 API 中转汇总（GitHub/论坛常更新），可免费调 GPT/Claude/Gemini 等；限流严格、勿商用，仅测试学习", org: "社区", tutorial: "" },
+  { title: "GitHub 免费 API Key 收集仓库教程", cat: "fan", type: "tool", start: "", end: "", deadline: "", url: "https://www.baidu.com/s?wd=GitHub+%E5%85%8D%E8%B4%B9+API+Key+%E6%B1%87%E6%80%BB+%E4%BB%93%E5%BA%93", benefit: "GitHub 上汇总各类免费/公开可用 API Key 与免费额度的仓库，自行甄别有效性（部分已失效）", org: "GitHub", tutorial: "https://github.com/" },
+  { title: "各类大模型官方免费 Key 领取入口汇总", cat: "fan", type: "tool", start: "", end: "", deadline: "", url: "https://www.baidu.com/s?wd=%E5%A4%A7%E6%A8%A1%E5%9E%8B+%E5%85%8D%E8%B4%B9+Key+%E9%A2%86%E5%8F%96", benefit: "Google AI Studio / 硅基流动 / DeepSeek 等官方免费 Key 领取入口汇总帖，优先用官方渠道最稳", org: "汇总", tutorial: "" },
+  { title: "公开测试 API Key 使用须知（限速/勿商用）", cat: "fan", type: "tool", start: "", end: "", deadline: "", url: "https://www.baidu.com/s?wd=%E5%85%AC%E5%BC%80+API+Key+%E4%BD%BF%E7%94%A8+%E6%B3%A8%E6%84%8F", benefit: "公开分享的 Key 多为个人/社区志愿提供，限流严格、勿商用、勿泄露；优先官方免费额度更安全", org: "提醒", tutorial: "" },
+  { title: "免费 API 聚合网关（一个 Key 调多模型）", cat: "fan", type: "tool", start: "", end: "", deadline: "", url: "https://www.baidu.com/s?wd=%E5%85%8D%E8%B4%B9+API+%E8%81%9A%E5%90%88%E7%BD%91%E5%85%B3", benefit: "OpenRouter / 硅基流动等聚合网关统一一个 Key 调多模型，部分模型免费，适合快速试用", org: "聚合", tutorial: "" },
   ];
   const getAIEvents = () => {
   const s = Store.get().skill;
@@ -339,7 +353,58 @@ Pages.skill = function () {
   return '<span class="tag ae-type-event">🏁 限时赛事</span>';
   };
   const aeCatName = (k) => { const c = AI_EVENT_CATS.find((x) => x.key === k); return c ? c.name : (k || ''); };
+  // 从后端同步 AI 活动（手动「刷新」与每日自动拉取共用）；返回 true=同步成功
+  // 数据源：后端 /api/ai/events（清单固化 + 实时抓取），合并去重、剔除过期后写入本地
+  let _aeSyncing = false;
+  async function syncAIEventsFromBackend(silent) {
+  if (_aeSyncing) return false;
+  const backend = Store.readerBackend();
+  if (!backend) return false;
+  _aeSyncing = true;
+  try {
+  if (!silent) UI.toast('正在从后端同步最新活动…', 'ok');
+  const ctrl = new AbortController();
+  const to = setTimeout(() => ctrl.abort(), 12000);
+  const r = await fetch(backend + '/api/ai/events?refresh=1', { signal: ctrl.signal });
+  clearTimeout(to);
+  if (r.ok) {
+  const j = await r.json().catch(() => null);
+  if (j && Array.isArray(j.events) && j.events.length) {
+  const live = j.source === 'live';
+  Store.update((st) => {
+  // 清掉上次同步的旧 _server 条目（本次刷新重新写入），用户自建条目保留；过期自建活动立即删除
+  st.skill.aiEvents = (st.skill.aiEvents || []).filter((e) => !e._server && !aeExpired(e));
+  const cur = (st.skill.aiEvents || []).slice();
+  // 去重集同时含内置种子标题：后端返回「清单+实时」合并结果，清单与内置种子同源，避免重复显示
+  const seen = new Set(cur.map((x) => x.title).concat(AI_EVENTS_SEED.map((x) => x.title)));
+  for (const e of j.events) {
+  if (!e || !e.title || seen.has(e.title)) continue;
+  if (aeExpired(e)) continue; // 后端返回的过期活动不并入，保持列表干净
+  seen.add(e.title);
+  cur.push(Object.assign({ id: Store.uid(), _server: true }, e));
+  }
+  st.skill.aiEvents = cur;
+  st.skill.aiEventsDate = j.date || D.todayStr();
+  });
+  if (!silent) UI.toast(live ? '已抓取最新活动（' + j.events.length + ' 条，过期已剔除）' : '已同步活动清单（' + j.events.length + ' 条，过期已剔除）', 'ok');
+  return true;
+  }
+  }
+  } catch (e) { /* 后端不可达 */ }
+  finally { _aeSyncing = false; }
+  return false;
+  }
+  // 每日自动同步：进入 AI 活动区块时，若今天还没从后端拉取过则静默同步一次（无需手动点刷新）
+  let _aeAutoTried = '';
+  function autoSyncAIEvents() {
+  const st = Store.get().skill;
+  const today = D.todayStr();
+  if (st.aiEventsDate === today || _aeAutoTried === today) return;
+  _aeAutoTried = today;
+  syncAIEventsFromBackend(true).then((ok) => { if (ok && window.__currentPage === 'skill') Pages.skill(); });
+  }
   function renderAIEvents() {
+  autoSyncAIEvents(); // 每天首次进入自动从后端拉取（静默，失败不打扰）
   const all = getAIEvents();
   // 限时赛事按报名截止升序排（临近截止优先），常态化/权益类放最后
   const sorted = all.slice().sort((a, b) => {
@@ -349,9 +414,8 @@ Pages.skill = function () {
   if (db === null) return -1;
   return da - db;
   });
-  const list = sorted.filter((e) => (aeExpired(e) ? _aeShowExpired : true)).filter((e) => _aeCat === 'all' || e.cat === _aeCat);
-  const expiredN = sorted.filter((e) => aeExpired(e)).length;
-  const activeN = sorted.length - expiredN;
+  const list = sorted.filter((e) => !aeExpired(e)).filter((e) => _aeCat === 'all' || e.cat === _aeCat);
+  const activeN = list.length;
   // 分页
   const totalPages = Math.max(1, Math.ceil(list.length / AE_PAGE_SIZE));
   if (_aePage > totalPages) _aePage = totalPages;
@@ -398,7 +462,6 @@ Pages.skill = function () {
   <div class="card-head">
   <div class="title"><img class="ic" src="assets/icons/hk-01.png" alt=""/>AI 活动<span class="tag muted" style="margin-left:6px">可报名 ${activeN}</span></div>
   <div class="spacer"></div>
-  ${expiredN ? `<button class="btn btn-soft btn-sm" data-act="ae-toggle-expired">${_aeShowExpired ? '隐藏已结束' : `已结束 ${expiredN}`}</button>` : ''}
   <button class="btn btn-soft btn-sm" data-act="ae-help" title="后端连接说明">ⓘ</button>
   <button class="btn btn-sm btn-refresh" data-act="ae-refresh"><img class="ic" src="assets/icons/hk-10.png" alt=""/> 刷新</button>
   <button class="btn btn-soft btn-sm" data-act="ae-add"><img class="ic" src="assets/icons/hk-33.png" alt=""/> 活动</button>
@@ -680,7 +743,6 @@ Pages.skill = function () {
   return;
   }
   if (act === 'ae-cat') { _aeCat = b.dataset.cat; _aePage = 1; Pages.skill(); return; }
-  if (act === 'ae-toggle-expired') { _aeShowExpired = !_aeShowExpired; _aePage = 1; Pages.skill(); return; }
   if (act === 'ae-page') { _aePage = parseInt(b.dataset.page) || 1; Pages.skill(); return; }
   if (act === 'ae-help') {
   const backend = Store.readerBackend();
@@ -719,51 +781,13 @@ Pages.skill = function () {
   return;
   }
   if (act === 'ae-refresh') return (async () => {
-  // 实时刷新：优先从后端拉取最新活动（assets/ai-events.json），合并去重后过滤过期
-  const doLocalRefresh = () => {
-  Store.update((st) => {
-  st.skill.aiEvents = (st.skill.aiEvents || []).filter((e) => !aeExpired(e));
-  });
+  const ok = await syncAIEventsFromBackend(false);
+  if (!ok) {
+  Store.update((st) => { st.skill.aiEvents = (st.skill.aiEvents || []).filter((e) => !aeExpired(e)); });
   const expiredNow = getAIEvents().filter((e) => aeExpired(e)).length;
-  UI.toast('已刷新：过滤 ' + expiredNow + ' 项已结束活动', 'ok');
+  UI.toast('后端不可达：仅过滤 ' + expiredNow + ' 项已结束活动（点 ⓘ 配置后端地址）', 'warn');
   Pages.skill();
-  };
-  const backend = Store.readerBackend();
-  if (backend) {
-  try {
-  UI.toast('正在从后端同步最新活动…', 'ok');
-  const ctrl = new AbortController();
-  const to = setTimeout(() => ctrl.abort(), 12000);
-  const r = await fetch(backend + '/api/ai/events?refresh=1', { signal: ctrl.signal });
-  clearTimeout(to);
-  if (r.ok) {
-  const j = await r.json().catch(() => null);
-  if (j && Array.isArray(j.events) && j.events.length) {
-  const live = j.source === 'live';
-  const nowStr = D.todayStr();
-          Store.update((st) => {
-          // 清掉上次同步的旧 _server 条目（本次刷新重新写入），用户自建条目保留；过期自建活动立即删除
-          st.skill.aiEvents = (st.skill.aiEvents || []).filter((e) => !e._server && !aeExpired(e));
-          const cur = (st.skill.aiEvents || []).slice();
-          // 去重集同时含内置种子标题：后端返回「清单+实时」合并结果，清单与内置种子同源，避免重复显示
-          const seen = new Set(cur.map((x) => x.title).concat(AI_EVENTS_SEED.map((x) => x.title)));
-  for (const e of j.events) {
-  if (!e || !e.title || seen.has(e.title)) continue;
-  if (aeExpired(e)) continue; // 后端返回的过期活动不并入，保持列表干净
-  seen.add(e.title);
-  cur.push(Object.assign({ id: Store.uid(), _server: true }, e));
   }
-  st.skill.aiEvents = cur;
-  st.skill.aiEventsDate = j.date || '';
-  });
-  UI.toast(live ? '已抓取最新活动（' + j.events.length + ' 条，过期已剔除）' : '已同步活动清单（' + j.events.length + ' 条，过期已剔除）', 'ok');
-  Pages.skill();
-  return;
-  }
-  }
-  } catch (e) { /* 后端不可达则回退本地 */ }
-  }
-  doLocalRefresh();
   })();
   if (act === 'ae-del') {
   Store.update((st) => { st.skill.aiEvents = (st.skill.aiEvents || []).filter((x) => x.id !== id); });

@@ -1,9 +1,6 @@
-' ============================================
-' 大学生AI万能工作台 - 后端开机自启动
-' 隐藏窗口运行 server.js（零依赖原生 Node）
-' 开机后自动拉起：外刊/每日AI选题/AI活动 实时后端
-' ============================================
+' 大学生AI万能工作台 - 后端启动脚本（双击运行）
+' 实际启动逻辑在 start-backend.bat 中，本 VBS 仅做调用，避免 VBS 字符串转义问题。
+Option Explicit
+Dim WshShell
 Set WshShell = CreateObject("WScript.Shell")
-WshShell.CurrentDirectory = "D:\buddycode\college-workbench"
-' 0 = 隐藏窗口；node 从系统 PATH 查找
-WshShell.Run "cmd /c node server.js", 0, False
+WshShell.Run "D:\buddycode\college-workbench\start-backend.bat visible", 1, False

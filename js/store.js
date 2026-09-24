@@ -56,7 +56,7 @@
       },
       // 月度复盘
       monthly: {
-        goals: {},                // {month:[{id,text}]}
+        goals: {},                // {month:[{id,text,done}]} done:true→已完成事项
         done: [],                 // {id,text,month}
         undone: [],               // {id,text,month}
         harvest: {},
@@ -262,23 +262,30 @@
 
   // 解析联网后端地址：本地后端运行时优先走同源 /api（不依赖外部 Railway）
   const DEFAULT_RAILWAY_BACKEND = 'https://cw-backup-production.up.railway.app';
+  // Tailscale Funnel：本机 443→3000 的 HTTPS 公网入口，国内可达 —— 手机云端页（HTTPS）
+  // 实时数据的默认后端（Railway 国内基本不可达，仅作兜底）
+  const FUNNEL_BACKEND = 'https://laptop-a763c6tn.taild83cf2.ts.net';
   function readerBackend() {
     const calUrl = ((get().cal && get().cal.backendUrl) || '').replace(/\/$/, '');
     const raw = (get().english.readerBackend || '').replace(/\/$/, '');
     // 「提醒→日历订阅」是统一入口（cal.backendUrl）优先；外刊页的历史设置（english.readerBackend）兜底
     let candidate = calUrl || (raw && raw !== DEFAULT_RAILWAY_BACKEND ? raw : '');
-    if (candidate && candidate !== DEFAULT_RAILWAY_BACKEND) return candidate;
     const loc = (typeof location !== 'undefined' && location) || {};
     const h = loc.hostname || '';
     const isLocalhost = /^localhost$|^127\.0\.0\.1$|^\[::1\]$/i.test(h);
+    const isPrivate = /^10\./.test(h) || /^192\.168\./.test(h) || /^172\.(1[6-9]|2\d|3[01])\./.test(h) || /^169\.254\./.test(h) || h === '0.0.0.0';
+    // localhost/127.0.0.1 后端只在页面本身也跑在本机时才可达：手机云端页若仍指向
+    // localhost（默认值），fetch 打的是手机自己，必失败 → 视为未配置，走同源/Railway 逻辑
+    if (/^http:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?\/?$/i.test(candidate) && !(isLocalhost || isPrivate)) candidate = '';
+    if (candidate && candidate !== DEFAULT_RAILWAY_BACKEND) return candidate;
     // 局域网/私网 IP（10.x / 192.168.x / 172.16-31.x / 169.254.x / 0.0.0.0）：
     // 此时前端由本机 server.js 同源托管，API 直接走相对路径 /api/...，无需再指向公网 Railway，
     // 也避免了“本地后端已抓到 cn-daily，App 却去读 Railway 而看不到”的问题。
-    const isPrivate = /^10\./.test(h) || /^192\.168\./.test(h) || /^172\.(1[6-9]|2\d|3[01])\./.test(h) || /^169\.254\./.test(h) || h === '0.0.0.0';
     // 同源后端：返回当前页面 origin（如 http://10.96.45.34:3000），调用方用 backend + '/api/...' 即可打到本机后端。
     // 注意：必须返回真实 origin，不能返回 '' —— 所有调用方用 if(backend) 判断，'' 会被当成「无后端」而跳过拉取。
     if (isLocalhost || isPrivate) return loc.origin || '';
-    return candidate || DEFAULT_RAILWAY_BACKEND;
+    // 云端/远程页面：优先 Funnel（HTTPS、国内可达），Railway 仅兜底
+    return candidate || FUNNEL_BACKEND || DEFAULT_RAILWAY_BACKEND;
   }
 
   // 技能学习数据结构兜底（topic/course 字段完整性）

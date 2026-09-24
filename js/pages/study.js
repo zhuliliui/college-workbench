@@ -14,28 +14,34 @@ Pages.study = function () {
   const isToday = (t) => !t.due || D.fmtDate(D.parseLDT(t.due)) === today;
   const tasks = s.tasks.slice().sort((a, b) => (a.done - b.done) || (a.due || '').localeCompare(b.due || ''));
   const todayTasks = tasks.filter(isToday);
-  const total = todayTasks.length;
-  const done = todayTasks.filter((t) => t.done).length;
-  const pending = total - done;
-  const pct = total ? Math.round((done / total) * 100) : 0;
+
+  // ---------- 选中日期联动：进度 / 计划 / 小结 / 备忘录 都按 STUDY_VIEW.date 计算 ----------
+  const vtArch = (Store.get().taskArchive || []).filter((t) => (t.planDate || '') === STUDY_VIEW.date).map((t) => Object.assign({}, t, { _archived: true }));
+  const vtLive = STUDY_VIEW.date === today ? todayTasks
+    : tasks.filter((t) => { if (t.due) return D.fmtDate(D.parseLDT(t.due)) === STUDY_VIEW.date; return (t.addedDate || '') === STUDY_VIEW.date; });
+  const vt = vtLive.concat(vtArch);
+  const vTotal = vt.length;
+  const vDone = vt.filter((t) => t.done).length;
+  const vPending = vTotal - vDone;
+  const vPct = vTotal ? Math.round((vDone / vTotal) * 100) : 0;
 
   const R = 58, C = 2 * Math.PI * R;
   const ring = `<div class="ring">
   <svg width="132" height="132" viewBox="0 0 132 132">
   <circle cx="66" cy="66" r="${R}" fill="none" stroke="#e3efe6" stroke-width="12"/>
   <circle cx="66" cy="66" r="${R}" fill="none" stroke="url(#rg)" stroke-width="12" stroke-linecap="round"
-  stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C * (1 - pct / 100)).toFixed(1)}"/>
+  stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C * (1 - vPct / 100)).toFixed(1)}"/>
   <defs><linearGradient id="rg" x1="0" y1="0" x2="1" y2="1">
   <stop offset="0" stop-color="#a7c4ab"/><stop offset="1" stop-color="#5e8268"/></linearGradient></defs>
   </svg>
-  <div class="center"><div class="pct">${pct}%</div></div>
+  <div class="center"><div class="pct">${vPct}%</div></div>
   </div>`;
 
   const stats = `
   <div class="ring-stats">
-  <div class="ring-stat"><div class="v">${done}</div><div class="l">已完成</div></div>
-  <div class="ring-stat"><div class="v">${total}</div><div class="l">总任务</div></div>
-  <div class="ring-stat"><div class="v">${pending}</div><div class="l">待完成</div></div>
+  <div class="ring-stat"><div class="v">${vDone}</div><div class="l">已完成</div></div>
+  <div class="ring-stat"><div class="v">${vTotal}</div><div class="l">总任务</div></div>
+  <div class="ring-stat"><div class="v">${vPending}</div><div class="l">待完成</div></div>
   </div>`;
 
   // ---------- 月历 ----------
@@ -114,11 +120,7 @@ Pages.study = function () {
     </div>
   </div>`;
 
-  // ---------- 选中日期的当日计划（含历史归档 planDate 落在该日的任务） ----------
-  const vtArch = (Store.get().taskArchive || []).filter((t) => (t.planDate || '') === STUDY_VIEW.date).map((t) => Object.assign({}, t, { _archived: true }));
-  const vtLive = STUDY_VIEW.date === today ? todayTasks
-    : tasks.filter((t) => { if (t.due) return D.fmtDate(D.parseLDT(t.due)) === STUDY_VIEW.date; return (t.addedDate || '') === STUDY_VIEW.date; });
-  const vt = vtLive.concat(vtArch);
+  // ---------- 选中日期的当日计划（vt 已在上方联动计算） ----------
   const vd = vt.filter((t) => t.done).length;
   const planListHtml = vt.length
     ? '<div class="list">' + vt.map((t) => itemHtml(t, !!t._archived)).join('') + '</div>'
@@ -151,19 +153,21 @@ Pages.study = function () {
     <div class="card-body">${allListHtml}</div>
   </div>`;
 
-  const weakHtml = (s.weakNotes.length ? '<div class="list">' : '') + s.weakNotes.map((w) => `
+  // 备忘录按选中日期联动：带 date 的只在该日显示；旧数据（无 date）仅在“今天”展示，便于补标日期
+  const weakForDate = s.weakNotes.filter((w) => (w.date || today) === STUDY_VIEW.date);
+  const weakHtml = (weakForDate.length ? '<div class="list">' : '') + weakForDate.map((w) => `
   <div class="item" data-id="${w.id}">
   <div class="body"><div class="name">${UI.esc(w.text)}</div></div>
   <div class="ops"><button class="btn btn-soft btn-icon" data-act="weak-del" data-id="${w.id}" title="删除"><img class="ic" src="assets/icons/hk-18.png" alt=""/></button></div>
-  </div>`).join('') + (s.weakNotes.length ? '</div>' : `<div class="empty"><img class="emoji" src="assets/icons/hk-39.png" alt=""/><div class="t">还没有记录</div><div class="s">记下容易混淆的知识点</div></div>`);
+  </div>`).join('') + (weakForDate.length ? '</div>' : `<div class="empty"><img class="emoji" src="assets/icons/hk-39.png" alt=""/><div class="t">${STUDY_VIEW.date} 还没有记录</div><div class="s">记下容易混淆的知识点</div></div>`);
 
-  const summary = s.dailySummary[today] || '';
+  const summary = s.dailySummary[STUDY_VIEW.date] || '';
 
   c.innerHTML = `
   ${STUDY_VIEW.mode === 'day' ? monthCard + planCard : allCard}
 
   <div class="card progress-card">
-    <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-32.png" alt=""/>今日进度</div>
+    <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-32.png" alt=""/>今日进度 · ${STUDY_VIEW.date}</div>
     <div class="spacer"></div><button class="collapse-btn" title="折叠">▾</button></div>
     <div class="card-body">
       <div class="progress-top">${ring}<div class="progress-cap">完成率</div></div>
@@ -173,13 +177,13 @@ Pages.study = function () {
 
   <div class="grid grid-2">
     <div class="card">
-      <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-39.png" alt=""/>薄弱知识点备忘录</div>
+      <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-39.png" alt=""/>薄弱知识点备忘录 · ${STUDY_VIEW.date}</div>
       <div class="spacer"></div><button class="btn btn-sm btn-soft" data-act="weak-add">＋ 记录</button>
       <button class="collapse-btn" title="折叠">▾</button></div>
       <div class="card-body">${weakHtml}</div>
     </div>
     <div class="card">
-      <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-38.png" alt=""/>每日学习小结</div>
+      <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-38.png" alt=""/>每日学习小结 · ${STUDY_VIEW.date}</div>
       <div class="spacer"></div><button class="collapse-btn" title="折叠">▾</button></div>
       <div class="card-body">
         <textarea class="textarea" id="summaryInput" placeholder="今天学了什么？有什么收获或卡点？">${UI.esc(summary)}</textarea>
@@ -231,7 +235,7 @@ Pages.study = function () {
         actions: [{ label: '取消', cls: 'btn-soft', onClick: UI.closeModal },
         { label: '保存', onClick: () => {
           const v = UI.val('#mBody'); if (!v) return UI.toast('写点内容吧', 'warn');
-          Store.update((st) => st.weakNotes.unshift({ id: Store.uid(), text: v }));
+          Store.update((st) => st.weakNotes.unshift({ id: Store.uid(), text: v, date: STUDY_VIEW.date }));
           UI.closeModal(); Pages.study();
         } }],
       });
@@ -244,8 +248,8 @@ Pages.study = function () {
     });
     if (act === 'save-summary') {
       const v = UI.$('#summaryInput').value;
-      Store.update((st) => { st.dailySummary[today] = v; });
-      UI.toast('已保存今日小结', 'ok');
+      Store.update((st) => { st.dailySummary[STUDY_VIEW.date] = v; });
+      UI.toast('已保存 ' + STUDY_VIEW.date + ' 学习小结', 'ok');
       return;
     }
   };

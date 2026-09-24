@@ -298,7 +298,7 @@ Pages.dashboard = function () {
   <div class="card-head">
   <div class="title"><img class="ic" src="assets/icons/hk-38.png" alt=""/>关键词演讲挑战</div>
   <div class="spacer"></div>
-  <span class="tag muted">词条 ${all.length}</span>
+  <button class="tag muted" data-act="kc-manage" title="点我管理词条（批量添加 / 删除）" style="cursor:pointer">词条 ${all.length} ✎</button>
   <button class="btn btn-soft btn-icon kc-add-icon" data-act="kc-add" title="添加词条"><img class="ic" src="assets/icons/hk-33.png" alt=""/></button>
   <button class="collapse-btn" title="折叠">▾</button>
   </div>
@@ -329,8 +329,70 @@ Pages.dashboard = function () {
   </div>`;
   }
 
-  // 历史计划存档数据保留在 st.taskArchive（archiveRolledOverTasks 仍会归档），但不在此工作台展示；
-  // 用户可在「学习计划」月历点击对应日期查看当天任务（已完成绿色 / 未完成红色）。
+  // ---------- 词条批量添加（kc-add 与管理弹窗共用） ----------
+  const kcAddTopics = (raw) => {
+  const names = raw.split(/[，,、;；/·\n\s]+/).map((x) => x.trim()).filter(Boolean);
+  const uniq = [...new Set(names)];
+  let added = 0, skipped = 0, firstName = '';
+  if (!uniq.length) return { added, skipped, firstName };
+  Store.update((st) => {
+  st.skill.researchTopics = st.skill.researchTopics || [];
+  // 去重集合 = 已有自定义词条 + 内置 KC_TOPICS（重复词条不再入库）
+  const exist = new Set(st.skill.researchTopics.map((x) => x.name).concat(KC_TOPICS));
+  for (const nm of uniq) {
+  if (exist.has(nm)) { skipped++; continue; }
+  st.skill.researchTopics.push({ id: Store.uid(), name: nm, en: '' });
+  if (!firstName) firstName = nm;
+  added++;
+  }
+  });
+  return { added, skipped, firstName };
+  };
+  // ---------- 词条管理弹窗：看总数、批量添加、删除自定义词条 ----------
+  const openKcManage = () => {
+  const custom = (Store.get().skill.researchTopics || []);
+  const allCount = KC_TOPICS.length + custom.length;
+  const listHtml = custom.length
+  ? '<div style="max-height:220px;overflow:auto">' + custom.map((t) => `
+  <div class="flex-between" style="padding:6px 0;border-bottom:1px solid rgba(0,0,0,.06)">
+  <span style="color:var(--text)">${UI.esc(t.name)}</span>
+  <button class="btn btn-soft btn-icon" onclick="window._kcDelTopic('${t.id}')" title="删除"><img class="ic" src="assets/icons/hk-18.png" alt=""/></button>
+  </div>`).join('') + '</div>'
+  : `<div class="muted-text" style="padding:8px 0">还没有自定义词条，在上方输入框批量添加吧（内置 ${KC_TOPICS.length} 条为词库基础，不可删除）</div>`;
+  UI.openModal({
+  title: '管理词条', icon: '<img class="ic" src="assets/icons/hk-38.png" alt=""/>',
+  body: `
+  <div class="muted-text" style="margin-bottom:8px">当前共 <b style="color:var(--text)">${allCount}</b> 条 = 内置 ${KC_TOPICS.length} + 自定义 ${custom.length}；转盘从全部词条中随机抽取</div>
+  <div class="field"><label>批量添加（逗号/顿号/空格/换行分隔，重复自动跳过）</label><textarea class="textarea" id="kcManageInput" rows="2" placeholder="如：损失厌恶，锚定效应"></textarea></div>
+  <div class="field"><label>我的自定义词条（点垃圾桶删除）</label>${listHtml}</div>`,
+  actions: [
+  { label: '关闭', cls: 'btn-soft', onClick: UI.closeModal },
+  { label: '添加', onClick: () => {
+  const raw = UI.val('#kcManageInput');
+  if (!raw) { UI.toast('请输入要添加的词条', 'warn'); return; }
+  const r = kcAddTopics(raw);
+  if (r.added > 0) {
+  const t = getKcTopics().find((x) => x.name === r.firstName);
+  if (t) _kcCur = t;
+  UI.toast('已添加 ' + r.added + ' 条' + (r.skipped ? '，跳过 ' + r.skipped + ' 个重复' : ''), 'ok');
+  } else { UI.toast('没有新增（均为重复或为空）', 'warn'); return; }
+  Pages.dashboard();
+  openKcManage(); // 重开弹窗：刷新总数与列表
+  } },
+  ],
+  });
+  setTimeout(() => UI.$('#kcManageInput') && UI.$('#kcManageInput').focus(), 50);
+  };
+  // 弹窗内删除按钮（modal 内点击不走 PageHandler，挂到 window 上）
+  window._kcDelTopic = (id) => {
+  Store.update((st) => { st.skill.researchTopics = (st.skill.researchTopics || []).filter((x) => x.id !== id); });
+  UI.toast('已删除词条', 'ok');
+  Pages.dashboard();
+  UI.closeModal();
+  openKcManage();
+  };
+
+  // 历史计划存档数据保留在 st.taskArchive（archiveRolledOverTasks 仍会归档），但不在此工作台展示；  // 用户可在「学习计划」月历点击对应日期查看当天任务（已完成绿色 / 未完成红色）。
 
 
   c.innerHTML = `
@@ -436,22 +498,31 @@ Pages.dashboard = function () {
   if (act === 'kc-add') {
   UI.openModal({
   title: '添加演讲词条', icon: '<img class="ic" src="assets/icons/hk-38.png" alt=""/>',
-  body: `<div class="field"><label>词条名称</label><input class="input" id="kcName" placeholder="如：沉没成本谬误"/></div>`,
+  body: `<div class="field"><label>词条名称（支持逗号/顿号/空格分隔批量输入）</label><input class="input" id="kcAddInput" placeholder="如：沉没成本谬误，损失厌恶 锚定效应"/></div>
+  <div class="muted-text" style="font-size:12px;margin-top:-6px">用逗号（，或,）、顿号（、）、分号、空格或换行分隔，可一次添加多个；已存在的词条（含内置词条）自动跳过</div>`,
   actions: [
   { label: '取消', cls: 'btn-soft', onClick: UI.closeModal },
   { label: '保存', onClick: () => {
-  const nm = UI.val('#kcName').trim();
-  if (!nm) { UI.toast('请填写词条名称', 'warn'); return; }
-  Store.update((st) => {
-  st.skill.researchTopics = st.skill.researchTopics || [];
-  st.skill.researchTopics.push({ id: Store.uid(), name: nm, en: '' });
-  });
-  UI.closeModal(); UI.toast('已添加词条', 'ok'); Pages.dashboard();
+  // 注意：不能用 id "kcName" —— 转盘区域已有同名 id 的展示 div，querySelector 会取到它导致保存失效
+  const raw = UI.val('#kcAddInput');
+  if (!raw) { UI.toast('请填写词条名称', 'warn'); return; }
+  const r = kcAddTopics(raw);
+  UI.closeModal();
+  if (r.added > 0) {
+  // 转盘直接转到第一个新词条，让"添加成功"看得见
+  const t = getKcTopics().find((x) => x.name === r.firstName);
+  if (t) _kcCur = t;
+  UI.toast('已添加 ' + r.added + ' 个词条，当前共 ' + getKcTopics().length + ' 条' + (r.skipped ? '，跳过 ' + r.skipped + ' 个重复' : ''), 'ok');
+  } else {
+  UI.toast(r.skipped ? '词条均已存在，未新增（自动去重）' : '未识别到有效词条', 'warn');
+  }
+  Pages.dashboard();
   } }
   ]
   });
   return;
   }
+  if (act === 'kc-manage') { openKcManage(); return; }
   if (act === 'kc-tab') { kcEnsureAudio(); _kcActiveTab = +b.dataset.tab; Pages.dashboard(); return; }
   if (act === 'kc-spin') { kcEnsureAudio(); kcStartSpin(); return; }
   if (act === 'kc-set-min') {
