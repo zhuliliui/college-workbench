@@ -1,10 +1,10 @@
 @echo off
 chcp 65001 >nul
 setlocal enabledelayedexpansion
-set LOG=D:\buddycode\college-workbench\backend-launch.log
+set LOG=D:\workbuddyspace\buddycode\college-workbench\backend-launch.log
 echo [%date% %time%] 启动脚本开始 > "%LOG%"
 
-set BACKEND_DIR=D:\buddycode\college-workbench
+set BACKEND_DIR=D:\workbuddyspace\buddycode\college-workbench
 
 :: ---- 探测 node.exe ----
 set NODE_EXE=
