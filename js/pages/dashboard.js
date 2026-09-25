@@ -46,7 +46,8 @@ Pages.dashboard = function () {
         const noDue = !t.due;
         let stillToday;
         if (noDue) {
-          stillToday = (added === today);
+          // 无 addedDate 的旧任务视为「无截止常驻」，不再误归档（曾导致任务闪现后消失）
+          stillToday = !added || added === today;
         } else {
           const dueStr = D.fmtDate(D.parseLDT(t.due));
           stillToday = (added === today) || (dueStr >= today); // 截止当天及之前都留在今日，过期即归档
@@ -65,7 +66,14 @@ Pages.dashboard = function () {
   // 归档可能已改写 tasks，重新取一次
   const liveTasks = Store.get().tasks;
   // 今日学习任务（2026-08-24 与复习计划页统一）：无截止 或 今天到期，两处显示同一批任务、完成状态互相同步
-  const isTodayPlan = (t) => !t.due || D.fmtDate(D.parseLDT(t.due)) === today;
+  // 今日学习任务（2026-08-24 与复习计划页统一）：无截止（今天添加或旧数据）或截止未过期。
+  // ⚠️ 口径必须与上方 archiveRolledOverTasks 完全一致：归档规则留下的，这里就要显示，
+  //    否则会出现「任务还在但列表看不见」的闪现后消失 bug（2026-09-25 修复）。
+  const isTodayPlan = (t) => {
+    const added = t.addedDate || '';
+    if (!t.due) return !added || added === today;
+    return added === today || D.fmtDate(D.parseLDT(t.due)) >= today;
+  };
   // 今日学习任务统计
   const todayTasks = liveTasks.filter(isTodayPlan);
   const todayDone = todayTasks.filter((t) => t.done).length;

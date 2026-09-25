@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 桌面小组件布局：标题行（今日计划 · DDL + 存钱罐余额）+ 最多 6 行内容 -->
+<!-- 桌面小组件布局 v2：仿系统待办样式 —— 标题+未完成计数大数字 + 彩色圆角任务行（点击直接勾选）+ 底部余额与＋ -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/cw_widget_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@drawable/cw_widget_bg"
-    android:paddingStart="14dp"
-    android:paddingEnd="14dp"
+    android:paddingStart="12dp"
+    android:paddingEnd="12dp"
     android:paddingTop="10dp"
-    android:paddingBottom="10dp">
+    android:paddingBottom="8dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -22,31 +22,75 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="🚜 今日计划 · DDL"
+            android:text="🚜 今日计划"
             android:textSize="14sp"
             android:textStyle="bold"
             android:singleLine="true"
             android:ellipsize="end" />
 
         <TextView
-            android:id="@+id/cw_piggy"
+            android:id="@+id/cw_count"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textSize="12sp"
-            android:singleLine="true"
+            android:text="0"
+            android:textSize="24sp"
+            android:textStyle="bold"
             android:layout_marginStart="8dp" />
     </LinearLayout>
 
     <TextView android:id="@+id/cw_row0" android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:textSize="13sp" android:singleLine="true" android:ellipsize="end" android:layout_marginTop="7dp" />
+        android:textSize="13sp" android:singleLine="true" android:ellipsize="end"
+        android:layout_marginTop="6dp" android:paddingStart="10dp" android:paddingEnd="10dp"
+        android:paddingTop="5dp" android:paddingBottom="5dp" />
     <TextView android:id="@+id/cw_row1" android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:textSize="13sp" android:singleLine="true" android:ellipsize="end" android:layout_marginTop="5dp" />
+        android:textSize="13sp" android:singleLine="true" android:ellipsize="end"
+        android:layout_marginTop="4dp" android:paddingStart="10dp" android:paddingEnd="10dp"
+        android:paddingTop="5dp" android:paddingBottom="5dp" />
     <TextView android:id="@+id/cw_row2" android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:textSize="13sp" android:singleLine="true" android:ellipsize="end" android:layout_marginTop="5dp" />
+        android:textSize="13sp" android:singleLine="true" android:ellipsize="end"
+        android:layout_marginTop="4dp" android:paddingStart="10dp" android:paddingEnd="10dp"
+        android:paddingTop="5dp" android:paddingBottom="5dp" />
     <TextView android:id="@+id/cw_row3" android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:textSize="13sp" android:singleLine="true" android:ellipsize="end" android:layout_marginTop="5dp" />
+        android:textSize="13sp" android:singleLine="true" android:ellipsize="end"
+        android:layout_marginTop="4dp" android:paddingStart="10dp" android:paddingEnd="10dp"
+        android:paddingTop="5dp" android:paddingBottom="5dp" />
     <TextView android:id="@+id/cw_row4" android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:textSize="13sp" android:singleLine="true" android:ellipsize="end" android:layout_marginTop="5dp" />
+        android:textSize="13sp" android:singleLine="true" android:ellipsize="end"
+        android:layout_marginTop="4dp" android:paddingStart="10dp" android:paddingEnd="10dp"
+        android:paddingTop="5dp" android:paddingBottom="5dp" />
     <TextView android:id="@+id/cw_row5" android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:textSize="13sp" android:singleLine="true" android:ellipsize="end" android:layout_marginTop="5dp" />
+        android:textSize="13sp" android:singleLine="true" android:ellipsize="end"
+        android:layout_marginTop="4dp" android:paddingStart="10dp" android:paddingEnd="10dp"
+        android:paddingTop="5dp" android:paddingBottom="5dp" />
+    <TextView android:id="@+id/cw_row6" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:textSize="13sp" android:singleLine="true" android:ellipsize="end"
+        android:layout_marginTop="4dp" android:paddingStart="10dp" android:paddingEnd="10dp"
+        android:paddingTop="5dp" android:paddingBottom="5dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginTop="6dp">
+
+        <TextView
+            android:id="@+id/cw_piggy"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textSize="12sp"
+            android:singleLine="true" />
+
+        <TextView
+            android:id="@+id/cw_add"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="＋"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:paddingStart="10dp"
+            android:paddingEnd="6dp"
+            android:paddingBottom="2dp" />
+    </LinearLayout>
 </LinearLayout>

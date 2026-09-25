@@ -1,8 +1,9 @@
 /* ============================================================
-  安卓桌面小组件 · 数据桥
-  原生 App 里把「今日计划 + 临近 DDL + 存钱罐余额」推给 WidgetData 插件，
-  组件内容在 JS 端拼好（Java 只渲染）；Store 每次保存都会自动推送（防抖）。
-  浏览器/PWA 环境无插件，静默跳过。
+  安卓桌面小组件 · 数据桥 v2
+  - 推送「今日计划(5) + 临近DDL(2，全标红) + 未完成计数 + 存钱罐」给组件
+  - 组件上点任务行可直接勾选/取消：原生端记录 ops 队列，这里在 App 回前台时
+    consumeOps 同步回 Store（金币 ±1 与 App 内口径一致），再重推最新数据
+  - 浏览器/PWA 无插件，静默跳过
   ============================================================ */
 (function () {
   if (typeof window === 'undefined' || !window.Store) return;
@@ -16,18 +17,19 @@
     } catch (e) { return null; }
   }
 
-  // 剩余时间文案（与工作台首页口径一致）
   function ddlRemain(due) {
     try {
       if (window.D && D.daysLeftText) return D.daysLeftText(due);
     } catch (e) {}
     return '';
   }
-  function ddlWarn(due) {
-    try {
-      if (window.D && D.hoursLeft) return D.hoursLeft(due) <= 12;
-    } catch (e) {}
-    return false;
+
+  // 今日计划口径：与工作台首页 archiveRolledOverTasks / isTodayPlan 完全一致
+  function isTodayTask(t, today) {
+    var added = t.addedDate || '';
+    if (!t.due) return !added || added === today;
+    var dueDay = String(t.due).slice(0, 10);
+    return added === today || dueDay >= today;
   }
 
   function buildPayload() {
@@ -35,57 +37,91 @@
     var today = window.D ? D.todayStr() : new Date().toISOString().slice(0, 10);
     var lines = [];
 
-    // 今日计划：无截止（今天添加的）或今天到期；未完成在前，已完成带 ✓
-    var tasks = (s.tasks || []).filter(function (t) {
-      if (!t.due) return (t.addedDate || '') === today;
-      return (t.due.slice(0, 10) === today) || (t.addedDate === today);
-    });
-    tasks.sort(function (a, b) { return (a.done - b.done) || (a.due || '').localeCompare(b.due || ''); });
-    tasks.slice(0, 3).forEach(function (t) {
+    // 今日计划：未完成在前（有截止时间的更靠前），最多 5 条
+    var tasks = (s.tasks || []).filter(function (t) { return isTodayTask(t, today); });
+    tasks.sort(function (a, b) { return (a.done - b.done) || ((a.due || '9999').localeCompare(b.due || '9999')); });
+    tasks.slice(0, 5).forEach(function (t) {
       var time = t.due ? ' ' + t.due.slice(11, 16) : '';
-      lines.push({ t: (t.done ? '✓ ' : '○ ') + t.name + time, d: !!t.done, w: false });
+      lines.push({ id: t.id, kind: 'task', t: (t.done ? '✓ ' : '○ ') + t.name + time, d: !!t.done, w: false });
     });
 
-    // 临近 DDL：未完成、按截止时间升序，取 2 条
-    var now = Date.now();
+    // 临近 DDL：未完成、按截止升序取 2 条，全部标红
     var ddls = (s.ddls || []).filter(function (d) { return d.due && !d.done; })
       .sort(function (a, b) { return (a.due || '').localeCompare(b.due || ''); })
       .slice(0, 2);
     ddls.forEach(function (d) {
-      lines.push({ t: '⏰ ' + d.name + ' · ' + ddlRemain(d.due), d: false, w: ddlWarn(d.due) });
+      lines.push({ id: d.id, kind: 'ddl', t: '⏰ ' + d.name + ' · ' + ddlRemain(d.due), d: false, w: true });
     });
 
-    if (!lines.length) lines.push({ t: '今天还没有安排，点开看看 ›', d: false, w: false });
+    if (!lines.length) lines.push({ id: '', kind: '', t: '今天还没有安排，点开看看 ›', d: false, w: false });
 
+    var undone = tasks.filter(function (t) { return !t.done; }).length;
     return {
       date: today,
+      count: undone,
       piggy: '¥' + ((s.piggy && s.piggy.balance) || 0).toFixed(2),
-      lines: lines.slice(0, 6),
+      lines: lines.slice(0, 7),
     };
+  }
+
+  // 把组件上的勾选操作同步回 Store（金币口径与 App 内一致：完成 +1，取消 -1）
+  function applyOps(ops) {
+    if (!ops || !ops.length) return;
+    var s = Store.get();
+    ops.forEach(function (op) {
+      if (!op || !op.id) return;
+      var want = !!op.done;
+      if (op.kind === 'task') {
+        var t = (s.tasks || []).find(function (x) { return x.id === op.id; });
+        if (!t || !!t.done === want) return;
+        Store.update(function (st) {
+          var x = st.tasks.find(function (y) { return y.id === op.id; });
+          if (x) { x.done = want; x.doneAt = want ? new Date().toISOString() : null; }
+        });
+        if (want) Store.earn(1, '组件完成学习任务'); else Store.deduct(1, '组件取消完成任务');
+      } else if (op.kind === 'ddl') {
+        var d = (s.ddls || []).find(function (x) { return x.id === op.id; });
+        if (!d || !!d.done === want) return;
+        Store.update(function (st) {
+          var x = st.ddls.find(function (y) { return y.id === op.id; });
+          if (x) { x.done = want; x.doneAt = want ? new Date().toISOString() : null; if (want) x.progress = 100; }
+        });
+        if (want) Store.earn(1, '组件完成 DDL'); else Store.deduct(1, '组件取消完成 DDL');
+      }
+    });
   }
 
   function push() {
     var nat = plugin();
     if (!nat || !nat.save) return; // 浏览器 / PWA：无原生插件，跳过
-    try {
-      nat.save({ data: JSON.stringify(buildPayload()) }).catch(function () {});
-    } catch (e) {}
+    var ready = Promise.resolve();
+    if (nat.consumeOps) {
+      // 先把组件上的勾选同步回来，再推最新数据（避免组件刚点的勾被旧数据盖掉）
+      ready = nat.consumeOps().then(function (r) {
+        try {
+          var ops = r && r.ops;
+          if (typeof ops === 'string') ops = JSON.parse(ops || '[]');
+          applyOps(ops);
+        } catch (e) {}
+      }).catch(function () {});
+    }
+    ready.then(function () {
+      try { nat.save({ data: JSON.stringify(buildPayload()) }).catch(function () {}); } catch (e) {}
+    });
   }
 
   function pushDebounced() {
     if (_timer) clearTimeout(_timer);
-    _timer = setTimeout(push, 800); // 防抖：拖进度条等高频变化只推最后一次
+    _timer = setTimeout(push, 800);
   }
 
   window.CwWidget = { push: push };
 
-  // Store.save() 每次都会派发 cw:changed → 自动同步组件
   window.addEventListener('cw:changed', pushDebounced);
-  // 回到前台也刷一次（组件数据可能过期）
+  // 回到前台：先同步组件上的勾选，再刷新组件
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState === 'visible') push();
   });
-  // 启动后先推一次（等 store 加载完成）
   document.addEventListener('DOMContentLoaded', function () { setTimeout(push, 2000); });
-  setTimeout(push, 4000); // 兜底
+  setTimeout(push, 4000);
 })();

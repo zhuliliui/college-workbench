@@ -257,8 +257,9 @@ Pages.study = function () {
   function openTaskModal(editId) {
     const t = editId ? s.tasks.find((x) => x.id === editId) : null;
     const opt = CATS.map((c) => `<option ${t && t.category === c ? 'selected' : ''}>${c}</option>`).join('');
-    // 新增任务默认落在当前查看日期，便于月历联动显示
-    const defDue = (STUDY_VIEW.mode === 'day' && !t) ? (STUDY_VIEW.date + 'T09:00') : '';
+    // 新增任务默认截止：仅当查看的正是「今天」时才默认今天 09:00；
+    // 查看过去/未来日期时不再带默认 due（曾导致新任务带上过去的 due 而从今日计划消失）
+    const defDue = (STUDY_VIEW.mode === 'day' && !t && STUDY_VIEW.date === D.todayStr()) ? (STUDY_VIEW.date + 'T09:00') : '';
     UI.openModal({
       title: t ? '编辑任务' : '新增学习任务', icon: '<img class="ic" src="assets/icons/hk-38.png" alt=""/>',
       body: `
