@@ -100,13 +100,28 @@
   const c = cfg(), a = adapter();
   const json = Store.exportJSON();
   if (!json || !json.trim()) throw new Error('本地数据为空，无法上传');
+  // 空白备份防护（2026-09-27 事故修复）：本地没有任何有效数据时拒绝上传，
+  // 防止新设备/清缓存后的空白状态覆盖云端好备份。有效数据 = 下列任一集合非空。
+  let blankState = false;
+  try {
+  const probe = JSON.parse(json);
+  const n = (k) => (probe[k] ? ((probe[k].length ?? Object.keys(probe[k]).length) || 0) : 0);
+  const meaningful = ['tasks','ddls','taskArchive','weakNotes','dailySummary','issues','cal',
+  'finance','piggy','discipline','travel','monthly','english','skill']
+  .reduce((s, k) => s + n(k), 0);
+  blankState = (meaningful === 0 && json.length < 100000);
+  } catch (e) { blankState = false; }
+  if (blankState) throw new Error('本地几乎是空白状态（无任务/DDL/笔记/学习数据），已阻止上传，防止覆盖云端好备份。若确认要上传，请先在本地添加一条任意数据。');
   const content = b64enc(json);
   if (!content) throw new Error('编码后备份内容为空');
   // 先取 sha：存在则更新，不存在则新建
   let sha = null;
   try { const h = await getHead(); if (h && h.exists) sha = h.sha; } catch (e) { /* 按新建处理 */ }
+  // 提交消息用本地时间（此前用 toISOString 是 UTC，比北京慢 8 小时，曾导致按时间找备份时找错）
+  const _d = new Date(), _p = (x) => String(x).padStart(2, '0');
+  const _stamp = _d.getFullYear() + '-' + _p(_d.getMonth() + 1) + '-' + _p(_d.getDate()) + ' ' + _p(_d.getHours()) + ':' + _p(_d.getMinutes());
   const body = {
-  message: '工作台备份 ' + new Date().toISOString().slice(0, 16).replace('T', ' '),
+  message: '工作台备份 ' + _stamp,
   content,
   branch: branch(),
   };
