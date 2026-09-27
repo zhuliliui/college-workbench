@@ -35,14 +35,14 @@
   function buildPayload() {
     var s = Store.get();
     var today = window.D ? D.todayStr() : new Date().toISOString().slice(0, 10);
-    var lines = [];
+    // 今日任务(≤5) + 临近 DDL(≤2) 合成同一条清单，最后统一按截止时间升序排
+    var items = [];
 
-    // 今日计划：未完成在前（有截止时间的更靠前），最多 5 条
     var tasks = (s.tasks || []).filter(function (t) { return isTodayTask(t, today); });
     tasks.sort(function (a, b) { return (a.done - b.done) || ((a.due || '9999').localeCompare(b.due || '9999')); });
     tasks.slice(0, 5).forEach(function (t) {
       var time = t.due ? ' ' + t.due.slice(11, 16) : '';
-      lines.push({ id: t.id, kind: 'task', t: (t.done ? '✓ ' : '○ ') + t.name + time, d: !!t.done, w: false });
+      items.push({ due: t.due || '', done: !!t.done, line: { id: t.id, kind: 'task', t: (t.done ? '✓ ' : '○ ') + t.name + time, d: !!t.done, w: false } });
     });
 
     // 临近 DDL：未完成、按截止升序取 2 条，全部标红
@@ -50,8 +50,15 @@
       .sort(function (a, b) { return (a.due || '').localeCompare(b.due || ''); })
       .slice(0, 2);
     ddls.forEach(function (d) {
-      lines.push({ id: d.id, kind: 'ddl', t: d.name + ' · ' + ddlRemain(d.due), d: false, w: true });
+      items.push({ due: d.due || '', done: false, line: { id: d.id, kind: 'ddl', t: d.name + ' · ' + ddlRemain(d.due), d: false, w: true } });
     });
+
+    // 排序：未完成在前，其次按截止时间升序，没有截止时间的沉底
+    items.sort(function (a, b) {
+      if (a.done !== b.done) return a.done ? 1 : -1;
+      return (a.due || '9999').localeCompare(b.due || '9999');
+    });
+    var lines = items.map(function (x) { return x.line; });
 
     if (!lines.length) lines.push({ id: '', kind: '', t: '今天还没有安排，点开看看 ›', d: false, w: false });
 
