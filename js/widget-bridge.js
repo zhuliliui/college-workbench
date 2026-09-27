@@ -56,9 +56,11 @@
     if (!lines.length) lines.push({ id: '', kind: '', t: '今天还没有安排，点开看看 ›', d: false, w: false });
 
     var undone = tasks.filter(function (t) { return !t.done; }).length;
+    var undoneDdl = (s.ddls || []).filter(function (d) { return !d.done; }).length;
     return {
       date: today,
       count: undone,
+      ddlCount: undoneDdl,
       piggy: '¥' + ((s.piggy && s.piggy.balance) || 0).toFixed(2),
       lines: lines.slice(0, 7),
     };

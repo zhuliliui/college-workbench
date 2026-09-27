@@ -106,6 +106,7 @@ public class CwWidgetProvider extends AppWidgetProvider {
 
         String piggyText = "";
         int count = 0;
+        int ddlCount = 0;
         String[] texts = new String[ROWS];
         boolean[] done = new boolean[ROWS];
         boolean[] red = new boolean[ROWS];
@@ -116,6 +117,7 @@ public class CwWidgetProvider extends AppWidgetProvider {
             JSONObject o = new JSONObject(json == null || json.isEmpty() ? "{}" : json);
             piggyText = o.optString("piggy", "");
             count = o.optInt("count", 0);
+            ddlCount = o.optInt("ddlCount", 0);
             JSONArray arr = o.optJSONArray("lines");
             if (arr != null) {
                 for (int i = 0; i < arr.length() && n < ROWS; i++) {
@@ -133,10 +135,23 @@ public class CwWidgetProvider extends AppWidgetProvider {
 
         if (n == 0) { texts[0] = "今天还没有安排，点开看看 ›"; ids[0] = ""; n = 1; }
 
-        // 头部：标题 + 未完成计数
+        // 头部：标题 + 右上角「任务 N · DDL M」
         rv.setTextViewText(R.id.cw_title, "今日计划");
         rv.setTextColor(R.id.cw_title, COLOR_TITLE);
-        rv.setTextViewText(R.id.cw_count, String.valueOf(count));
+
+        rv.setTextViewText(R.id.cw_task_label, "任务");
+        rv.setTextColor(R.id.cw_task_label, COLOR_TEXT);
+        rv.setTextViewText(R.id.cw_task_count, String.valueOf(count));
+        rv.setTextColor(R.id.cw_task_count, count > 0 ? COLOR_TITLE : COLOR_DONE);
+
+        rv.setTextViewText(R.id.cw_sep, "·");
+        rv.setTextColor(R.id.cw_sep, COLOR_DONE);
+
+        rv.setTextViewText(R.id.cw_ddl_label, "DDL");
+        rv.setTextColor(R.id.cw_ddl_label, COLOR_TEXT);
+        rv.setTextViewText(R.id.cw_ddl_count, String.valueOf(ddlCount));
+        // 有未完成 DDL 时标红提醒，没有则淡化
+        rv.setTextColor(R.id.cw_ddl_count, ddlCount > 0 ? COLOR_RED : COLOR_DONE);
 
         int[] rowIds = { R.id.cw_row0, R.id.cw_row1, R.id.cw_row2, R.id.cw_row3, R.id.cw_row4, R.id.cw_row5, R.id.cw_row6 };
         for (int i = 0; i < ROWS; i++) {
@@ -154,6 +169,10 @@ public class CwWidgetProvider extends AppWidgetProvider {
                 rv.setViewVisibility(rowIds[i], android.view.View.GONE);
             }
         }
+
+        // 整块组件点击 → 打开 App（任务行与 ＋ 各自有更具体的点击，优先级更高）
+        PendingIntent rootPi = openAppPI(ctx, 3001);
+        if (rootPi != null) rv.setOnClickPendingIntent(R.id.cw_widget_root, rootPi);
 
         // 底部：存钱罐余额 + ＋（打开 App）
         rv.setTextViewText(R.id.cw_piggy, piggyText == null || piggyText.isEmpty() ? "" : piggyText);
