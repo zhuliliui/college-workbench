@@ -236,8 +236,8 @@ Pages.ddl = function () {
   body: `
   <div class="ddl-form">
   <div class="row">
-  <div class="field" style="flex:2"><label>任务名称</label><input class="input" id="dName" value="${UI.esc(d ? d.name : '')}" placeholder="如：数据库大作业提交"/></div>
-  <div class="field" style="flex:1"><label>类型</label><select class="input" id="dType"><option value="ddl" ${typeDef==='ddl'?'selected':''}>普通 DDL</option><option value="exam" ${typeDef==='exam'?'selected':''}>考试</option></select></div>
+  <div class="field"><label>任务名称</label><input class="input" id="dName" value="${UI.esc(d ? d.name : '')}" placeholder="如：数据库大作业提交"/></div>
+  <div class="field"><label>类型</label><select class="input" id="dType"><option value="ddl" ${typeDef==='ddl'?'selected':''}>普通 DDL</option><option value="exam" ${typeDef==='exam'?'selected':''}>考试</option></select></div>
   </div>
   <div class="row">
   <div class="field"><label>截止日期时间</label><input class="input" id="dDue" type="datetime-local" value="${d ? (d.due || '') : ''}"/></div>

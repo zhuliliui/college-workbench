@@ -206,6 +206,21 @@ img.ic { width: 20px; height: 20px; object-fit: contain; vertical-align: middle;
 .row { display: flex; gap: 12px; flex-wrap: wrap; }
 .row > * { flex: 1; min-width: 140px; }
 .ddl-form .row { align-items: flex-start; }
+/* DDL 弹窗两列排版：把 .field 摊平成 grid 项，让两列的 label / 输入框各自成行。
+   这样「提前提醒（到点推送微信 / 站内提醒）」这类会换行的标签只撑高标签行，
+   不会把自己那列的输入框顶下去——两行输入框严格落在同一水平线，中缝也一致。
+   560px 以下仍是单列堆叠（见下方媒体查询），不走这套规则。 */
+@media (min-width: 561px) {
+  .ddl-form .row { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto auto; gap: 6px 12px; margin-bottom: 12px; align-items: start; }
+  .ddl-form .row > .field { display: contents; }
+  /* 标签固定占第 1 行、输入框固定占第 2 行；列由 field 的先后顺序决定 */
+  .ddl-form .row > .field > label { grid-row: 1; margin-bottom: 0; align-self: end; }
+  .ddl-form .row > .field > input,
+  .ddl-form .row > .field > select,
+  .ddl-form .row > .field > textarea { grid-row: 2; }
+  .ddl-form .row > .field:nth-child(1) > * { grid-column: 1; }
+  .ddl-form .row > .field:nth-child(2) > * { grid-column: 2; }
+}
 
 /* ============ 标签 / 徽章 ============ */
 .tag {

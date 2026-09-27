@@ -168,7 +168,7 @@ Pages.dashboard = function () {
   const days = Math.ceil((new Date(e.date + 'T00:00:00') - now) / 86400000);
   if (days < 0) return '';
   const cls = days <= 30 ? 'danger' : days <= 90 ? 'warn' : '';
-  return `<span class="tag ${cls}" style="${days <= 30 ? 'background:var(--danger-soft, #fee2e2);color:var(--danger, #dc2626)' : ''}">${UI.esc(e.name)} 倒计时 ${days} 天</span>`;
+  return `<span class="tag ${cls}" style="${days <= 30 ? 'background:var(--danger-soft, #fee2e2);color:var(--danger, #dc2626)' : ''}">${UI.esc(e.name)} ${days} 天</span>`;
   }).filter(Boolean).join(' ');
   const examHtml = examChips ? `<div class="exam-countdown"><img class="ic" src="assets/icons/hk-11.png" alt=""/> ${examChips}</div>` : '';
 
