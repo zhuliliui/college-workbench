@@ -50,7 +50,7 @@
       .sort(function (a, b) { return (a.due || '').localeCompare(b.due || ''); })
       .slice(0, 2);
     ddls.forEach(function (d) {
-      lines.push({ id: d.id, kind: 'ddl', t: '⏰ ' + d.name + ' · ' + ddlRemain(d.due), d: false, w: true });
+      lines.push({ id: d.id, kind: 'ddl', t: d.name + ' · ' + ddlRemain(d.due), d: false, w: true });
     });
 
     if (!lines.length) lines.push({ id: '', kind: '', t: '今天还没有安排，点开看看 ›', d: false, w: false });

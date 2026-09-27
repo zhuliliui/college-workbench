@@ -134,7 +134,7 @@ public class CwWidgetProvider extends AppWidgetProvider {
         if (n == 0) { texts[0] = "今天还没有安排，点开看看 ›"; ids[0] = ""; n = 1; }
 
         // 头部：标题 + 未完成计数
-        rv.setTextViewText(R.id.cw_title, "🚜 今日计划");
+        rv.setTextViewText(R.id.cw_title, "今日计划");
         rv.setTextColor(R.id.cw_title, COLOR_TITLE);
         rv.setTextViewText(R.id.cw_count, String.valueOf(count));
 
@@ -156,7 +156,7 @@ public class CwWidgetProvider extends AppWidgetProvider {
         }
 
         // 底部：存钱罐余额 + ＋（打开 App）
-        rv.setTextViewText(R.id.cw_piggy, piggyText == null || piggyText.isEmpty() ? "" : "💰 " + piggyText);
+        rv.setTextViewText(R.id.cw_piggy, piggyText == null || piggyText.isEmpty() ? "" : piggyText);
         rv.setTextColor(R.id.cw_piggy, COLOR_TITLE);
         PendingIntent openPi = openAppPI(ctx, 3000);
         if (openPi != null) rv.setOnClickPendingIntent(R.id.cw_add, openPi);
