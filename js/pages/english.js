@@ -461,6 +461,14 @@ window.Pages = window.Pages || {};
   <tbody id="bankRows"></tbody></table></div>
   <div class="flex-between mt12" id="bankPager"></div>
   </div>
+  </div>
+  <div class="card mt12">
+  <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-14.png" alt=""/>标色记录（外刊）</div>
+  <div class="spacer"></div><span class="tag" id="mkTag"></span><button class="collapse-btn" title="折叠">▾</button></div>
+  <div class="card-body">
+  <div class="muted-text" style="margin-bottom:10px">在「外刊」阅读时点单词弹窗即可标色：<b style="color:var(--danger)">🔴 红 = 不会的单词</b> · <b style="color:var(--primary-deep)">🟢 绿 = 词组</b>（点词条朗读，× 删除）</div>
+  <div id="mkRows"></div>
+  </div>
   </div>`;
   const w = wrap(body, html);
   const rows = w.querySelector('#bankRows');
@@ -502,7 +510,27 @@ window.Pages = window.Pages || {};
   }
   paint();
   w.querySelector('#bankSearch').addEventListener('input', () => { page = 0; paint(); });
+  // 标色记录（红=不会的单词 / 绿=词组）
+  const mkRows = w.querySelector('#mkRows');
+  const mkTag = w.querySelector('#mkTag');
+  function paintMarks() {
+  const marks = (Store.get().english || {}).marks || {};
+  const keys = Object.keys(marks);
+  if (mkTag) mkTag.textContent = '共 ' + keys.length + ' 条';
+  if (!mkRows) return;
+  if (!keys.length) { mkRows.innerHTML = '<div class="muted-text center" style="padding:10px">还没有标色记录，去「外刊」里点单词试试</div>'; return; }
+  const reds = keys.filter((k) => marks[k].mark === 'red');
+  const greens = keys.filter((k) => marks[k].mark === 'green');
+  const chip = (k) => `<span class="mk-chip ${marks[k].mark === 'green' ? 'mk-green' : 'mk-red'}" data-mkspk="${UI.esc(marks[k].text)}">${marks[k].mark === 'green' ? '🟢' : '🔴'} ${UI.esc(marks[k].text)}<button class="mk-x" data-mkdel="${UI.esc(marks[k].text)}" title="删除">×</button></span>`;
+  mkRows.innerHTML =
+  (reds.length ? '<div class="muted-text" style="margin-bottom:6px">不会的单词（' + reds.length + '）</div><div class="mk-wrap">' + reds.map(chip).join('') + '</div>' : '') +
+  (greens.length ? '<div class="muted-text" style="margin:10px 0 6px">词组（' + greens.length + '）</div><div class="mk-wrap">' + greens.map(chip).join('') + '</div>' : '');
+  }
+  paintMarks();
   w.addEventListener('click', (e) => {
+  const mkdel = e.target.closest('[data-mkdel]');
+  if (mkdel) { delMark(mkdel.dataset.mkdel); UI.toast('已删除标色记录', 'ok'); paintMarks(); return; }
+  const mkspk = e.target.closest('[data-mkspk]'); if (mkspk) { speak(mkspk.dataset.mkspk); return; }
   const spk = e.target.closest('[data-spk]'); if (spk) { speak(spk.dataset.spk); return; }
   const pg = e.target.closest('[data-pg]'); if (pg) {
   if (pg.dataset.pg === 'prev') page = Math.max(0, page - 1);
@@ -1046,6 +1074,7 @@ window.Pages = window.Pages || {};
   let readerChapter = 0; // 章节切换 tab：0=全部；1..N=对应篇章
   let readerArticle = null;
   let readerFilter = 'all'; // 我的外刊列表筛选：all | read | unread（默认「全部」）
+  let _readerBody = null; // 外刊正文容器：单词标色后用它重绘
   let readerBatch = false; // 列表批量管理开关
   const readerChecked = new Set(); // 批量选中的文章 key 集合
 
@@ -1337,16 +1366,74 @@ window.Pages = window.Pages || {};
   }
   return _knownSet;
   }
-  function renderArticle(text) {
-  const known = getKnownSet();
-  return text.split(/(\s+)/).map((tok) => {
-  const word = tok.replace(/[^A-Za-z']/g, '');
-  if (/^[A-Za-z']{2,}$/.test(word)) {
-  const isKnown = known.has(word.toLowerCase());
-  return `<span class="w ${isKnown ? 'known' : ''}" data-w="${UI.esc(word)}">${UI.esc(tok)}</span>`;
+  // ---------- 单词标色记录（外刊阅读：标红=不会的单词，标绿=词组） ----------
+  function normMarkText(t) { return String(t || '').toLowerCase().replace(/[^a-z'\s]/g, ' ').replace(/\s+/g, ' ').trim(); }
+  let _mk = { n: -1, words: null, phrases: null };
+  function getMarkState() {
+  const marks = (Store.get().english && Store.get().english.marks) || {};
+  const n = Object.keys(marks).length;
+  if (!_mk.words || _mk.n !== n) {
+  _mk = { n, words: new Map(), phrases: new Set() };
+  Object.keys(marks).forEach((k) => {
+  const m = marks[k];
+  const norm = normMarkText(m.text || k);
+  if (!norm) return;
+  if (m.mark === 'green') _mk.phrases.add(norm);
+  else _mk.words.set(norm, 'red');
+  });
   }
-  return UI.esc(tok);
-  }).join('');
+  return _mk;
+  }
+  function getMark(text) { return ((Store.get().english || {}).marks || {})[normMarkText(text)] || null; }
+  function setMark(text, mark) {
+  const key = normMarkText(text);
+  if (!key) return false;
+  Store.update((s) => {
+  s.english = s.english || {};
+  s.english.marks = s.english.marks || {};
+  s.english.marks[key] = { text: key, mark: mark, date: new Date().toISOString().slice(0, 10) };
+  });
+  return true;
+  }
+  function delMark(text) {
+  const key = normMarkText(text);
+  Store.update((s) => { if (s.english && s.english.marks) delete s.english.marks[key]; });
+  }
+  function renderArticle(text) {
+  const st = getMarkState();
+  const known = getKnownSet();
+  const toks = String(text).split(/(\s+)/);
+  let html = '';
+  let i = 0;
+  while (i < toks.length) {
+  const tok = toks[i];
+  const word = tok.replace(/[^A-Za-z']/g, '');
+  if (/^[A-Za-z']{2,}$/.test(word) && st.phrases.size) {
+  // 从当前词起尝试匹配标绿词组（最长 6 个词；词组词与词间为单空格）
+  let matched = null;
+  const words = [];
+  for (let j = i, n = 0; j < toks.length && n < 6; j += 2, n++) {
+  const w2 = toks[j].replace(/[^A-Za-z']/g, '');
+  if (!/^[A-Za-z']+$/.test(w2)) break;
+  words.push(w2);
+  if (st.phrases.has(words.join(' '))) matched = 2 * (words.length - 1) + 1;
+  }
+  if (matched) {
+  html += `<span class="w marked-green" data-w="${UI.esc(words.join(' '))}">${UI.esc(toks.slice(i, i + matched).join(''))}</span>`;
+  i += matched;
+  continue;
+  }
+  }
+  if (/^[A-Za-z']{2,}$/.test(word)) {
+  const lower = word.toLowerCase();
+  const isKnown = known.has(lower);
+  const mark = st.words.get(lower);
+  const cls = mark === 'red' ? 'marked-red' : (isKnown ? 'known' : '');
+  html += `<span class="w ${cls}" data-w="${UI.esc(word)}">${UI.esc(tok)}</span>`;
+  } else html += UI.esc(tok);
+  i++;
+  }
+  return html;
   }
   // 判断一段文本是不是网页 HTML（RSS/XML 不会被误判）
   function looksLikeHtml(s) {
@@ -1666,6 +1753,7 @@ window.Pages = window.Pages || {};
   return `<div class="rd-meta">${bits.join('<span class="rd-dot">·</span>')}</div>`;
   }
   function renderReader(body) {
+  _readerBody = body; // 记住当前正文容器：标色后用它重绘
   // 首屏只渲染离线缓存/内置文章，绝不触发任何外部网络请求，国内 WiFi 也能秒开
   paintReader(body);
   }
@@ -2284,6 +2372,18 @@ window.Pages = window.Pages || {};
   function showWordPop(span, word) {
   if (popClose) { document.removeEventListener('click', popClose, true); popClose = null; }
   document.querySelectorAll('.word-pop').forEach((e) => e.remove());
+  // 标色状态（标红=不会的单词 / 标绿=词组）：勾选态在联网查询前就能先展示
+  const markNow = getMark(word);
+  const markHtml = markNow
+  ? `<div class="wp-cn"><span class="mk-badge ${markNow.mark === 'green' ? 'mk-green' : 'mk-red'}"></span>已标${markNow.mark === 'green' ? '绿（词组）' : '红（不会）'} <button class="btn btn-soft btn-sm" data-unmark style="padding:2px 8px">取消标色</button></div>`
+  : `<div class="wp-trans">
+  <button class="btn btn-sm" data-mark-red style="background:var(--danger);color:#fff;border-color:var(--danger)">🔴 标红·不会</button>
+  <button class="btn btn-sm" data-mark-green style="background:var(--primary);color:#fff;border-color:var(--primary)">🟢 标绿·词组</button>
+  </div>
+  <div class="wp-online" data-phrase-edit style="display:none;margin-top:8px">
+  <input class="input" data-phrase-input style="font-size:13px;padding:6px 10px" placeholder="可补全词组，如 look forward to"/>
+  <button class="btn btn-sm" data-phrase-save style="margin-top:6px">保存词组</button>
+  </div>`;
   lookupWord(word).then((res) => {
   const pop = document.createElement('div');
   pop.className = 'word-pop';
@@ -2304,6 +2404,7 @@ window.Pages = window.Pages || {};
   : '<div class="wp-cn muted-text">本地词库未收录该词</div>'}
   ${res.syn ? '<div class="wp-cn"><b>近义：</b>' + UI.esc(res.syn) + '</div>' : ''}
   ${res.phrases ? '<div class="wp-cn"><b>词组：</b>' + UI.esc(res.phrases) + '</div>' : ''}
+  ${markHtml}
   <div class="wp-trans">
   ${canAdd ? '<button class="btn btn-sm" data-add-now><img class="ic" src="assets/icons/hk-33.png" alt=""/> 加入</button>' : '<button class="btn btn-sm" disabled>已在词库</button>'}
   ${!hasDef ? '<button class="btn btn-soft btn-sm" data-search><img class="ic" src="assets/icons/hk-27.png" alt=""/> 搜索</button>' : ''}
@@ -2311,6 +2412,21 @@ window.Pages = window.Pages || {};
   <div class="wp-online muted-text" data-online-result></div>`;
   document.body.appendChild(pop);
   pop.querySelector('[data-spk]').onclick = () => speak(res.word);
+  // 标色：标红=不会的单词（即时记录）；标绿=词组（可在输入框补全成完整词组再保存）
+  const repaint = () => { if (_readerBody) paintReader(_readerBody); };
+  const mr = pop.querySelector('[data-mark-red]');
+  if (mr) mr.onclick = () => { setMark(word, 'red'); UI.toast('已标红：' + word, 'ok'); repaint(); pop.remove(); };
+  const mg = pop.querySelector('[data-mark-green]');
+  if (mg) mg.onclick = () => { const box = pop.querySelector('[data-phrase-edit]'); if (box) { box.style.display = 'block'; const ip = box.querySelector('[data-phrase-input]'); if (ip) { ip.value = word; ip.focus(); } } };
+  const ps = pop.querySelector('[data-phrase-save]');
+  if (ps) ps.onclick = () => {
+  const ip = pop.querySelector('[data-phrase-input]');
+  const ph = ip ? ip.value.trim() : '';
+  if (!ph) return UI.toast('词组不能为空', 'warn');
+  setMark(ph, 'green'); UI.toast('已标绿词组：' + ph, 'ok'); repaint(); pop.remove();
+  };
+  const um = pop.querySelector('[data-unmark]');
+  if (um) um.onclick = () => { delMark(word); UI.toast('已取消标色：' + word, 'ok'); repaint(); pop.remove(); };
   const addNow = pop.querySelector('[data-add-now]');
   if (addNow) addNow.onclick = () => { addToBank(res); pop.remove(); if (popClose) { document.removeEventListener('click', popClose, true); popClose = null; } };
   //  搜索翻译：仅用户显式点击才联网，带超时，失败不影响阅读

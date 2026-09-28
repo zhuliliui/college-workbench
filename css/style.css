@@ -488,6 +488,28 @@ img.ic { width: 20px; height: 20px; object-fit: contain; vertical-align: middle;
 }
 .reader .w:hover { background: var(--primary-soft); }
 .reader .w.known { border-bottom: none; color: var(--primary-deep); font-weight: 600; }
+/* 单词标色记录：标红=不会的单词 / 标绿=词组 */
+.reader .w.marked-red { background: rgba(214,69,65,.14); color: var(--danger, #c0392b); border-bottom: 2px solid var(--danger, #d64541); font-weight: 600; }
+.reader .w.marked-green { background: rgba(94,130,104,.16); color: var(--primary-deep); border-bottom: 2px solid var(--primary); font-weight: 600; }
+.reader .w.marked-red:hover { background: rgba(214,69,65,.24); }
+.reader .w.marked-green:hover { background: rgba(94,130,104,.26); }
+/* 词库·标色记录词条 */
+.mk-wrap { display: flex; flex-wrap: wrap; gap: 8px; }
+.mk-chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px;
+  font-size: 13.5px; font-weight: 600; cursor: pointer; border: 1px solid transparent;
+}
+.mk-chip.mk-red { background: rgba(214,69,65,.10); color: var(--danger, #c0392b); border-color: rgba(214,69,65,.25); }
+.mk-chip.mk-green { background: rgba(94,130,104,.12); color: var(--primary-deep); border-color: rgba(94,130,104,.3); }
+.mk-chip .mk-x {
+  border: none; background: transparent; color: inherit; opacity: .55; cursor: pointer;
+  font-size: 15px; line-height: 1; padding: 0 2px;
+}
+.mk-chip .mk-x:hover { opacity: 1; }
+/* 弹窗内已标色状态徽标 */
+.mk-badge { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+.mk-badge.mk-red { background: var(--danger); }
+.mk-badge.mk-green { background: var(--primary); }
 
 /* ---- 外刊·篇章级（实时抓取后端 chapters 格式）---- */
 .reader .rd-chapter { margin: 4px 0 22px; padding-top: 6px; }

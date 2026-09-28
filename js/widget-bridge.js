@@ -24,12 +24,12 @@
     return '';
   }
 
-  // 今日计划口径：与工作台首页 archiveRolledOverTasks / isTodayPlan 完全一致
+  // 今日计划口径：只显示当天的（今天添加的，或截止日=今天）；未来任务不上组件
   function isTodayTask(t, today) {
     var added = t.addedDate || '';
-    if (!t.due) return !added || added === today;
+    if (!t.due) return added === today;
     var dueDay = String(t.due).slice(0, 10);
-    return added === today || dueDay >= today;
+    return added === today || dueDay === today;
   }
 
   function buildPayload() {
