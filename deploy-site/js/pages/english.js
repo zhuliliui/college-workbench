@@ -1338,32 +1338,38 @@ window.Pages = window.Pages || {};
   }
   return _knownSet;
   }
-  // ---------- 单词标色记录（外刊阅读：标红=不会的单词，标绿=标记记住） ----------
+  // ---------- 单词标色（外刊阅读：自选颜色标记，点击色点即记录） ----------
+  const MARK_COLORS = ['#d64541', '#e67e22', '#c9a227', '#4a9d5f', '#3a9ea5', '#4a7fa5', '#8e6bb3', '#d16a8a'];
+  function markColorOf(m) {
+  // 兼容旧数据：mark:'red'→红 / 'green'→绿；新数据直接存 color
+  return m.color || (m.mark === 'green' ? '#4a9d5f' : '#d64541');
+  }
   function normMarkText(t) { return String(t || '').toLowerCase().replace(/[^a-z'\s]/g, ' ').replace(/\s+/g, ' ').trim(); }
   let _mk = { n: -1, words: null, phrases: null };
   function getMarkState() {
   const marks = (Store.get().english && Store.get().english.marks) || {};
   const n = Object.keys(marks).length;
   if (!_mk.words || _mk.n !== n) {
-  _mk = { n, words: new Map(), phrases: new Set() };
+  _mk = { n, words: new Map(), phrases: new Map() };
   Object.keys(marks).forEach((k) => {
   const m = marks[k];
   const norm = normMarkText(m.text || k);
   if (!norm) return;
-  if (m.mark === 'green') _mk.phrases.add(norm);
-  else _mk.words.set(norm, 'red');
+  const color = markColorOf(m);
+  if (norm.indexOf(' ') >= 0) _mk.phrases.set(norm, color);
+  else _mk.words.set(norm, color);
   });
   }
   return _mk;
   }
   function getMark(text) { return ((Store.get().english || {}).marks || {})[normMarkText(text)] || null; }
-  function setMark(text, mark) {
+  function setMark(text, color) {
   const key = normMarkText(text);
   if (!key) return false;
   Store.update((s) => {
   s.english = s.english || {};
   s.english.marks = s.english.marks || {};
-  s.english.marks[key] = { text: key, mark: mark, date: new Date().toISOString().slice(0, 10) };
+  s.english.marks[key] = { text: key, color: color, date: new Date().toISOString().slice(0, 10) };
   });
   return true;
   }
@@ -1381,17 +1387,19 @@ window.Pages = window.Pages || {};
   const tok = toks[i];
   const word = tok.replace(/[^A-Za-z']/g, '');
   if (/^[A-Za-z']{2,}$/.test(word) && st.phrases.size) {
-  // 从当前词起尝试匹配标绿词组（最长 6 个词；词组词与词间为单空格）
+  // 从当前词起尝试匹配已标色词组（最长 6 个词；词组词与词间为单空格）
   let matched = null;
+  let matchedColor = '';
   const words = [];
   for (let j = i, n = 0; j < toks.length && n < 6; j += 2, n++) {
   const w2 = toks[j].replace(/[^A-Za-z']/g, '');
   if (!/^[A-Za-z']+$/.test(w2)) break;
   words.push(w2);
-  if (st.phrases.has(words.join(' '))) matched = 2 * (words.length - 1) + 1;
+  const pc = st.phrases.get(words.join(' '));
+  if (pc) { matched = 2 * (words.length - 1) + 1; matchedColor = pc; }
   }
   if (matched) {
-  html += `<span class="w marked-green" data-w="${UI.esc(words.join(' '))}">${UI.esc(toks.slice(i, i + matched).join(''))}</span>`;
+  html += `<span class="w mk-word" data-w="${UI.esc(words.join(' '))}" style="background:${matchedColor}22;color:${matchedColor};border-bottom-color:${matchedColor}">${UI.esc(toks.slice(i, i + matched).join(''))}</span>`;
   i += matched;
   continue;
   }
@@ -1399,9 +1407,10 @@ window.Pages = window.Pages || {};
   if (/^[A-Za-z']{2,}$/.test(word)) {
   const lower = word.toLowerCase();
   const isKnown = known.has(lower);
-  const mark = st.words.get(lower);
-  const cls = mark === 'red' ? 'marked-red' : (isKnown ? 'known' : '');
-  html += `<span class="w ${cls}" data-w="${UI.esc(word)}">${UI.esc(tok)}</span>`;
+  const color = st.words.get(lower);
+  const style = color ? ` style="background:${color}22;color:${color};border-bottom-color:${color}"` : '';
+  const cls = color ? 'mk-word' : (isKnown ? 'known' : '');
+  html += `<span class="w ${cls}"${style} data-w="${UI.esc(word)}">${UI.esc(tok)}</span>`;
   } else html += UI.esc(tok);
   i++;
   }
@@ -2344,14 +2353,13 @@ window.Pages = window.Pages || {};
   function showWordPop(span, word) {
   if (popClose) { document.removeEventListener('click', popClose, true); popClose = null; }
   document.querySelectorAll('.word-pop').forEach((e) => e.remove());
-  // 标色状态（标红=不会的单词 / 标绿=重点标记）：勾选态在联网查询前就能先展示
+  // 标色（自选颜色）：已标色显示色点+取消，色点行始终显示（点色点=标色/换色）
   const markNow = getMark(word);
-  const markHtml = markNow
-  ? `<div class="wp-cn"><span class="mk-badge ${markNow.mark === 'green' ? 'mk-green' : 'mk-red'}"></span>已标${markNow.mark === 'green' ? '绿' : '红'} <button class="btn btn-soft btn-sm" data-unmark style="padding:2px 8px">取消标色</button></div>`
-  : `<div class="wp-trans">
-  <button class="btn btn-sm" data-mark-red style="background:var(--danger);color:#fff;border-color:var(--danger)">🔴 标红</button>
-  <button class="btn btn-sm" data-mark-green style="background:var(--primary);color:#fff;border-color:var(--primary)">🟢 标绿</button>
-  </div>`;
+  const swatches = MARK_COLORS.map((c) => `<button class="mk-swatch${markNow && markColorOf(markNow) === c ? ' on' : ''}" data-mkc="${c}" style="background:${c}" title="用这个颜色标记"></button>`).join('');
+  const markHtml = `<div class="wp-cn mk-row">${markNow
+  ? `<span class="mk-badge" style="background:${markColorOf(markNow)}"></span>已标色 <button class="btn btn-soft btn-sm" data-unmark style="padding:2px 8px">取消标色</button>`
+  : '<span class="muted-text">点颜色标记单词：</span>'}
+  <div class="mk-swatches">${swatches}</div></div>`;
   lookupWord(word).then((res) => {
   const pop = document.createElement('div');
   pop.className = 'word-pop';
@@ -2380,12 +2388,11 @@ window.Pages = window.Pages || {};
   <div class="wp-online muted-text" data-online-result></div>`;
   document.body.appendChild(pop);
   pop.querySelector('[data-spk]').onclick = () => speak(res.word);
-  // 标色：标红=不会的单词；标绿=标记记住（都即时记录，再点弹窗可取消）
+  // 标色：点色点即标记/换色，取消按钮移除标记
   const repaint = () => { if (_readerBody) paintReader(_readerBody); };
-  const mr = pop.querySelector('[data-mark-red]');
-  if (mr) mr.onclick = () => { setMark(word, 'red'); UI.toast('已标红：' + word, 'ok'); repaint(); pop.remove(); };
-  const mg = pop.querySelector('[data-mark-green]');
-  if (mg) mg.onclick = () => { setMark(word, 'green'); UI.toast('已标绿：' + word, 'ok'); repaint(); pop.remove(); };
+  pop.querySelectorAll('[data-mkc]').forEach((sw) => {
+  sw.onclick = () => { setMark(word, sw.dataset.mkc); UI.toast('已标记：' + word, 'ok'); repaint(); pop.remove(); };
+  });
   const um = pop.querySelector('[data-unmark]');
   if (um) um.onclick = () => { delMark(word); UI.toast('已取消标色：' + word, 'ok'); repaint(); pop.remove(); };
   const addNow = pop.querySelector('[data-add-now]');
