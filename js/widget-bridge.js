@@ -35,27 +35,28 @@
   function buildPayload() {
     var s = Store.get();
     var today = window.D ? D.todayStr() : new Date().toISOString().slice(0, 10);
-    // 今日任务(≤5) + 临近 DDL(≤2) 合成同一条清单，最后统一按截止时间升序排
+    // 未完成 DDL（全部推送，无截止时间的也显示）+ 今日任务，DDL 更紧急排前面
     var items = [];
+
+    // 临近 DDL：未完成的全部推送（组件端可滚动），按截止升序，无截止的沉底；全部标红
+    var ddls = (s.ddls || []).filter(function (d) { return !d.done; })
+      .sort(function (a, b) { return (a.due || '9999').localeCompare(b.due || ''); });
+    ddls.forEach(function (d) {
+      var remain = d.due ? ' · ' + ddlRemain(d.due) : ' · 未设截止';
+      items.push({ ddl: true, due: d.due || '', done: false, line: { id: d.id, kind: 'ddl', t: d.name + remain, d: false, w: true } });
+    });
 
     var tasks = (s.tasks || []).filter(function (t) { return isTodayTask(t, today); });
     tasks.sort(function (a, b) { return (a.done - b.done) || ((a.due || '9999').localeCompare(b.due || '9999')); });
-    tasks.slice(0, 5).forEach(function (t) {
+    tasks.slice(0, 12).forEach(function (t) {
       var time = t.due ? ' ' + t.due.slice(11, 16) : '';
       items.push({ due: t.due || '', done: !!t.done, line: { id: t.id, kind: 'task', t: (t.done ? '✓ ' : '○ ') + t.name + time, d: !!t.done, w: false } });
     });
 
-    // 临近 DDL：未完成、按截止升序取 2 条，全部标红
-    var ddls = (s.ddls || []).filter(function (d) { return d.due && !d.done; })
-      .sort(function (a, b) { return (a.due || '').localeCompare(b.due || ''); })
-      .slice(0, 2);
-    ddls.forEach(function (d) {
-      items.push({ due: d.due || '', done: false, line: { id: d.id, kind: 'ddl', t: d.name + ' · ' + ddlRemain(d.due), d: false, w: true } });
-    });
-
-    // 排序：未完成在前，其次按截止时间升序，没有截止时间的沉底
+    // 排序：已完成沉底，DDL 优先于任务，其余按截止时间升序，没有截止时间的沉底
     items.sort(function (a, b) {
       if (a.done !== b.done) return a.done ? 1 : -1;
+      if (!!a.ddl !== !!b.ddl) return a.ddl ? -1 : 1;
       return (a.due || '9999').localeCompare(b.due || '9999');
     });
     var lines = items.map(function (x) { return x.line; });
@@ -69,7 +70,7 @@
       count: undone,
       ddlCount: undoneDdl,
       piggy: '¥' + ((s.piggy && s.piggy.balance) || 0).toFixed(2),
-      lines: lines.slice(0, 7),
+      lines: lines.slice(0, 30),
     };
   }
 

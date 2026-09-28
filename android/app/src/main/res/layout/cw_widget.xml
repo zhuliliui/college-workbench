@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 桌面小组件布局 v4：仿系统待办样式 —— 标题 + 右上角「任务 N · DDL M」计数 + 彩色圆角任务行（点击直接勾选）+ 底部余额与＋
+<!-- 桌面小组件布局 v5：仿系统待办样式 —— 标题 + 右上角「任务 N · DDL M」计数 + 可滚动任务列表（ListView，点击直接勾选）+ 底部余额与＋
      整块组件点击打开 App（任务行/＋ 的点击优先级更高，不受影响）
-     2026-09-27：去掉 emoji 图标，字号加大两档 -->
+     2026-09-28：固定 7 行改 ListView，小组件也能看到全部任务与 DDL -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/cw_widget_root"
     android:layout_width="match_parent"
@@ -81,34 +81,16 @@
             android:layout_marginStart="4dp" />
     </LinearLayout>
 
-    <TextView android:id="@+id/cw_row0" android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:textSize="18sp" android:singleLine="true" android:ellipsize="end"
-        android:layout_marginTop="5dp" android:paddingStart="10dp" android:paddingEnd="10dp"
-        android:paddingTop="4dp" android:paddingBottom="4dp" />
-    <TextView android:id="@+id/cw_row1" android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:textSize="18sp" android:singleLine="true" android:ellipsize="end"
-        android:layout_marginTop="3dp" android:paddingStart="10dp" android:paddingEnd="10dp"
-        android:paddingTop="4dp" android:paddingBottom="4dp" />
-    <TextView android:id="@+id/cw_row2" android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:textSize="18sp" android:singleLine="true" android:ellipsize="end"
-        android:layout_marginTop="3dp" android:paddingStart="10dp" android:paddingEnd="10dp"
-        android:paddingTop="4dp" android:paddingBottom="4dp" />
-    <TextView android:id="@+id/cw_row3" android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:textSize="18sp" android:singleLine="true" android:ellipsize="end"
-        android:layout_marginTop="3dp" android:paddingStart="10dp" android:paddingEnd="10dp"
-        android:paddingTop="4dp" android:paddingBottom="4dp" />
-    <TextView android:id="@+id/cw_row4" android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:textSize="18sp" android:singleLine="true" android:ellipsize="end"
-        android:layout_marginTop="3dp" android:paddingStart="10dp" android:paddingEnd="10dp"
-        android:paddingTop="4dp" android:paddingBottom="4dp" />
-    <TextView android:id="@+id/cw_row5" android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:textSize="18sp" android:singleLine="true" android:ellipsize="end"
-        android:layout_marginTop="3dp" android:paddingStart="10dp" android:paddingEnd="10dp"
-        android:paddingTop="4dp" android:paddingBottom="4dp" />
-    <TextView android:id="@+id/cw_row6" android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:textSize="18sp" android:singleLine="true" android:ellipsize="end"
-        android:layout_marginTop="3dp" android:paddingStart="10dp" android:paddingEnd="10dp"
-        android:paddingTop="4dp" android:paddingBottom="4dp" />
+    <ListView
+        android:id="@+id/cw_list"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="4dp"
+        android:divider="@null"
+        android:dividerHeight="0dp"
+        android:scrollbars="none"
+        android:cacheColorHint="@android:color/transparent" />
 
     <LinearLayout
         android:layout_width="match_parent"

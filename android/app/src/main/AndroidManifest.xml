@@ -37,6 +37,12 @@
                 android:resource="@xml/cw_widget_provider_info" />
         </receiver>
 
+        <!-- 组件列表数据工厂（ListView 适配器，必须声明 BIND_REMOTEVIEWS 权限） -->
+        <service
+            android:name=".CwWidgetRemoteViewsService"
+            android:permission="android.permission.BIND_REMOTEVIEWS"
+            android:exported="false" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

@@ -1,0 +1,5 @@
+[周一 2026/09/28  8:40:46.72] 启动脚本开始 
+node路径: D:\backdown\Backend\nodejs\node.exe 
+正在启动后端... 
+启动成功，后端 /health 正常响应（端口3000监听中）。 
+[结束] 详见 D:\workbuddyspace\buddycode\college-workbench\backend-launch.log 

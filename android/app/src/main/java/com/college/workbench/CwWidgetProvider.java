@@ -19,12 +19,11 @@ import org.json.JSONObject;
  */
 public class CwWidgetProvider extends AppWidgetProvider {
     public static final String ACTION_TOGGLE = "com.college.workbench.widget.TOGGLE";
-    private static final int ROWS = 7;
-    private static final int COLOR_TITLE = 0xFF232A26;
-    private static final int COLOR_TEXT = 0xFF3D463F;
-    private static final int COLOR_DONE = 0xFF9AA79E;
-    private static final int COLOR_RED = 0xFFD64541;
-    private static final int[] PILL_BG = { R.drawable.cw_pill_yellow, R.drawable.cw_pill_green, R.drawable.cw_pill_blue };
+    static final int COLOR_TITLE = 0xFF232A26;
+    static final int COLOR_TEXT = 0xFF3D463F;
+    static final int COLOR_DONE = 0xFF9AA79E;
+    static final int COLOR_RED = 0xFFD64541;
+    static final int[] PILL_BG = { R.drawable.cw_pill_yellow, R.drawable.cw_pill_green, R.drawable.cw_pill_blue };
 
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
@@ -80,7 +79,11 @@ public class CwWidgetProvider extends AppWidgetProvider {
             String json = ctx.getSharedPreferences(WidgetDataPlugin.PREFS, Context.MODE_PRIVATE)
                     .getString(WidgetDataPlugin.KEY, "");
             RemoteViews rv = build(ctx, json);
-            if (rv != null) mgr.updateAppWidget(ids, rv);
+            if (rv != null) {
+                mgr.updateAppWidget(ids, rv);
+                // 通知列表适配器重新读数据（否则组件上勾选后列表内容不刷新）
+                mgr.notifyAppWidgetViewDataChanged(ids, R.id.cw_list);
+            }
         } catch (Exception e) { /* 数据损坏时不让组件崩溃 */ }
     }
 
@@ -92,48 +95,18 @@ public class CwWidgetProvider extends AppWidgetProvider {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 
-    private static PendingIntent togglePI(Context ctx, String id, String kind, int requestCode) {
-        Intent i = new Intent(ACTION_TOGGLE);
-        i.setComponent(new ComponentName(ctx, CwWidgetProvider.class));
-        i.putExtra("id", id == null ? "" : id);
-        i.putExtra("kind", kind == null ? "" : kind);
-        return PendingIntent.getBroadcast(ctx, requestCode, i,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-    }
-
     private static RemoteViews build(Context ctx, String json) {
         RemoteViews rv = new RemoteViews(ctx.getPackageName(), R.layout.cw_widget);
 
         String piggyText = "";
         int count = 0;
         int ddlCount = 0;
-        String[] texts = new String[ROWS];
-        boolean[] done = new boolean[ROWS];
-        boolean[] red = new boolean[ROWS];
-        String[] ids = new String[ROWS];
-        String[] kinds = new String[ROWS];
-        int n = 0;
         try {
             JSONObject o = new JSONObject(json == null || json.isEmpty() ? "{}" : json);
             piggyText = o.optString("piggy", "");
             count = o.optInt("count", 0);
             ddlCount = o.optInt("ddlCount", 0);
-            JSONArray arr = o.optJSONArray("lines");
-            if (arr != null) {
-                for (int i = 0; i < arr.length() && n < ROWS; i++) {
-                    JSONObject it = arr.optJSONObject(i);
-                    if (it == null) continue;
-                    texts[n] = it.optString("t", "");
-                    done[n] = it.optBoolean("d", false);
-                    red[n] = it.optBoolean("w", false);
-                    ids[n] = it.optString("id", "");
-                    kinds[n] = it.optString("kind", "task");
-                    n++;
-                }
-            }
         } catch (Exception e) { /* JSON 解析失败 → 空状态 */ }
-
-        if (n == 0) { texts[0] = "今天还没有安排，点开看看 ›"; ids[0] = ""; n = 1; }
 
         // 头部：标题 + 右上角「任务 N · DDL M」
         rv.setTextViewText(R.id.cw_title, "今日计划");
@@ -153,22 +126,15 @@ public class CwWidgetProvider extends AppWidgetProvider {
         // 有未完成 DDL 时标红提醒，没有则淡化
         rv.setTextColor(R.id.cw_ddl_count, ddlCount > 0 ? COLOR_RED : COLOR_DONE);
 
-        int[] rowIds = { R.id.cw_row0, R.id.cw_row1, R.id.cw_row2, R.id.cw_row3, R.id.cw_row4, R.id.cw_row5, R.id.cw_row6 };
-        for (int i = 0; i < ROWS; i++) {
-            if (i < n && texts[i] != null && !texts[i].isEmpty()) {
-                rv.setViewVisibility(rowIds[i], android.view.View.VISIBLE);
-                rv.setTextViewText(rowIds[i], texts[i]);
-                rv.setTextColor(rowIds[i], done[i] ? COLOR_DONE : (red[i] ? COLOR_RED : COLOR_TEXT));
-                try { rv.setInt(rowIds[i], "setBackgroundResource", PILL_BG[i % PILL_BG.length]); } catch (Exception e) {}
-                // 可勾选的行（有 id）→ 点击直接切换完成态；无 id 的占位行 → 点击打开 App
-                PendingIntent pi = (ids[i] == null || ids[i].isEmpty())
-                        ? openAppPI(ctx, 1000 + i)
-                        : togglePI(ctx, ids[i], kinds[i], 2000 + i);
-                if (pi != null) rv.setOnClickPendingIntent(rowIds[i], pi);
-            } else {
-                rv.setViewVisibility(rowIds[i], android.view.View.GONE);
-            }
-        }
+        // 列表：RemoteViewsService 逐行生成（可滚动，行数不限），数据即时从 SharedPreferences 读
+        Intent svc = new Intent(ctx, CwWidgetRemoteViewsService.class);
+        rv.setRemoteAdapter(R.id.cw_list, svc);
+        // 行点击模板：Service 的 fillInIntent（携带 id/kind）合入此广播 → onReceive 走 toggleLine
+        Intent tpl = new Intent(ACTION_TOGGLE);
+        tpl.setComponent(new ComponentName(ctx, CwWidgetProvider.class));
+        PendingIntent tmpl = PendingIntent.getBroadcast(ctx, 0, tpl,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        rv.setPendingIntentTemplate(R.id.cw_list, tmpl);
 
         // 整块组件点击 → 打开 App（任务行与 ＋ 各自有更具体的点击，优先级更高）
         PendingIntent rootPi = openAppPI(ctx, 3001);
