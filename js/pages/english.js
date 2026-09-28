@@ -461,14 +461,6 @@ window.Pages = window.Pages || {};
   <tbody id="bankRows"></tbody></table></div>
   <div class="flex-between mt12" id="bankPager"></div>
   </div>
-  </div>
-  <div class="card mt12">
-  <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-14.png" alt=""/>标色记录（外刊）</div>
-  <div class="spacer"></div><span class="tag" id="mkTag"></span><button class="collapse-btn" title="折叠">▾</button></div>
-  <div class="card-body">
-  <div class="muted-text" style="margin-bottom:10px">在「外刊」阅读时点单词弹窗即可标色：<b style="color:var(--danger)">🔴 红 = 不会的单词</b> · <b style="color:var(--primary-deep)">🟢 绿 = 标记记住</b>（点词条朗读，× 删除）</div>
-  <div id="mkRows"></div>
-  </div>
   </div>`;
   const w = wrap(body, html);
   const rows = w.querySelector('#bankRows');
@@ -510,27 +502,7 @@ window.Pages = window.Pages || {};
   }
   paint();
   w.querySelector('#bankSearch').addEventListener('input', () => { page = 0; paint(); });
-  // 标色记录（红=不会的单词 / 绿=标记记住）
-  const mkRows = w.querySelector('#mkRows');
-  const mkTag = w.querySelector('#mkTag');
-  function paintMarks() {
-  const marks = (Store.get().english || {}).marks || {};
-  const keys = Object.keys(marks);
-  if (mkTag) mkTag.textContent = '共 ' + keys.length + ' 条';
-  if (!mkRows) return;
-  if (!keys.length) { mkRows.innerHTML = '<div class="muted-text center" style="padding:10px">还没有标色记录，去「外刊」里点单词试试</div>'; return; }
-  const reds = keys.filter((k) => marks[k].mark === 'red');
-  const greens = keys.filter((k) => marks[k].mark === 'green');
-  const chip = (k) => `<span class="mk-chip ${marks[k].mark === 'green' ? 'mk-green' : 'mk-red'}" data-mkspk="${UI.esc(marks[k].text)}">${marks[k].mark === 'green' ? '🟢' : '🔴'} ${UI.esc(marks[k].text)}<button class="mk-x" data-mkdel="${UI.esc(marks[k].text)}" title="删除">×</button></span>`;
-  mkRows.innerHTML =
-  (reds.length ? '<div class="muted-text" style="margin-bottom:6px">不会的单词（' + reds.length + '）</div><div class="mk-wrap">' + reds.map(chip).join('') + '</div>' : '') +
-  (greens.length ? '<div class="muted-text" style="margin:10px 0 6px">词组（' + greens.length + '）</div><div class="mk-wrap">' + greens.map(chip).join('') + '</div>' : '');
-  }
-  paintMarks();
   w.addEventListener('click', (e) => {
-  const mkdel = e.target.closest('[data-mkdel]');
-  if (mkdel) { delMark(mkdel.dataset.mkdel); UI.toast('已删除标色记录', 'ok'); paintMarks(); return; }
-  const mkspk = e.target.closest('[data-mkspk]'); if (mkspk) { speak(mkspk.dataset.mkspk); return; }
   const spk = e.target.closest('[data-spk]'); if (spk) { speak(spk.dataset.spk); return; }
   const pg = e.target.closest('[data-pg]'); if (pg) {
   if (pg.dataset.pg === 'prev') page = Math.max(0, page - 1);
@@ -1366,7 +1338,7 @@ window.Pages = window.Pages || {};
   }
   return _knownSet;
   }
-  // ---------- 单词标色记录（外刊阅读：标红=不会的单词，标绿=词组） ----------
+  // ---------- 单词标色记录（外刊阅读：标红=不会的单词，标绿=标记记住） ----------
   function normMarkText(t) { return String(t || '').toLowerCase().replace(/[^a-z'\s]/g, ' ').replace(/\s+/g, ' ').trim(); }
   let _mk = { n: -1, words: null, phrases: null };
   function getMarkState() {
