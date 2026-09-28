@@ -510,9 +510,6 @@ img.ic { width: 20px; height: 20px; object-fit: contain; vertical-align: middle;
 .mk-badge { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
 .mk-badge.mk-red { background: var(--danger); }
 .mk-badge.mk-green { background: var(--primary); }
-/* 划选词组悬浮按钮：跟随选区上方，点击整段标绿 */
-.sel-pop { position: fixed; z-index: 9999; display: none; background: var(--card, #fff); border: 1px solid rgba(94,130,104,.35); border-radius: 10px; box-shadow: 0 6px 18px rgba(0,0,0,.14); padding: 4px 6px; }
-.sel-pop .btn { white-space: nowrap; }
 
 /* ---- 外刊·篇章级（实时抓取后端 chapters 格式）---- */
 .reader .rd-chapter { margin: 4px 0 22px; padding-top: 6px; }

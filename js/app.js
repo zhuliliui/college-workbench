@@ -464,7 +464,7 @@
   if (window.PageHandler) window.PageHandler(e);
   });
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
-  navigator.serviceWorker.register('sw.js?v=231').catch(() => {});
+  navigator.serviceWorker.register('sw.js?v=232').catch(() => {});
   }
   route();
   if (window.Cloud && Cloud.scheduleAutoBackup) Cloud.scheduleAutoBackup(); // 离开页面（切走/关页面）触发自动备份

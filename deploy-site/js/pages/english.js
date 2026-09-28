@@ -466,7 +466,7 @@ window.Pages = window.Pages || {};
   <div class="card-head"><div class="title"><img class="ic" src="assets/icons/hk-14.png" alt=""/>标色记录（外刊）</div>
   <div class="spacer"></div><span class="tag" id="mkTag"></span><button class="collapse-btn" title="折叠">▾</button></div>
   <div class="card-body">
-  <div class="muted-text" style="margin-bottom:10px">在「外刊」阅读时点单词弹窗即可标色：<b style="color:var(--danger)">🔴 红 = 不会的单词</b> · <b style="color:var(--primary-deep)">🟢 绿 = 词组</b>（点词条朗读，× 删除）</div>
+  <div class="muted-text" style="margin-bottom:10px">在「外刊」阅读时点单词弹窗即可标色：<b style="color:var(--danger)">🔴 红 = 不会的单词</b> · <b style="color:var(--primary-deep)">🟢 绿 = 标记记住</b>（点词条朗读，× 删除）</div>
   <div id="mkRows"></div>
   </div>
   </div>`;
@@ -510,7 +510,7 @@ window.Pages = window.Pages || {};
   }
   paint();
   w.querySelector('#bankSearch').addEventListener('input', () => { page = 0; paint(); });
-  // 标色记录（红=不会的单词 / 绿=词组）
+  // 标色记录（红=不会的单词 / 绿=标记记住）
   const mkRows = w.querySelector('#mkRows');
   const mkTag = w.querySelector('#mkTag');
   function paintMarks() {
@@ -2020,45 +2020,6 @@ window.Pages = window.Pages || {};
   const wd = e.target.closest('[data-w]');
   if (wd) showWordPop(wd, wd.dataset.w);
   });
-  // 划选多个单词 → 悬浮「标绿词组」按钮：词组=多词整体标绿（1~6 词）
-  if (!w.dataset.selPop) {
-    w.dataset.selPop = '1';
-    const selPop = document.createElement('div');
-    selPop.className = 'sel-pop';
-    selPop.innerHTML = '<button class="btn btn-sm" data-mk-green>🟢 标绿词组</button>';
-    selPop.style.display = 'none';
-    document.body.appendChild(selPop);
-    const mkBtn = selPop.querySelector('[data-mk-green]');
-    mkBtn.addEventListener('mousedown', (ev) => { ev.preventDefault(); ev.stopPropagation(); }); // 保住选区
-    mkBtn.addEventListener('click', (ev) => {
-      ev.stopPropagation();
-      const txt = selPop.dataset.txt || '';
-      selPop.style.display = 'none';
-      if (!txt) return;
-      setMark(txt, 'green');
-      UI.toast('已标绿词组：' + txt, 'ok');
-      if (_readerBody) paintReader(_readerBody);
-      try { window.getSelection().removeAllRanges(); } catch (err) {}
-    });
-    w.addEventListener('mouseup', () => {
-      setTimeout(() => {
-        const sel = window.getSelection();
-        const txt = sel ? String(sel).trim() : '';
-        const inside = sel && sel.rangeCount && _readerBody && _readerBody.contains(sel.anchorNode) && _readerBody.contains(sel.focusNode);
-        if (!txt || !inside) { selPop.style.display = 'none'; return; }
-        const norm = normMarkText(txt);
-        const wc = norm ? norm.split(' ').length : 0;
-        if (!wc) { selPop.style.display = 'none'; return; }
-        if (wc > 6) { selPop.style.display = 'none'; UI.toast('词组最长 6 个词', 'warn'); return; }
-        const r = sel.getRangeAt(0).getBoundingClientRect();
-        selPop.dataset.txt = norm;
-        selPop.style.display = 'block';
-        selPop.style.left = Math.max(12, Math.min(window.innerWidth - 150, r.left + r.width / 2 - 65)) + 'px';
-        selPop.style.top = Math.max(8, r.top - 42) + 'px';
-      }, 10);
-    });
-    document.addEventListener('scroll', () => { selPop.style.display = 'none'; }, true);
-  }
   const bi = w.querySelector('#readerBackend');
   if (bi) bi.addEventListener('change', () => {
   const v = (bi.value || '').trim();
@@ -2411,18 +2372,13 @@ window.Pages = window.Pages || {};
   function showWordPop(span, word) {
   if (popClose) { document.removeEventListener('click', popClose, true); popClose = null; }
   document.querySelectorAll('.word-pop').forEach((e) => e.remove());
-  // 标色状态（标红=不会的单词 / 标绿=词组）：勾选态在联网查询前就能先展示
+  // 标色状态（标红=不会的单词 / 标绿=重点标记）：勾选态在联网查询前就能先展示
   const markNow = getMark(word);
   const markHtml = markNow
-  ? `<div class="wp-cn"><span class="mk-badge ${markNow.mark === 'green' ? 'mk-green' : 'mk-red'}"></span>已标${markNow.mark === 'green' ? '绿（词组）' : '红（不会）'} <button class="btn btn-soft btn-sm" data-unmark style="padding:2px 8px">取消标色</button></div>`
+  ? `<div class="wp-cn"><span class="mk-badge ${markNow.mark === 'green' ? 'mk-green' : 'mk-red'}"></span>已标${markNow.mark === 'green' ? '绿' : '红'} <button class="btn btn-soft btn-sm" data-unmark style="padding:2px 8px">取消标色</button></div>`
   : `<div class="wp-trans">
-  <button class="btn btn-sm" data-mark-red style="background:var(--danger);color:#fff;border-color:var(--danger)">🔴 标红·不会</button>
-  <button class="btn btn-sm" data-mark-green style="background:var(--primary);color:#fff;border-color:var(--primary)">🟢 标绿·词组</button>
-  </div>
-  <div class="wp-online muted-text" style="margin-top:6px">💡 在正文划选多个单词可整体标绿为词组</div>
-  <div class="wp-online" data-phrase-edit style="display:none;margin-top:8px">
-  <input class="input" data-phrase-input style="font-size:13px;padding:6px 10px" placeholder="可补全词组，如 look forward to"/>
-  <button class="btn btn-sm" data-phrase-save style="margin-top:6px">保存词组</button>
+  <button class="btn btn-sm" data-mark-red style="background:var(--danger);color:#fff;border-color:var(--danger)">🔴 标红</button>
+  <button class="btn btn-sm" data-mark-green style="background:var(--primary);color:#fff;border-color:var(--primary)">🟢 标绿</button>
   </div>`;
   lookupWord(word).then((res) => {
   const pop = document.createElement('div');
@@ -2452,19 +2408,12 @@ window.Pages = window.Pages || {};
   <div class="wp-online muted-text" data-online-result></div>`;
   document.body.appendChild(pop);
   pop.querySelector('[data-spk]').onclick = () => speak(res.word);
-  // 标色：标红=不会的单词（即时记录）；标绿=词组（可在输入框补全成完整词组再保存）
+  // 标色：标红=不会的单词；标绿=标记记住（都即时记录，再点弹窗可取消）
   const repaint = () => { if (_readerBody) paintReader(_readerBody); };
   const mr = pop.querySelector('[data-mark-red]');
   if (mr) mr.onclick = () => { setMark(word, 'red'); UI.toast('已标红：' + word, 'ok'); repaint(); pop.remove(); };
   const mg = pop.querySelector('[data-mark-green]');
-  if (mg) mg.onclick = () => { const box = pop.querySelector('[data-phrase-edit]'); if (box) { box.style.display = 'block'; const ip = box.querySelector('[data-phrase-input]'); if (ip) { ip.value = word; ip.focus(); } } };
-  const ps = pop.querySelector('[data-phrase-save]');
-  if (ps) ps.onclick = () => {
-  const ip = pop.querySelector('[data-phrase-input]');
-  const ph = ip ? ip.value.trim() : '';
-  if (!ph) return UI.toast('词组不能为空', 'warn');
-  setMark(ph, 'green'); UI.toast('已标绿词组：' + ph, 'ok'); repaint(); pop.remove();
-  };
+  if (mg) mg.onclick = () => { setMark(word, 'green'); UI.toast('已标绿：' + word, 'ok'); repaint(); pop.remove(); };
   const um = pop.querySelector('[data-unmark]');
   if (um) um.onclick = () => { delMark(word); UI.toast('已取消标色：' + word, 'ok'); repaint(); pop.remove(); };
   const addNow = pop.querySelector('[data-add-now]');
