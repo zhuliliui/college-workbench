@@ -1195,11 +1195,16 @@ window.Pages = window.Pages || {};
   //  （按标题+链接去重，不会重复灌），实现"前端自动同步后端爬到的文章"；后端本身有每日定时抓取。
   // 2) 否则回退到离线外媒精选种子（window.REALNEWS_SEED，每日一次避免重复）
   // 仅写入本地、不触发云端
+  let _autoImportLastTry = 0;
   async function autoDailyImport() {
   const today = todayStr();
   const eng = Store.get().english;
   if (!eng) return;
-  if (eng.lastAutoDate === today) return; // 2026-08-23：每天只导入一次（后端 5 篇 + 双语种子），已导入不再重复
+  if (eng.lastAutoDate === today) return; // 今天已成功导入（后端 5 篇），不再重复
+  const _now = Date.now();
+  if (_now - _autoImportLastTry < 60000) return; // 失败后 60s 内不重试（后端晚开也能自动补拉）
+  _autoImportLastTry = _now;
+  let backendOk = false;
   const backend = Store.readerBackend();
   if (backend) {
   // 已配置后端：只取「当日摘取的 5 篇」（todayArticles）；后端无当日标记时取最新 5 篇
@@ -1208,6 +1213,7 @@ window.Pages = window.Pages || {};
     if (r.ok) {
     const j = await r.json().catch(() => null);
     if (j) {
+      backendOk = true;
       const todayArts = (Array.isArray(j.todayArticles) && j.todayArticles.length) ? j.todayArticles
         : (Array.isArray(j.articles) ? j.articles.slice().sort((a, b) => String(b.fetchDate || b.date || '').localeCompare(String(a.fetchDate || a.date || ''))).slice(0, 5) : []);
       // 当日后端摘取的 5 篇外刊：单独缓存到本地，按天保存（即便后端休眠也能离线回看今日外刊）
@@ -1260,7 +1266,7 @@ window.Pages = window.Pages || {};
   });
   }
   }
-  Store.update((s) => { s.english.lastAutoDate = today; }); // 标记今天已导入（无论是否有新篇）
+  if (backendOk) Store.update((s) => { s.english.lastAutoDate = today; }); // 仅后端拉取成功才标记当天（失败保留重试机会；种子按指纹去重可安全重跑）
   }
   // 兼容旧备份：打开英语页时一次性把历史/异常格式文章（如中英混排挤在 text 里、字段名不同）归一化为当前结构并保存
   (function migrateArticles() {

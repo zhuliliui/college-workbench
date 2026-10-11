@@ -805,9 +805,16 @@ function checkDailyFetch() {
     let n = 0;
     if (r1.status === 'fulfilled') { const a = mergeArticles(r1.value || []); n += a; if (a) console.log('[reader] 今日实时入库', a, '篇'); else console.log('[reader] 外刊已是最新，无新增'); }
     if (r2.status === 'fulfilled') { const a = mergeArticles(r2.value || []); n += a; if (a) console.log('[cn-daily] 国内双语入库', a, '篇'); else console.log('[cn-daily] 双语已是最新，无新增'); }
+    // 任一源抓取失败（如代理未开/网络抖动）→ 不标记 lastDaily，下个整点自动重试；
+    // 且「今日入库不足 3 篇」也视为未完成（外媒被墙时只剩零星直连源），每小时补抓直到凑够
+    const todayCount = (journal.articles || []).filter((a) => (a.fetchDate || '') === today).length;
+    if (r1.status === 'rejected' || r2.status === 'rejected' || todayCount < 3) {
+      console.warn('[reader] 今日仅', todayCount, '篇（目标 3+）或部分源失败，1 小时后自动重试');
+      return;
+    }
     if (!n) console.log('[reader] 今日无新外刊可入库');
     journal.lastDaily = today; saveJournal();
-  }).catch((e) => { console.warn('[reader] 每日抓取失败', e.message); journal.lastDaily = today; saveJournal(); });
+  }).catch((e) => { console.warn('[reader] 每日抓取失败，1 小时后自动重试:', e.message); });
 }
 
 // ---------- 国内双语自动爬取：中国日报双语新闻（language.chinadaily.com.cn，国内可达、HTML 非 SPA）----------

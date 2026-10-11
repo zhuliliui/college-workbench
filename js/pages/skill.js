@@ -427,12 +427,15 @@ Pages.skill = function () {
   return false;
   }
   // 每日自动同步：进入 AI 活动区块时，若今天还没从后端拉取过则静默同步一次（无需手动点刷新）
-  let _aeAutoTried = '';
+  // 失败后 60s 内不重试（节流），之后每次渲染都会自动补拉——后端「晚开」也能拿到当日活动
+  let _aeAutoLastTry = 0;
   function autoSyncAIEvents() {
   const st = Store.get().skill;
   const today = D.todayStr();
-  if (st.aiEventsDate === today || _aeAutoTried === today) return;
-  _aeAutoTried = today;
+  if (st.aiEventsDate === today) return;
+  const now = Date.now();
+  if (now - _aeAutoLastTry < 60000) return;
+  _aeAutoLastTry = now;
   syncAIEventsFromBackend(true).then((ok) => { if (ok && window.__currentPage === 'skill') Pages.skill(); });
   }
   function renderAIEvents() {
