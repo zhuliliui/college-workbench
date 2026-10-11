@@ -6,7 +6,7 @@ if (!TOKEN) {
   if (fs.existsSync(tf)) TOKEN = fs.readFileSync(tf, 'utf8').trim();
 }
 if (!TOKEN) { console.error('NO_TOKEN'); process.exit(1); }
-const ART = 10969346064;
+const ART = 10982065959;
 const API = 'https://api.github.com/repos/zhuliliui/college-workbench/actions/artifacts/' + ART + '/zip';
 
 async function main() {
