@@ -128,15 +128,16 @@ Pages.skill = function () {
 
   // 从联网后端实时拉取「每日 AI 学习选题」：仅当日首次自动填充（之后用本地已存，避免覆盖用户编辑）
   // 后端 server.js 的 /api/ai/topics 每日首次启动抓取真实 AI 热门（arXiv + Hacker News），落盘 data/ai-topics.json
-  let _aiTopicsLoaded = false;
+  let _aiTopicsLastTry = 0;
   async function loadDailyAITopics() {
     const backend = Store.readerBackend();
     if (!backend) return false;
     const today = D.todayStr();
     const cur = Store.get().skill;
     if (cur.aiTopicsDate === today && cur.dailyTopics && cur.dailyTopics.length) return false; // 今日已加载，不覆盖
-    if (_aiTopicsLoaded) return false;
-    _aiTopicsLoaded = true; // 本次会话当日只拉一次
+    const now = Date.now();
+    if (now - _aiTopicsLastTry < 60000) return false; // 失败后 60s 内不重试，避免每次渲染都打超时请求
+    _aiTopicsLastTry = now; // 记录尝试时间：失败后下次渲染还能重试（后端晚开也能补拉当日选题）
     try {
       const ctrl = new AbortController();
       const to = setTimeout(() => ctrl.abort(), 8000);
